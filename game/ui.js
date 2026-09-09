@@ -4,7 +4,12 @@
   const esc = (s) => String(s).replace(/[&<>"]/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m]));
   const SAVE_KEY = 'agricola.game.v1';
 
-  const TW = 88, TH = 78, E = 10, OFF = E / 2;
+  const PCOLOR = ['var(--p1)', 'var(--p2)'];
+  const ic = (k, s) => ART.icon(k, s || 17);
+  const costHtml = (cost) => {
+    if (!cost || !Object.keys(cost).length) return '<span class="free">免費</span>';
+    return Object.keys(cost).map((k) => `<span class="cst">${ic(k, 16)}<b>${cost[k]}</b></span>`).join('');
+  };
 
   let G = null;
   const UI = { view: 0, lastCurrent: 0, buildKind: 'room', sowKind: 'grain', tab: 'occ' };
@@ -39,10 +44,13 @@
       `<span class="pill">回合 <b>${G.round}</b> / 14</span>`,
       `<span class="pill">${esc(phase)}</span>`,
     ];
-    if (HARVEST_ROUNDS.includes(G.round) && !G.over) bits.push('<span class="pill">本回合有收成 🌾</span>');
+    if (HARVEST_ROUNDS.includes(G.round) && !G.over) bits.push(`<span class="pill harvest">${ic('grain', 15)}本回合有收成</span>`);
     G.players.forEach((p, i) => {
       const active = (G.feeding ? G.feeding.i === i : G.current === i) && !G.over;
-      bits.push(`<span class="pill ${active ? 'now' : ''}">${esc(p.name)}${i === G.startPlayer ? ' ⭐' : ''} · 人手 ${p.workersLeft}/${p.people} · 🍲${p.supply.food}</span>`);
+      const men = Array.from({ length: p.people }, (_, k) =>
+        `<span class="mp ${k < p.workersLeft ? '' : 'used'}">${ART.meeple(PCOLOR[i], 15)}</span>`).join('');
+      bits.push(`<span class="pill ${active ? 'now' : ''}">${esc(p.name)}${i === G.startPlayer ? ART.icon('start', 15, 'sp') : ''}
+        <span class="men">${men}</span>${ic('food', 15)}<b>${p.supply.food}</b></span>`);
     });
     $('status').innerHTML = bits.join('');
   }
@@ -54,22 +62,27 @@
       const sp = G.spaces[def.id];
       if (!sp.revealed) return;
       const goods = Object.keys(sp.goods).filter((k) => sp.goods[k] > 0)
-        .map((k) => `${ICON[k]}${sp.goods[k]}`).join(' ');
+        .map((k) => `<span class="cst">${ic(k, 19)}<b>${sp.goods[k]}</b></span>`).join('');
       const acc = (G.n === 1 && def.accumSolo) ? def.accumSolo : def.accum;
-      const sub = def.gain ? `取 ${costText(def.gain)}`
-        : acc ? `累積 每回合 +${costText(acc)}`
-        : (def.steps || []).map((s) => STEP_ZH[s]).join(def.andOr ? ' ／ ' : ' → ');
+      const sub = def.gain ? `取 ${costHtml(def.gain)}`
+        : acc ? `每回合 +${costHtml(acc)}`
+        : esc((def.steps || []).map((s) => STEP_ZH[s]).join(def.andOr ? ' ／ ' : ' → '));
       const free = canPlace(G, def.id);
       out.push(`<button class="space ${isBase ? 'base' : ''} ${sp.occupiedBy !== null ? 'taken' : ''} ${free ? 'avail' : ''}"
         data-space="${def.id}" ${free ? '' : 'disabled'}>
-        <span class="zh"><b>${esc(def.zh)}</b> <span class="muted" style="font-weight:400">${esc(def.en)}</span></span>
-        <span class="sub">${esc(sub)}</span>
-        ${goods ? `<span class="goods">${goods}</span>` : ''}
-        ${sp.occupiedBy !== null ? `<span class="worker">👤 ${esc(G.players[sp.occupiedBy].name)}</span>` : ''}
+        <span class="art">${ART.spaceArt(def.id)}</span>
+        <span class="txt">
+          <span class="nm">${esc(def.zh)}</span>
+          <span class="en">${esc(def.en)}</span>
+          <span class="sub">${sub}</span>
+          ${goods ? `<span class="goods">${goods}</span>` : ''}
+        </span>
+        ${sp.occupiedBy !== null ? `<span class="worker">${ART.meeple(PCOLOR[sp.occupiedBy], 22)}</span>` : ''}
       </button>`);
     };
     BASE_SPACES.forEach((d) => draw(d, true));
-    G.roundOrder.slice(0, G.round).forEach((id) => {
+    G.roundOrder.forEach((id) => {
+      if (!G.spaces[id].revealed) return;
       const d = ROUND_SPACES.find((x) => x.id === id);
       if (d) draw(d, false);
     });
@@ -78,7 +91,8 @@
     // Remaining cards, grouped by stage and sorted by name — the shuffled order stays hidden.
     const RANGE = { 1: '1–4', 2: '5–7', 3: '8–9', 4: '10–11', 5: '12–13', 6: '14' };
     const rest = {};
-    G.roundOrder.slice(G.round).forEach((id) => {
+    G.roundOrder.forEach((id) => {
+      if (G.spaces[id].revealed) return;
       const d = ROUND_SPACES.find((x) => x.id === id);
       (rest[d.stage] = rest[d.stage] || []).push(d.zh);
     });
@@ -90,30 +104,10 @@
   }
 
   // ------------------------------------------------------------ farmyard
-  function tileGlyph(p, i, regs) {
-    const t = p.farm[i];
-    if (t.kind === 'room') {
-      const pet = p.pet ? ` ${ICON[p.pet.kind]}` : '';
-      return { cls: 'room', glyph: '🏠' + pet, cap: HOUSE_ZH[p.house] };
-    }
-    if (t.kind === 'field') {
-      if (!t.crop) return { cls: 'field', glyph: '🟫', cap: '空田' };
-      return { cls: 'field', glyph: ICON[t.crop.kind], cap: `×${t.crop.n}` };
-    }
-    const g = regionOf(p, i, regs);
-    const inPasture = g && g.enclosed;
-    let glyph = t.stable ? '🐴' : '';
-    let cap = '';
-    if (t.animals) { glyph = ICON[t.animals.kind].repeat(Math.min(t.animals.n, 3)); cap = `×${t.animals.n}`; }
-    else if (t.stable) cap = '馬廄';
-    if (inPasture && !cap) cap = `牧場 ${g.count}/${g.capacity}`;
-    return { cls: inPasture ? 'pasture' : '', glyph: glyph || (inPasture ? '🌱' : ''), cap };
-  }
-
   function tilePickable(p, i) {
     if (G.staging) return true;
-    const st = currentStep(G);
     if (p !== G.players[G.current]) return false;
+    const st = currentStep(G);
     if (st === 'plow') return canPlow(p, i);
     if (st === 'build') return UI.buildKind === 'room' ? canBuildRoom(p, i) : canBuildStable(p, i);
     if (st === 'sow') return canSow(p, i);
@@ -123,42 +117,68 @@
   function renderFarm() {
     const p = G.players[UI.view];
     const regs = regions(p);
-    const el = $('farm');
-    el.style.width = (COLS * TW + E) + 'px';
-    el.style.height = (ROWS * TH + E) + 'px';
+    const W = ART.TW, H = ART.TH;
+    const layers = { ground: '', over: '', hits: '' };
 
-    const out = [];
     for (let i = 0; i < TILES; i++) {
       const [r, c] = rc(i);
-      const g = tileGlyph(p, i, regs);
+      const t = p.farm[i];
+      const g = regionOf(p, i, regs);
+      const inPasture = !!(g && g.enclosed);
+      let art;
+      if (t.kind === 'room') art = ART.houseTile(i, p.house, p.pet);
+      else if (t.kind === 'field') art = ART.fieldTile(i, t.crop);
+      else art = ART.grassTile(i, inPasture);
+      if (t.kind === 'empty' && t.stable) art += ART.stableArt(t.animals ? 62 : 34, 46, t.animals ? 0.7 : 1.1);
+      if (t.animals && t.animals.n) art += ART.animalsArt(t.animals.kind, t.animals.n);
+
+      layers.ground += `<g transform="translate(${c * W} ${r * H})">${art}
+        <rect width="${W}" height="${H}" fill="none" stroke="var(--art-edge)" stroke-width="1"/></g>`;
+
       const pick = tilePickable(p, i);
-      out.push(`<div class="tile ${g.cls} ${pick ? 'pick' : ''}" data-tile="${i}"
-        style="left:${OFF + c * TW}px;top:${OFF + r * TH}px;width:${TW}px;height:${TH}px">
-        <span class="glyph">${g.glyph}</span>${g.cap ? `<span class="cap">${esc(g.cap)}</span>` : ''}
-      </div>`);
+      layers.hits += `<rect class="hit ${pick ? 'pick' : ''}" data-tile="${i}"
+        x="${c * W}" y="${r * H}" width="${W}" height="${H}"/>`;
     }
+
+    // Pasture capacity badges sit above the ground layer.
+    for (const gr of regs) {
+      if (!gr.enclosed) continue;
+      const t0 = Math.min.apply(null, gr.tiles);
+      const [r, c] = rc(t0);
+      layers.over += `<g transform="translate(${c * W + 6} ${r * H + 6})">
+        <rect width="${gr.count > 9 || gr.capacity > 9 ? 50 : 42}" height="19" rx="9.5" fill="var(--panel)" stroke="var(--art-ink)" stroke-width="1.2" opacity=".92"/>
+        <text x="${(gr.count > 9 || gr.capacity > 9 ? 50 : 42) / 2}" y="13.5" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ink)">${gr.count}/${gr.capacity}</text></g>`;
+    }
+
+    for (const e of Object.keys(p.fences)) layers.over += ART.fenceArt(e);
 
     const fencing = currentStep(G) === 'fences' && p === G.players[G.current];
     const fresh = (G.pending && G.pending.data.placed) || [];
-    for (const e of allEdges()) {
-      const [k, a, b] = e.split(':');
-      const on = !!p.fences[e];
-      const cls = ['edge', on ? 'on' : '', on && fresh.includes(e) ? 'new' : '', fencing && (!on || fresh.includes(e)) ? 'pick' : ''].join(' ');
-      const style = k === 'h'
-        ? `left:${OFF + (+b) * TW + 3}px;top:${OFF + (+a) * TH - E / 2}px;width:${TW - 6}px;height:${E}px`
-        : `left:${OFF + (+b) * TW - E / 2}px;top:${OFF + (+a) * TH + 3}px;width:${E}px;height:${TH - 6}px`;
-      out.push(`<div class="${cls}" data-edge="${e}" style="${style}"></div>`);
+    if (fencing) {
+      for (const e of allEdges()) {
+        const on = !!p.fences[e];
+        if (on && !fresh.includes(e)) continue;              // built earlier: permanent
+        if (!on && (fenceCount(p) >= 15 || p.supply.wood < 1)) continue;
+        const h = ART.edgeHit(e);
+        layers.hits += `<rect class="hit edge ${on ? 'undo' : ''}" data-edge="${e}"
+          x="${h.x}" y="${h.y}" width="${h.w}" height="${h.h}" rx="4"/>`;
+      }
     }
-    el.innerHTML = out.join('');
+
+    $('farm').innerHTML = `<svg class="farmsvg" viewBox="-10 -10 ${COLS * W + 20} ${ROWS * H + 20}"
+      width="100%" preserveAspectRatio="xMidYMid meet">
+      <rect x="-10" y="-10" width="${COLS * W + 20}" height="${ROWS * H + 20}" rx="10" fill="var(--art-board)"/>
+      ${layers.ground}${layers.over}${layers.hits}</svg>`;
 
     $('farmTitle').textContent = `農場 Farmyard — ${p.name}`;
     $('farmTabs').innerHTML = G.players.map((q, i) =>
-      `<button data-view="${i}" class="${i === UI.view ? 'sel' : ''}">${esc(q.name)}</button>`).join('')
-      + `<span class="muted" style="font-size:12px">柵欄 ${fenceCount(p)}/15 · 馬廄 ${stableCount(p)}/4 · ${HOUSE_ZH[p.house]} ${roomCount(p)} 間</span>`;
+      `<button data-view="${i}" class="${i === UI.view ? 'sel' : ''}">${ART.meeple(PCOLOR[i], 14)} ${esc(q.name)}</button>`).join('')
+      + `<span class="muted farmstat">柵欄 ${fenceCount(p)}/15 · 馬廄 ${stableCount(p)}/4 · ${HOUSE_ZH[p.house]} ${roomCount(p)} 間</span>`;
 
-    $('supply').innerHTML = RES.map((k) => `<span class="chip">${ICON[k]} ${esc(LABEL[k])} <b>${p.supply[k]}</b></span>`).join('')
-      + ANIM.map((k) => `<span class="chip">${ICON[k]} ${esc(LABEL[k])} <b>${animalTotal(p, k)}</b></span>`).join('')
-      + `<span class="chip">🥺 乞討 <b>${p.begging}</b></span>`;
+    const chip = (k, n) => `<span class="chip">${ic(k, 20)}<span class="lb">${esc(k === 'begging' ? '乞討' : LABEL[k])}</span><b>${n}</b></span>`;
+    $('supply').innerHTML = RES.map((k) => chip(k, p.supply[k])).join('')
+      + ANIM.map((k) => chip(k, animalTotal(p, k))).join('')
+      + chip('begging', p.begging);
   }
 
   // ------------------------------------------------------------ action panel
@@ -179,7 +199,7 @@
 
     if (G.staging) {
       parts.push(`<div class="panel"><h3>放置動物</h3>
-        <p>${ICON[G.staging.kind]} ${esc(LABEL[G.staging.kind])} ×${G.staging.n} — 點擊牧場、獨立馬廄或房屋（寵物）。</p>
+        <p>${ic(G.staging.kind, 22)} ${esc(LABEL[G.staging.kind])} ×${G.staging.n} — 點擊牧場、獨立馬廄或房屋（寵物）。</p>
         <div class="row">${btn('discardStaged', '放棄剩餘動物')}</div></div>`);
     }
 
@@ -200,25 +220,25 @@
         const rc2 = ROOM_COST[p.house];
         body = `<div class="row">
             <button data-act="buildKind" data-v="room" class="${UI.buildKind === 'room' ? 'sel' : ''}">建房間 ${costText(rc2)}</button>
-            <button data-act="buildKind" data-v="stable" class="${UI.buildKind === 'stable' ? 'sel' : ''}">建馬廄 🪵2</button>
+            <button data-act="buildKind" data-v="stable" class="${UI.buildKind === 'stable' ? 'sel' : ''}">建馬廄 ${costHtml({ wood: 2 })}</button>
             ${btn('skip', '完成')}
           </div><p class="muted">點擊農場格建造，可以連建多間。房間要同現有房間相鄰。</p>`;
       } else if (st === 'fences') {
         const ok = fencesValid(p);
         const fresh2 = (G.pending.data.placed || []).length;
-        body = `<p>點擊格與格之間嘅位置起柵欄，每條 🪵1。今次新起嘅可以再撳一次取消。</p>`
+        body = `<p>點擊格與格之間嘅位置起柵欄，每條 ${costHtml({ wood: 1 })}。今次新起嘅可以再撳一次取消。</p>`
           + (ok ? '' : '<p class="muted">⚠️ 有柵欄未圍成牧場，唔可以完成。移走佢哋先。</p>')
           + `<div class="row">${btn('confirmFences', '完成', !ok)}${btn('undoFences', `取消今次全部（${fresh2}）`, !fresh2)}</div>`;
       } else if (st === 'sow') {
         body = `<div class="row">
-            <button data-act="sowKind" data-v="grain" class="${UI.sowKind === 'grain' ? 'sel' : ''}">播 🌽 穀物（${p.supply.grain}）</button>
-            <button data-act="sowKind" data-v="veg" class="${UI.sowKind === 'veg' ? 'sel' : ''}">播 🥕 蔬菜（${p.supply.veg}）</button>
+            <button data-act="sowKind" data-v="grain" class="${UI.sowKind === 'grain' ? 'sel' : ''}">播 ${ic('grain', 17)} 穀物（${p.supply.grain}）</button>
+            <button data-act="sowKind" data-v="veg" class="${UI.sowKind === 'veg' ? 'sel' : ''}">播 ${ic('veg', 17)} 蔬菜（${p.supply.veg}）</button>
             ${btn('skip', '完成')}
           </div><p class="muted">點擊空田播種。穀物變 3、蔬菜變 2。</p>`;
       } else if (st === 'bake') {
         const ov = ovensOf(p);
         body = ov.length
-          ? `<div class="row">${ov.map((o) => `<button data-act="bake" data-v="${esc(o)}">${esc(o)} → 🍲${OVENS[o].food}</button>`).join('')}${btn('skip', '完成')}</div>`
+          ? `<div class="row">${ov.map((o) => `<button data-act="bake" data-v="${esc(o)}">${esc(o)} → ${ic('food', 17)}${OVENS[o].food}</button>`).join('')}${btn('skip', '完成')}</div>`
           : `<p class="muted">你冇烤爐（火爐／烹飪爐灶／黏土烤爐／石烤爐），唔可以烤麵包。</p><div class="row">${btn('skip', '完成')}</div>`;
       } else if (st === 'growth' || st === 'growthAny') {
         const ok = canGrow(G, st === 'growthAny');
@@ -251,9 +271,9 @@
       <p>需要 <b>${need}</b> 食物（成人 ${p.people - p.newborn} × ${G.n === 1 ? 3 : 2}${p.newborn ? ` ＋ 新生兒 ${p.newborn} × 1` : ''}），現有 <b>${p.supply.food}</b>。</p>
       ${short ? `<p class="muted">仲差 ${short}，唔補就每差 1 攞 1 個乞討標記（-3 分）。</p>` : ''}
       <div class="row">
-        ${btn('crop2food', '🌽 穀物 → 🍲', p.supply.grain < 1, 'data-v="grain"')}
-        ${btn('crop2food', '🥕 蔬菜 → 🍲', p.supply.veg < 1, 'data-v="veg"')}
-        ${cooks.map((c) => `<button data-act="cook" data-v="${c.from}">${ICON[c.from]} → 🍲${c.food}</button>`).join('')}
+        ${btn('crop2food', `${ic('grain', 16)} → ${ic('food', 16)}`, p.supply.grain < 1, 'data-v="grain"')}
+        ${btn('crop2food', `${ic('veg', 16)} → ${ic('food', 16)}`, p.supply.veg < 1, 'data-v="veg"')}
+        ${cooks.map((c) => `<button data-act="cook" data-v="${c.from}">${ic(c.from, 16)} → ${ic('food', 16)}${c.food}</button>`).join('')}
         ${btn('confirmFeed', short ? `確認（攞 ${short} 個乞討標記）` : '確認餵食', false, 'class="primary"')}
       </div></div>`;
   }
@@ -271,7 +291,7 @@
       <div class="hd"><span class="nm">${esc(c.zh)} <span class="muted">${esc(c.en)}</span></span>
         ${c.vp ? `<span class="vp">${c.vp} 分</span>` : ''}</div>
       <div class="tx">${esc(c.txz)}</div>
-      <div class="ft"><span class="muted">${c.type === 'occ' ? '職業' : c.type === 'min' ? '次要發展' : '主要發展'} · ${costText(cost)}${c.alt ? ' / ' + esc(c.alt) : ''}${c.trav ? ' · 👢旅行卡' : ''}</span>
+      <div class="ft"><span class="muted">${c.type === 'occ' ? '職業' : c.type === 'min' ? '次要發展' : '主要發展'} · ${costHtml(cost)}${c.alt ? ' / ' + esc(c.alt) : ''}${c.trav ? ' · 旅行卡' : ''}</span>
         ${owner ? `<span class="muted">已被 ${esc(owner.name)} 取得</span>`
           : ctx === 'played' ? '' : `<button data-act="play" data-v="${c.uid}" ${canPlay ? '' : 'disabled'}>打出</button>`}
       </div></div>`;
@@ -308,16 +328,16 @@
   function renderAdjust() {
     const p = G.players[UI.view];
     const rows = RES.map((k) =>
-      `<span class="unit">${ICON[k]}${esc(LABEL[k])}
+      `<span class="unit">${ic(k, 18)}${esc(LABEL[k])}
         <button data-act="adj" data-v="${k}" data-d="-1">−</button><b>${p.supply[k]}</b>
         <button data-act="adj" data-v="${k}" data-d="1">＋</button></span>`);
     if (UI.view === G.current && !G.over) {
       rows.push(...ANIM.map((k) =>
-        `<span class="unit">${ICON[k]}${esc(LABEL[k])}
+        `<span class="unit">${ic(k, 18)}${esc(LABEL[k])}
           <button data-act="adjAnimal" data-v="${k}" data-d="-1">−</button><b>${animalTotal(p, k)}</b>
           <button data-act="adjAnimal" data-v="${k}" data-d="1">＋</button></span>`));
     }
-    rows.push(`<span class="unit">🥺乞討
+    rows.push(`<span class="unit">${ic('begging', 18)}乞討
       <button data-act="adjBeg" data-d="-1">−</button><b>${p.begging}</b>
       <button data-act="adjBeg" data-d="1">＋</button></span>`);
     $('adjust').innerHTML = rows.join('');
