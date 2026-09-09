@@ -310,6 +310,12 @@ const ART = (function () {
       <text class="sealnum" y="${r * 0.36}" font-size="${r * 1.15}">${n}</text></g>`;
   }
 
+  // Raw scene markup, for callers that build their own SVG document (the 3D view).
+  function sceneMarkup(id) {
+    const f = SCENES[id] || (() => SKY() + GROUND());
+    return f();
+  }
+
   function spaceArt(id) {
     const f = SCENES[id];
     return `<svg class="spaceart" viewBox="0 0 56 42" width="56" height="42" preserveAspectRatio="xMidYMid slice" aria-hidden="true">${f ? f() : SKY() + GROUND()}</svg>`;
@@ -319,6 +325,6 @@ const ART = (function () {
     return `<svg class="meeple" viewBox="0 0 24 24" width="${size || 16}" height="${size || 16}" style="color:${colorVar}" aria-hidden="true">${ICONS.person}</svg>`;
   }
 
-  return { ICONS, icon, spaceArt, scene, plate, token, board, slot, seal, meeple,
+  return { ICONS, icon, spaceArt, sceneMarkup, scene, plate, token, board, slot, seal, meeple,
     grassTile, fieldTile, houseTile, stableArt, animalsArt, fenceArt, edgeHit, TW, TH };
 })();

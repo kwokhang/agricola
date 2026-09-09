@@ -5,10 +5,12 @@
 
 | 檔案 | 做乜 |
 |---|---|
-| `index.html` | 版面同 CSS，載入 `../data.js`、`art.js`、`engine.js`、`ui.js` |
+| `index.html` | 版面同 CSS，載入 `../data.js`、`vendor/three.min.js`、`art.js`、`engine.js`、`view3d.js`、`ui.js` |
 | `engine.js` | 純規則狀態機，冇 DOM |
 | `art.js` | 全部圖畫：物資圖示、農場板（房屋／田／牧場／柵欄／動物）、行動格插圖 |
+| `view3d.js` | Three.js 檯面：3D 行動板同農場板，射線點擊接返同一套規則 |
 | `ui.js` | 畫面同點擊處理，狀態存喺 `localStorage` |
+| `vendor/three.min.js` | three.js r186，用 esbuild 打包成 IIFE（全域 `THREE`） |
 
 介面由三幅畫出嚟嘅板組成，唔係一堆 HTML 方格：
 
@@ -20,6 +22,23 @@
 
 卡片用真卡樣式：頂部色帶分職業／次要／主要發展，勝利分係一個蠟印。
 深色淺色主題各有一套顏色，全部圖形都係 inline SVG，冇外部圖檔。
+
+## 3D 檯面（預設開）
+
+撳頂部「🎲 3D 檯面」／「🗺 2D 版面」切換。3D 用 Three.js 畫成一張檯：
+
+- 行動板嘅每格係一塊有貼圖嘅板（貼圖就係上面嗰啲 SVG 插圖，即場 raster 成 texture），
+  可以放人嗰格會有金色外框一閃一閃，有人放咗就企個 3D meeple 上去，累積物資係木代幣。
+- 農場板係真 3D：房屋、馬廄、柵欄木樁橫欄、綿羊／野豬／牛、穀物同蔬菜通通有立體件。
+- 拖曳轉視角、滾輪縮放、Shift＋拖曳平移，「正面視角」會按檯面大小重新對焦。
+  行動板每加一行會自動拉遠少少，其餘時間唔會亂郁鏡頭。
+- 點擊用 raycasting，撳落去行返同一套 `engine.js` 規則，同 2D 完全一致。
+- 開唔到 WebGL 就自動退回 2D 版面。
+
+`vendor/three.min.js` 係本機打包版：three.js 官方只出 ES module，而 `file://` 開唔到 module import，
+所以用 esbuild 打包成 IIFE。要更新版本：`npm i three esbuild`，
+`echo "export * from 'three';" > entry.js`，
+`npx esbuild entry.js --bundle --format=iife --global-name=THREE --minify --outfile=three.min.js`。
 
 ## 自動處理
 - 10 個固定行動格 + 14 張回合卡（每階段內洗勻，順序唔會提前公開）。
@@ -40,3 +59,4 @@
 
 ## 除錯
 Console 有 `AG.state()` 攞遊戲狀態、`AG.start(1|2)` 開新局、`AG.render()` 重畫。
+3D 方面有 `View3D.debug()`（場景統計）同 `View3D.locate({type,id})`（攞某件嘢喺畫面嘅座標，測試點擊用）。

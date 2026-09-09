@@ -406,7 +406,42 @@
     renderStatus(); renderSpaces(); renderFarm(); renderPanel();
     renderCards(); renderScore(); renderAdjust();
     $('log').innerHTML = G.log.map(esc).join('<br>');
+    if (UI.mode3d && View3D.isReady()) View3D.sync(G, UI);
     save();
+  }
+
+  // ------------------------------------------------------------ shared input
+  function clickTile(i) {
+    if (G.staging) { placeAnimal(G, i); return; }
+    const st = currentStep(G);
+    if (st === 'plow') plow(G, i);
+    else if (st === 'build') (UI.buildKind === 'room' ? buildRoom : buildStable)(G, i);
+    else if (st === 'sow') sow(G, i, UI.sowKind);
+  }
+
+  function pick3d(d) {
+    if (!G || G.over) return;
+    if (d.type === 'space') placeWorker(G, d.id);
+    else if (d.type === 'tile') clickTile(d.i);
+    else if (d.type === 'edge') toggleFence(G, d.e);
+    render();
+  }
+
+  function set3d(on) {
+    UI.mode3d = !!on;
+    if (UI.mode3d && !View3D.isReady()) {
+      const okay = View3D.init($('stage'), { onPick: pick3d });
+      if (!okay) {
+        UI.mode3d = false;
+        $('stage').insertAdjacentHTML('beforeend',
+          '<div class="stagewarn">呢部機開唔到 WebGL，用返 2D 版面。</div>');
+      }
+    }
+    document.body.classList.toggle('mode3d', UI.mode3d);
+    $('mode3d').textContent = UI.mode3d ? '🗺 2D 版面' : '🎲 3D 檯面';
+    $('mode3d').classList.toggle('sel', UI.mode3d);
+    render();
+    if (UI.mode3d) View3D.resize();
   }
 
   // ------------------------------------------------------------ events
@@ -417,17 +452,7 @@
     if (t.dataset.view != null) { UI.view = +t.dataset.view; return render(); }
     if (t.dataset.tab) { UI.tab = t.dataset.tab; return render(); }
     if (t.dataset.space) { placeWorker(G, t.dataset.space); return render(); }
-    if (t.dataset.tile != null) {
-      const i = +t.dataset.tile, p = G.players[G.current];
-      if (G.staging) placeAnimal(G, i);
-      else {
-        const st = currentStep(G);
-        if (st === 'plow') plow(G, i);
-        else if (st === 'build') (UI.buildKind === 'room' ? buildRoom : buildStable)(G, i);
-        else if (st === 'sow') sow(G, i, UI.sowKind);
-      }
-      return render();
-    }
+    if (t.dataset.tile != null) { clickTile(+t.dataset.tile); return render(); }
     if (t.dataset.edge) { toggleFence(G, t.dataset.edge); return render(); }
 
     const v = t.dataset.v, d = +t.dataset.d;
@@ -468,13 +493,17 @@
   const restart = (n) => { if (confirm(`開新遊戲（${n} 人局）？現時進度會消失。`)) start(n); };
   $('new1').addEventListener('click', () => restart(1));
   $('new2').addEventListener('click', () => restart(2));
+  $('mode3d').addEventListener('click', () => set3d(!UI.mode3d));
+  $('camreset').addEventListener('click', (e) => { e.stopPropagation(); View3D.resetCamera(); });
   $('theme').addEventListener('click', () => {
     const cur = document.documentElement.getAttribute('data-theme');
     document.documentElement.setAttribute('data-theme', cur === 'dark' ? 'light' : 'dark');
+    render();
   });
 
   window.AG = { start, render, state: () => G };   // handy from the console
 
   if (load()) render();
   else start(2);
+  set3d(UI.mode3d !== false);   // the table view is the default
 })();
