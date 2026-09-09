@@ -1,0 +1,599 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agricola Card List — Revised Edition (2016)</title>
+<script src="data.js"></script>
+<style>
+  :root {
+    --bg: #f4eedc;
+    --panel: #fdfaf0;
+    --ink: #33291a;
+    --muted: #7d6e53;
+    --line: #ddd2b6;
+    --accent: #587a3a;
+    --accent-ink: #f5f2e4;
+    --hover: #efe7cf;
+    --occ-frame: #d7a92c;  --occ-band: #f0d287;  --occ-tint: #fbf3d9;  --occ-ink: #6d5210;
+    --min-frame: #cd7a35;  --min-band: #eebe8d;  --min-tint: #fbeddc;  --min-ink: #7c4413;
+    --maj-frame: #b05030;  --maj-band: #e0a184;  --maj-tint: #f9e7dc;  --maj-ink: #7a3016;
+    --rnd-frame: #5f8140;  --rnd-band: #b3cc90;  --rnd-tint: #eef3e0;  --rnd-ink: #3c5522;
+    --vp-bg: #8a6d3b;
+    --shadow: 0 2px 10px rgba(60, 45, 20, .2);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1f1a10;
+      --panel: #2a2315;
+      --ink: #ece2ca;
+      --muted: #a59472;
+      --line: #453a25;
+      --accent: #8fb35e;
+      --accent-ink: #1d2410;
+      --hover: #352d1b;
+      --occ-frame: #a5811f;  --occ-band: #6d5a1d;  --occ-tint: #322a12;  --occ-ink: #ecd48d;
+      --min-frame: #a5602a;  --min-band: #6e421c;  --min-tint: #33240f;  --min-ink: #eebe8d;
+      --maj-frame: #96432a;  --maj-band: #6b2f1c;  --maj-tint: #331d10;  --maj-ink: #e8a988;
+      --rnd-frame: #5d7a3a;  --rnd-band: #3d5223;  --rnd-tint: #232b14;  --rnd-ink: #c2d99a;
+      --vp-bg: #6f5628;
+      --shadow: 0 2px 10px rgba(0, 0, 0, .55);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1f1a10;
+    --panel: #2a2315;
+    --ink: #ece2ca;
+    --muted: #a59472;
+    --line: #453a25;
+    --accent: #8fb35e;
+    --accent-ink: #1d2410;
+    --hover: #352d1b;
+    --occ-frame: #a5811f;  --occ-band: #6d5a1d;  --occ-tint: #322a12;  --occ-ink: #ecd48d;
+    --min-frame: #a5602a;  --min-band: #6e421c;  --min-tint: #33240f;  --min-ink: #eebe8d;
+    --maj-frame: #96432a;  --maj-band: #6b2f1c;  --maj-tint: #331d10;  --maj-ink: #e8a988;
+      --rnd-frame: #5d7a3a;  --rnd-band: #3d5223;  --rnd-tint: #232b14;  --rnd-ink: #c2d99a;
+    --vp-bg: #6f5628;
+    --shadow: 0 2px 10px rgba(0, 0, 0, .55);
+  }
+  :root[data-theme="light"] {
+    --bg: #f4eedc;
+    --panel: #fdfaf0;
+    --ink: #33291a;
+    --muted: #7d6e53;
+    --line: #ddd2b6;
+    --accent: #587a3a;
+    --accent-ink: #f5f2e4;
+    --hover: #efe7cf;
+    --occ-frame: #d7a92c;  --occ-band: #f0d287;  --occ-tint: #fbf3d9;  --occ-ink: #6d5210;
+    --min-frame: #cd7a35;  --min-band: #eebe8d;  --min-tint: #fbeddc;  --min-ink: #7c4413;
+    --maj-frame: #b05030;  --maj-band: #e0a184;  --maj-tint: #f9e7dc;  --maj-ink: #7a3016;
+    --rnd-frame: #5f8140;  --rnd-band: #b3cc90;  --rnd-tint: #eef3e0;  --rnd-ink: #3c5522;
+    --vp-bg: #8a6d3b;
+    --shadow: 0 2px 10px rgba(60, 45, 20, .2);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ---------- top bar ---------- */
+  header.site {
+    flex-shrink: 0;
+    padding: 14px 20px 12px;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 16px;
+  }
+  .title {
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    font-size: 21px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    margin: 0;
+    white-space: nowrap;
+  }
+  .title small {
+    display: block;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", sans-serif;
+    font-size: 11.5px;
+    font-weight: 400;
+    letter-spacing: 0;
+    color: var(--muted);
+  }
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    flex: 1;
+  }
+  .search {
+    flex: 1 1 170px;
+    min-width: 150px;
+    max-width: 300px;
+    padding: 7px 12px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--panel);
+    color: var(--ink);
+    font: inherit;
+    font-size: 14px;
+  }
+  .search:focus-visible,
+  .seg button:focus-visible,
+  .row:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+  .seg {
+    display: inline-flex;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--panel);
+  }
+  .seg button {
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    padding: 7px 11px;
+    font: inherit;
+    font-size: 12.5px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button[aria-pressed="true"] {
+    background: var(--accent);
+    color: var(--accent-ink);
+  }
+
+  /* ---------- two panes ---------- */
+  .main {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+  }
+
+  .list-pane {
+    width: 350px;
+    flex-shrink: 0;
+    border-right: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .count {
+    padding: 8px 16px;
+    color: var(--muted);
+    font-size: 12.5px;
+    border-bottom: 1px solid var(--line);
+    font-variant-numeric: tabular-nums;
+  }
+  .list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 6px 0 30px;
+  }
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    text-align: left;
+    border: 0;
+    background: transparent;
+    color: var(--ink);
+    font: inherit;
+    padding: 8px 14px 8px 10px;
+    cursor: pointer;
+  }
+  .row:hover { background: var(--hover); }
+  .row[aria-selected="true"] { background: var(--hover); }
+  .row .stripe {
+    width: 5px;
+    align-self: stretch;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+  .row.occ .stripe { background: var(--occ-frame); }
+  .row.min .stripe { background: var(--min-frame); }
+  .row.maj .stripe { background: var(--maj-frame); }
+  .row.rnd .stripe { background: var(--rnd-frame); }
+  .row .names { flex: 1; min-width: 0; }
+  .row .en {
+    font-weight: 600;
+    font-size: 15px;
+    line-height: 1.3;
+  }
+  .row[aria-selected="true"] .en { color: var(--accent); }
+  .row .zh { font-size: 13px; color: var(--muted); line-height: 1.3; }
+  .row .meta {
+    flex-shrink: 0;
+    font-size: 11.5px;
+    color: var(--muted);
+    text-align: right;
+    line-height: 1.5;
+    white-space: nowrap;
+  }
+  .empty { color: var(--muted); padding: 30px 16px; }
+
+  /* ---------- detail pane ---------- */
+  .detail-pane {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 30px 26px 50px;
+  }
+  .card {
+    width: 100%;
+    max-width: 720px;
+    border: 4px solid;
+    border-radius: 16px;
+    background: var(--panel);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .card.occ { border-color: var(--occ-frame); }
+  .card.min { border-color: var(--min-frame); }
+  .card.maj { border-color: var(--maj-frame); }
+  .card.rnd { border-color: var(--rnd-frame); }
+
+  .band {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px 18px;
+    min-height: 52px;
+  }
+  .card.occ .band { background: var(--occ-band); }
+  .card.min .band { background: var(--min-band); }
+  .card.maj .band { background: var(--maj-band); }
+  .card.rnd .band { background: var(--rnd-band); }
+
+  .cost { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--panel);
+    border: 1px solid rgba(0, 0, 0, .15);
+    border-radius: 20px;
+    padding: 4px 13px 4px 9px;
+    font-size: 20px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .chip .n { font-size: 17px; }
+  .free { font-size: 14px; font-weight: 600; opacity: .75; }
+
+  .badges { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
+  .badge {
+    font-size: 15px;
+    font-weight: 700;
+    border-radius: 20px;
+    padding: 3px 11px;
+    background: var(--panel);
+    border: 1px solid rgba(0, 0, 0, .15);
+    white-space: nowrap;
+  }
+  .badge.vp {
+    background: var(--vp-bg);
+    color: #fdf7e3;
+    border-color: transparent;
+  }
+
+  .names-big { padding: 22px 24px 6px; }
+  .card h2 {
+    margin: 0;
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    font-size: 36px;
+    line-height: 1.2;
+    text-wrap: balance;
+  }
+  .zh-name { font-size: 22px; color: var(--muted); margin-top: 3px; }
+
+  .typeline {
+    padding: 6px 24px 14px;
+    font-size: 13.5px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  .card.occ .typeline { color: var(--occ-ink); }
+  .card.min .typeline { color: var(--min-ink); }
+  .card.maj .typeline { color: var(--maj-ink); }
+  .card.rnd .typeline { color: var(--rnd-ink); }
+
+  .body {
+    padding: 20px 24px 26px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    border-top: 1px dashed var(--line);
+  }
+  .card.occ .body { background: var(--occ-tint); }
+  .card.min .body { background: var(--min-tint); }
+  .card.maj .body { background: var(--maj-tint); }
+  .card.rnd .body { background: var(--rnd-tint); }
+
+  .txt { margin: 0; font-size: 20px; line-height: 1.65; }
+  .txz { margin: 0; font-size: 19px; line-height: 1.8; color: var(--muted); }
+  .alt { margin: 0; font-size: 14px; font-style: italic; opacity: .85; }
+  .trav-note {
+    margin: 0;
+    font-size: 13.5px;
+    color: var(--muted);
+    border-top: 1px dashed var(--line);
+    padding-top: 10px;
+  }
+
+  .placeholder { color: var(--muted); margin-top: 80px; text-align: center; }
+
+  /* ---------- mobile: stacked, detail as overlay ---------- */
+  .close-detail { display: none; }
+  @media (max-width: 760px) {
+    body { overflow: auto; height: auto; }
+    .main { flex-direction: column; }
+    .list-pane { width: 100%; border-right: 0; }
+    .list { overflow: visible; }
+    .detail-pane {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      background: rgba(20, 15, 5, .55);
+      padding: 24px 14px;
+      overflow-y: auto;
+    }
+    .detail-pane.open { display: flex; }
+    .close-detail {
+      display: block;
+      position: sticky;
+      top: 0;
+      align-self: flex-start;
+      margin-right: 10px;
+      border: 0;
+      border-radius: 50%;
+      width: 38px;
+      height: 38px;
+      font-size: 19px;
+      background: var(--panel);
+      color: var(--ink);
+      cursor: pointer;
+      box-shadow: var(--shadow);
+    }
+  }
+</style>
+</head>
+<body>
+  <header class="site">
+    <h1 class="title">AGRICOLA<small>Card List · Revised Edition (2016) 卡表</small></h1>
+    <div class="controls">
+      <input id="q" class="search" type="search" placeholder="Search… 搜尋" autocomplete="off">
+      <div class="seg" id="typeSeg" role="group" aria-label="Card type">
+        <button data-v="all" aria-pressed="true">All</button>
+        <button data-v="occ" aria-pressed="false">職業 Occ</button>
+        <button data-v="min" aria-pressed="false">次要 Minor</button>
+        <button data-v="maj" aria-pressed="false">主要 Major</button>
+        <button data-v="rnd" aria-pressed="false">回合 Round</button>
+      </div>
+      <div class="seg" id="deckSeg" role="group" aria-label="Deck">
+        <button data-v="all" aria-pressed="true">Deck</button>
+        <button data-v="A" aria-pressed="false">A</button>
+        <button data-v="B" aria-pressed="false">B</button>
+      </div>
+      <div class="seg" id="pSeg" role="group" aria-label="Player count">
+        <button data-v="all" aria-pressed="true">Players</button>
+        <button data-v="1" aria-pressed="false">1+</button>
+        <button data-v="3" aria-pressed="false">3+</button>
+        <button data-v="4" aria-pressed="false">4+</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="main">
+    <div class="list-pane">
+      <div class="count" id="count"></div>
+      <div class="list" id="list" role="listbox" aria-label="Cards"></div>
+    </div>
+    <div class="detail-pane" id="detailPane">
+      <button class="close-detail" id="closeDetail" aria-label="Close 關閉">✕</button>
+      <div id="detail" style="width:100%; max-width:720px;"></div>
+    </div>
+  </div>
+
+<script>
+  const RES = {
+    wood:  ['🪵', 'Wood',  '木材'],
+    clay:  ['🧱', 'Clay',  '黏土'],
+    reed:  ['🎋', 'Reed',  '蘆葦'],
+    stone: ['🪨', 'Stone', '石頭'],
+    grain: ['🌾', 'Grain', '穀物'],
+    veg:   ['🥕', 'Vegetable', '蔬菜'],
+    food:  ['🍲', 'Food',  '食物'],
+    sheep: ['🐑', 'Sheep', '綿羊'],
+    boar:  ['🐗', 'Wild boar', '野豬'],
+    cattle:['🐄', 'Cattle', '牛'],
+  };
+  const TYPE_LABEL = {
+    occ: 'Occupation · 職業',
+    min: 'Minor Improvement · 次要發展',
+    maj: 'Major Improvement · 主要發展',
+    rnd: 'Round Card · 回合卡',
+  };
+
+  const state = { q: '', type: 'all', deck: 'all', p: 'all' };
+  let shown = [];
+  let selected = 0;   // index into CARDS
+
+  const esc = s => String(s)
+    .replaceAll('&', '&amp;').replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;').replaceAll('"', '&quot;');
+
+  function costHTML(c) {
+    if (c === undefined) return '';
+    const parts = Object.entries(c);
+    if (parts.length === 0) return '<span class="free">Free 免費</span>';
+    return parts.map(([r, n]) => {
+      const [icon, en, zh] = RES[r] || ['❓', r, r];
+      return `<span class="chip" title="${esc(en)} ${esc(zh)}">${icon}<span class="n">×${n}</span></span>`;
+    }).join('');
+  }
+
+  function costShort(c) {
+    if (c === undefined) return '';
+    const parts = Object.entries(c);
+    if (parts.length === 0) return 'free';
+    return parts.map(([r, n]) => (RES[r] ? RES[r][0] : r) + n).join(' ');
+  }
+
+  function detailHTML(c) {
+    const badges = [];
+    if (c.type === 'occ') badges.push(`<span class="badge" title="Minimum players 最低人數">${c.p}+ players</span>`);
+    if (c.type === 'rnd') badges.push(`<span class="badge" title="Stage 階段">Stage ${c.stage} · Round ${c.rounds}</span>`);
+    if (c.trav) badges.push('<span class="badge" title="Traveling card 旅行卡">👢</span>');
+    if (c.vp) badges.push(`<span class="badge vp" title="Victory points 勝利分">${c.vp} pt</span>`);
+    const deck = c.deck ? ` · Deck ${c.deck}` : '';
+    const alt = c.alt ? `<p class="alt">${esc(c.alt)} — 或退回一個火爐換取</p>` : '';
+    const trav = c.trav
+      ? '<p class="trav-note">👢 Traveling card: after playing, pass it to the player on your left. 旅行卡：打出後交給左手邊玩家。</p>'
+      : '';
+    const harvest = c.type === 'rnd'
+      ? `<p class="trav-note">🌾 Cards of a stage come out in random order. Harvest at the end of round ${STAGE_END[c.stage]}. 同一階段的回合卡以隨機順序出現；第${STAGE_END[c.stage]}回合結束時收成。</p>`
+      : '';
+    return `<article class="card ${c.type}">
+      <div class="band">
+        <div class="cost">${costHTML(c.cost)}</div>
+        <div class="badges">${badges.join('')}</div>
+      </div>
+      <div class="names-big">
+        <h2>${esc(c.en)}</h2>
+        <div class="zh-name">${esc(c.zh)}</div>
+      </div>
+      <div class="typeline">${TYPE_LABEL[c.type]}${deck}</div>
+      <div class="body">
+        <p class="txt">${esc(c.txt)}</p>
+        <p class="txz">${esc(c.txz)}</p>
+        ${alt}
+        ${trav}
+        ${harvest}
+      </div>
+    </article>`;
+  }
+
+  function rowHTML(c, idx) {
+    const meta = [];
+    if (c.type === 'occ') meta.push(c.p + '+');
+    if (c.type === 'rnd') meta.push('Stage ' + c.stage + ' · R' + c.rounds);
+    if (c.deck) meta.push('Deck ' + c.deck);
+    const cost = costShort(c.cost);
+    return `<button class="row ${c.type}" role="option" data-i="${idx}"
+        aria-selected="${idx === selected}">
+      <span class="stripe"></span>
+      <span class="names">
+        <span class="en">${esc(c.en)}</span><br>
+        <span class="zh">${esc(c.zh)}</span>
+      </span>
+      <span class="meta">${meta.join(' · ')}${cost ? '<br>' + cost : ''}</span>
+    </button>`;
+  }
+
+  function renderDetail() {
+    const c = CARDS[selected];
+    document.getElementById('detail').innerHTML =
+      c ? detailHTML(c) : '<p class="placeholder">Select a card 請選擇卡牌</p>';
+  }
+
+  function renderList() {
+    const listEl = document.getElementById('list');
+    listEl.innerHTML = shown.length
+      ? shown.map(i => rowHTML(CARDS[i], i)).join('')
+      : '<p class="empty">No cards match. 沒有符合的卡牌。</p>';
+    document.getElementById('count').textContent = `${shown.length} / ${CARDS.length} cards`;
+  }
+
+  function applyFilters() {
+    const q = state.q.trim().toLowerCase();
+    shown = [];
+    CARDS.forEach((c, i) => {
+      if (state.type !== 'all' && c.type !== state.type) return;
+      if (state.deck !== 'all' && c.deck !== state.deck) return;
+      if (state.p !== 'all' && String(c.p || 1) !== state.p) return;
+      if (q && !(c.en.toLowerCase().includes(q) || c.zh.includes(q) ||
+                 c.txt.toLowerCase().includes(q) || c.txz.includes(q))) return;
+      shown.push(i);
+    });
+    if (!shown.includes(selected)) selected = shown.length ? shown[0] : -1;
+    renderList();
+    renderDetail();
+  }
+
+  function select(idx, openOverlay) {
+    selected = idx;
+    for (const b of document.querySelectorAll('.row'))
+      b.setAttribute('aria-selected', String(Number(b.dataset.i) === idx));
+    renderDetail();
+    if (openOverlay && window.matchMedia('(max-width: 760px)').matches)
+      document.getElementById('detailPane').classList.add('open');
+  }
+
+  document.getElementById('list').addEventListener('click', e => {
+    const btn = e.target.closest('.row');
+    if (btn) select(Number(btn.dataset.i), true);
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    if (e.target.id === 'q' && e.key === 'ArrowUp') return;
+    const pos = shown.indexOf(selected);
+    if (pos === -1) return;
+    const next = e.key === 'ArrowDown' ? Math.min(pos + 1, shown.length - 1) : Math.max(pos - 1, 0);
+    if (next !== pos) {
+      e.preventDefault();
+      select(shown[next]);
+      const btn = document.querySelector(`.row[data-i="${shown[next]}"]`);
+      if (btn) btn.scrollIntoView({ block: 'nearest' });
+    }
+  });
+
+  document.getElementById('closeDetail').addEventListener('click', () =>
+    document.getElementById('detailPane').classList.remove('open'));
+
+  function segInit(id, key) {
+    const seg = document.getElementById(id);
+    seg.addEventListener('click', e => {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      for (const b of seg.querySelectorAll('button'))
+        b.setAttribute('aria-pressed', String(b === btn));
+      state[key] = btn.dataset.v;
+      applyFilters();
+    });
+  }
+  segInit('typeSeg', 'type');
+  segInit('deckSeg', 'deck');
+  segInit('pSeg', 'p');
+  document.getElementById('q').addEventListener('input', e => {
+    state.q = e.target.value;
+    applyFilters();
+  });
+
+  applyFilters();
+</script>
+</body>
+</html>
