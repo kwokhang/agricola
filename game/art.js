@@ -214,51 +214,101 @@ const ART = (function () {
   }
 
   // ---------------------------------------------------------------- action-space vignettes
-  const SKY = (c) => `<rect width="56" height="42" fill="${c || 'var(--art-sky)'}"/>`;
-  const GROUND = (c) => `<path d="M0 30h56v12H0z" fill="${c || 'var(--art-grass)'}"/>`;
+  // Scenes bleed well past their nominal 56×42 so any crop still lands on artwork.
+  const SKY = (c) => `<rect x="-34" y="-14" width="124" height="76" fill="${c || 'var(--art-sky)'}"/>`;
+  const GROUND = (c) => {
+    const col = c || 'var(--art-grass)';
+    return `<path d="M-34 22c16-9 28-6 40 1s26 5 40-3 30-6 44 3v39H-34z" fill="${col}" opacity=".45"/>
+      <path d="M-34 30c15-9 27-9 39-1s27 6 39-2 27-7 46 3v32H-34z" fill="${col}"/>`;
+  };
   const put = (key, x, y, s) => `<g transform="translate(${x} ${y}) scale(${s || 1})">${ICONS[key]}</g>`;
 
   const SCENES = {
-    farmland: () => SKY() + `<path d="M0 26h56v16H0z" fill="var(--art-soil)"/>` +
-      [30, 36].map((y) => `<path d="M2 ${y}q14 -3 26 0t26 0" fill="none" stroke="var(--art-soil-dk)" stroke-width="2.6" stroke-linecap="round"/>`).join('') + put('plow', 16, 8, .9),
+    farmland: () => SKY() + `<path d="M-34 26h124v36H-34z" fill="var(--art-soil)"/>` +
+      [30, 36, 42].map((y) => `<path d="M-20 ${y}q16 -3 30 0t30 0 30 0" fill="none" stroke="var(--art-soil-dk)" stroke-width="2.6" stroke-linecap="round"/>`).join('') + put('plow', 16, 6, .9),
     grain_seeds: () => SKY() + GROUND() + put('grain', 12, 6, 1.2) + put('grain', 28, 10, .9),
     farm_expansion: () => SKY() + GROUND() +
-      `<path d="M2 24L16 11l14 13z" fill="var(--art-roof)" stroke="${ink}" stroke-width="1.6" stroke-linejoin="round"/>
-       <rect x="6" y="23" width="20" height="14" fill="var(--art-wood)" stroke="${ink}" stroke-width="1.6"/>
-       <path d="M6 28h20M6 32h20" stroke="var(--art-wood-dk)" stroke-width="1.4"/>` + put('hammer', 30, 8, .9),
+      `<path d="M2 18L16 5l14 13z" fill="var(--art-roof)" stroke="${ink}" stroke-width="1.6" stroke-linejoin="round"/>
+       <rect x="6" y="17" width="20" height="14" fill="var(--art-wood)" stroke="${ink}" stroke-width="1.6"/>
+       <path d="M6 22h20M6 26h20" stroke="var(--art-wood-dk)" stroke-width="1.4"/>` + put('hammer', 30, 5, .9),
     meeting_place: () => SKY() + GROUND() + put('start', 8, 10, 1) + put('person', 30, 8, .95),
     lessons: () => SKY() + GROUND() + put('book', 6, 8, 1.1) + put('person', 32, 9, .9),
     day_laborer: () => SKY() + GROUND() + put('person', 6, 8, 1) + put('food', 30, 12, 1),
     forest: () => SKY() + GROUND('var(--art-grass-dk)') + put('tree', 2, 4, 1.1) + put('tree', 20, 8, .95) + put('tree', 36, 5, 1.05),
-    clay_pit: () => SKY() + `<path d="M0 28h56v14H0z" fill="var(--art-soil-dk)"/>` + put('clay', 8, 10, 1.2) + put('clay', 28, 14, .85),
-    reed_bank: () => SKY() + `<path d="M0 32h56v10H0z" fill="var(--art-water)"/>` + put('reed', 8, 6, 1.2) + put('reed', 28, 9, 1),
-    fishing: () => SKY() + `<path d="M0 24h56v18H0z" fill="var(--art-water)"/>` + put('fish', 8, 10, 1.1) + put('fish', 30, 18, .75),
-    major: () => SKY() + GROUND() + `<path d="M10 34h30l-4-14H14z" fill="var(--art-clay)" stroke="${ink}" stroke-width="1.6" stroke-linejoin="round"/>
-      <path d="M18 30c1-4 3-5 3-8 2 2 4 3 4 6s-2 4-3.4 4z" fill="var(--art-food)" stroke="${ink}" stroke-width="1.2"/>`,
+    clay_pit: () => SKY() + `<path d="M-34 28h124v34H-34z" fill="var(--art-soil-dk)"/>` + put('clay', 8, 10, 1.2) + put('clay', 28, 14, .85),
+    reed_bank: () => SKY() + `<path d="M-34 32h124v30H-34z" fill="var(--art-water)"/>` + put('reed', 8, 6, 1.2) + put('reed', 28, 9, 1),
+    fishing: () => SKY() + `<path d="M-34 24h124v38H-34z" fill="var(--art-water)"/>` + put('fish', 8, 10, 1.1) + put('fish', 30, 18, .75),
+    major: () => SKY() + GROUND() + `<path d="M10 28h30l-4-16H14z" fill="var(--art-clay)" stroke="${ink}" stroke-width="1.6" stroke-linejoin="round"/>
+      <path d="M18 24c1-4 3-5 3-8 2 2 4 3 4 6s-2 4-3.4 4z" fill="var(--art-food)" stroke="${ink}" stroke-width="1.2"/>`,
     sheep_market: () => SKY() + GROUND('var(--art-pasture)') + put('sheep', 6, 8, 1.15) + put('sheep', 28, 12, .85),
     pig_market: () => SKY() + GROUND('var(--art-pasture)') + put('boar', 6, 8, 1.15) + put('boar', 28, 12, .85),
     cattle_market: () => SKY() + GROUND('var(--art-pasture)') + put('cattle', 4, 8, 1.15) + put('cattle', 28, 12, .8),
     fencing: () => SKY() + GROUND('var(--art-pasture)') +
-      `<g>${[6, 24, 42].map((x) => `<rect x="${x}" y="18" width="5" height="18" rx="2" fill="var(--art-fence-dk)" stroke="${ink}" stroke-width="1.3"/>`).join('')}
-      <rect x="4" y="21" width="44" height="5" rx="2.5" fill="var(--art-fence)" stroke="${ink}" stroke-width="1.3"/>
-      <rect x="4" y="30" width="44" height="5" rx="2.5" fill="var(--art-fence)" stroke="${ink}" stroke-width="1.3"/></g>`,
+      `<g>${[6, 24, 42].map((x) => `<rect x="${x}" y="9" width="5" height="20" rx="2" fill="var(--art-fence-dk)" stroke="${ink}" stroke-width="1.3"/>`).join('')}
+      <rect x="4" y="12" width="44" height="5" rx="2.5" fill="var(--art-fence)" stroke="${ink}" stroke-width="1.3"/>
+      <rect x="4" y="22" width="44" height="5" rx="2.5" fill="var(--art-fence)" stroke="${ink}" stroke-width="1.3"/></g>`,
     grain_util: () => SKY() + GROUND() + put('grain', 4, 8, 1.1) + put('food', 28, 12, 1.1),
     family_growth: () => SKY() + GROUND() + put('person', 2, 8, 1) + put('person', 22, 10, .85) + put('person', 38, 16, .6),
     renovation: () => SKY() + GROUND() +
-      `<path d="M6 26L20 14l14 12z" fill="var(--art-roof)" stroke="${ink}" stroke-width="1.6" stroke-linejoin="round"/>
-       <rect x="10" y="25" width="20" height="12" fill="var(--art-clay)" stroke="${ink}" stroke-width="1.6"/>` + put('hammer', 32, 6, .85),
-    west_quarry: () => SKY() + `<path d="M0 28h56v14H0z" fill="var(--art-stone-lt)"/>` + put('stone', 6, 10, 1.2) + put('stone', 28, 14, .85),
+      `<path d="M4 20L18 6l14 14z" fill="var(--art-roof)" stroke="${ink}" stroke-width="1.6" stroke-linejoin="round"/>
+       <rect x="8" y="19" width="20" height="13" fill="var(--art-clay)" stroke="${ink}" stroke-width="1.6"/>` + put('hammer', 32, 4, .85),
+    west_quarry: () => SKY() + `<path d="M-34 28h124v34H-34z" fill="var(--art-stone-lt)"/>` + put('stone', 6, 10, 1.2) + put('stone', 28, 14, .85),
     veg_seeds: () => SKY() + GROUND() + put('veg', 10, 6, 1.2) + put('veg', 28, 12, .85),
-    cultivation: () => SKY() + `<path d="M0 26h56v16H0z" fill="var(--art-soil)"/>` + put('plow', 4, 8, .95) + put('grain', 30, 8, 1),
+    cultivation: () => SKY() + `<path d="M-34 26h124v36H-34z" fill="var(--art-soil)"/>` + put('plow', 4, 8, .95) + put('grain', 30, 8, 1),
     urgent_growth: () => SKY() + GROUND() + put('person', 4, 6, 1.15) + put('person', 30, 16, .7),
     farm_redev: () => SKY() + GROUND() +
-      `<path d="M4 26L18 14l14 12z" fill="var(--art-roof)" stroke="${ink}" stroke-width="1.6" stroke-linejoin="round"/>
-       <rect x="8" y="25" width="20" height="12" fill="var(--art-stone)" stroke="${ink}" stroke-width="1.6"/>
-       <rect x="34" y="18" width="4" height="18" rx="2" fill="var(--art-fence-dk)" stroke="${ink}" stroke-width="1.2"/>
-       <rect x="46" y="18" width="4" height="18" rx="2" fill="var(--art-fence-dk)" stroke="${ink}" stroke-width="1.2"/>
-       <rect x="32" y="22" width="20" height="4" rx="2" fill="var(--art-fence)" stroke="${ink}" stroke-width="1.2"/>`,
+      `<path d="M2 20L16 6l14 14z" fill="var(--art-roof)" stroke="${ink}" stroke-width="1.6" stroke-linejoin="round"/>
+       <rect x="6" y="19" width="20" height="13" fill="var(--art-stone)" stroke="${ink}" stroke-width="1.6"/>
+       <rect x="34" y="10" width="4" height="20" rx="2" fill="var(--art-fence-dk)" stroke="${ink}" stroke-width="1.2"/>
+       <rect x="46" y="10" width="4" height="20" rx="2" fill="var(--art-fence-dk)" stroke="${ink}" stroke-width="1.2"/>
+       <rect x="32" y="14" width="20" height="4" rx="2" fill="var(--art-fence)" stroke="${ink}" stroke-width="1.2"/>`,
   };
   SCENES.east_quarry = SCENES.west_quarry;
+
+  // A scene scaled into an arbitrary box, cropped rather than letterboxed.
+  function scene(id, x, y, w, h) {
+    const f = SCENES[id] || (() => SKY() + GROUND());
+    return `<svg x="${x}" y="${y}" width="${w}" height="${h}" viewBox="-24 -2 100 56" preserveAspectRatio="xMidYMid slice">${f()}</svg>`;
+  }
+
+  // A parchment name plate, the kind printed on a board space.
+  function plate(x, y, w, h, main, sub) {
+    return `<g transform="translate(${x} ${y})">
+      <rect width="${w}" height="${h}" rx="5" fill="var(--art-plate)" stroke="${ink}" stroke-width="1.5" opacity=".95"/>
+      <text class="plate-main" x="9" y="${sub ? 16 : h / 2 + 5}">${main}</text>
+      ${sub ? `<text class="plate-sub" x="9" y="${h - 7}">${sub}</text>` : ''}</g>`;
+  }
+
+  // A goods token: the drawn resource on a wooden disc, with its count.
+  function token(key, n, x, y, size) {
+    const s = size || 34;
+    return `<g transform="translate(${x} ${y})">
+      <circle cx="${s / 2}" cy="${s / 2}" r="${s / 2}" fill="var(--art-token)" stroke="${ink}" stroke-width="1.6"/>
+      <g transform="translate(${s * 0.14} ${s * 0.14}) scale(${s * 0.72 / 24})">${ICONS[key] || ''}</g>
+      <g transform="translate(${s - 13} ${s - 15})">
+        <rect width="${n > 9 ? 24 : 18}" height="16" rx="8" fill="var(--art-count)" stroke="${ink}" stroke-width="1.4"/>
+        <text class="count" x="${(n > 9 ? 24 : 18) / 2}" y="12">${n}</text></g></g>`;
+  }
+
+  // Wooden board frame with an inner panel.
+  function board(w, h, pad) {
+    const p = pad == null ? 9 : pad;
+    return `<rect width="${w}" height="${h}" rx="14" fill="var(--art-frame)" stroke="${ink}" stroke-width="2"/>
+      <rect x="${p}" y="${p}" width="${w - 2 * p}" height="${h - 2 * p}" rx="8" fill="var(--art-boardface)" stroke="${ink}" stroke-width="1.2" opacity=".9"/>
+      <rect width="${w}" height="${h}" rx="14" fill="url(#grain)" opacity=".5" style="pointer-events:none"/>`;
+  }
+
+  // A shallow recess, used for the player mat's storage slots.
+  function slot(x, y, w, h) {
+    return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="7"
+      fill="var(--art-slot)" stroke="${ink}" stroke-width="1.3" opacity=".92"/>`;
+  }
+
+  function seal(n, x, y, r) {
+    return `<g transform="translate(${x} ${y})">
+      <circle r="${r}" fill="var(--art-seal)" stroke="${ink}" stroke-width="1.6"/>
+      <text class="sealnum" y="${r * 0.36}" font-size="${r * 1.15}">${n}</text></g>`;
+  }
 
   function spaceArt(id) {
     const f = SCENES[id];
@@ -269,5 +319,6 @@ const ART = (function () {
     return `<svg class="meeple" viewBox="0 0 24 24" width="${size || 16}" height="${size || 16}" style="color:${colorVar}" aria-hidden="true">${ICONS.person}</svg>`;
   }
 
-  return { ICONS, icon, spaceArt, meeple, grassTile, fieldTile, houseTile, stableArt, animalsArt, fenceArt, edgeHit, TW, TH };
+  return { ICONS, icon, spaceArt, scene, plate, token, board, slot, seal, meeple,
+    grassTile, fieldTile, houseTile, stableArt, animalsArt, fenceArt, edgeHit, TW, TH };
 })();

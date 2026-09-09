@@ -49,7 +49,7 @@ const ROUND_SPACES = [
 const STEP_ZH = {
   plow: '犁田', build: '建房間／馬廄', fences: '建柵欄', sow: '播種', bake: '烤麵包',
   growth: '家庭成長', growthAny: '家庭成長（免空房）', renovate: '翻新房屋',
-  playMinor: '打次要發展', playOcc: '打職業', playImprovement: '打發展卡（主要或次要）',
+  playMinor: '打次要發展', playOcc: '打職業', playImprovement: '打發展卡',
 };
 
 const ROOM_COST = { wood: { wood: 5, reed: 2 }, clay: { clay: 5, reed: 2 }, stone: { stone: 5, reed: 2 } };

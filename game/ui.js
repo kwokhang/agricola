@@ -55,38 +55,56 @@
     $('status').innerHTML = bits.join('');
   }
 
-  // ------------------------------------------------------------ action spaces
+  // ------------------------------------------------------------ action board
+  const SP_W = 178, SP_H = 112, SP_GAP = 9, SP_PAD = 16, SP_COLS = 3;
+
+  function spaceTile(def, sp, col, row, i) {
+    const x = SP_PAD + col * (SP_W + SP_GAP), y = SP_PAD + row * (SP_H + SP_GAP);
+    const free = canPlace(G, def.id);
+    const acc = (G.n === 1 && def.accumSolo) ? def.accumSolo : def.accum;
+    const sub = def.gain ? `取 ${Object.keys(def.gain).map((k) => LABEL[k] + def.gain[k]).join('、')}`
+      : acc ? `每回合 +${Object.keys(acc).map((k) => LABEL[k] + acc[k]).join('、')}`
+      : (def.steps || []).map((s) => STEP_ZH[s]).join(def.andOr ? ' ／ ' : ' → ');
+
+    let s = `<g class="sp ${free ? 'free' : ''} ${sp.occupiedBy !== null ? 'taken' : ''}" transform="translate(${x} ${y})">
+      <clipPath id="spc${i}"><rect width="${SP_W}" height="${SP_H}" rx="9"/></clipPath>
+      <g clip-path="url(#spc${i})">
+        ${ART.scene(def.id, 0, 0, SP_W, SP_H)}
+        ${ART.plate(7, SP_H - 47, SP_W - 14, 40, esc(def.zh), esc(sub.length > 14 ? sub.slice(0, 13) + '…' : sub))}
+        ${sp.occupiedBy !== null ? `<rect width="${SP_W}" height="${SP_H}" fill="var(--art-ink)" opacity=".3"/>` : ''}
+      </g>
+      <rect class="spframe" width="${SP_W}" height="${SP_H}" rx="9" fill="none" stroke="var(--art-ink)" stroke-width="2"/>`;
+
+    const goods = Object.keys(sp.goods).filter((k) => sp.goods[k] > 0);
+    goods.forEach((k, gi) => { s += ART.token(k, sp.goods[k], 8 + gi * 40, 8, 34); });
+
+    if (sp.occupiedBy !== null) {
+      s += `<g class="onspace" transform="translate(${SP_W - 46} 6)">
+        <circle cx="18" cy="18" r="18" fill="var(--panel)" stroke="var(--art-ink)" stroke-width="1.6" opacity=".9"/>
+        <g transform="translate(5 4)">${ART.meeple(PCOLOR[sp.occupiedBy], 26)}</g></g>`;
+    }
+    s += `<rect class="hit sp-hit ${free ? 'pick' : ''}" data-space="${def.id}" width="${SP_W}" height="${SP_H}" rx="9"/>
+      <title>${esc(def.zh)} ${esc(def.en)} — ${esc(sub)}</title></g>`;
+    return s;
+  }
+
   function renderSpaces() {
-    const out = [];
-    const draw = (def, isBase) => {
-      const sp = G.spaces[def.id];
-      if (!sp.revealed) return;
-      const goods = Object.keys(sp.goods).filter((k) => sp.goods[k] > 0)
-        .map((k) => `<span class="cst">${ic(k, 19)}<b>${sp.goods[k]}</b></span>`).join('');
-      const acc = (G.n === 1 && def.accumSolo) ? def.accumSolo : def.accum;
-      const sub = def.gain ? `取 ${costHtml(def.gain)}`
-        : acc ? `每回合 +${costHtml(acc)}`
-        : esc((def.steps || []).map((s) => STEP_ZH[s]).join(def.andOr ? ' ／ ' : ' → '));
-      const free = canPlace(G, def.id);
-      out.push(`<button class="space ${isBase ? 'base' : ''} ${sp.occupiedBy !== null ? 'taken' : ''} ${free ? 'avail' : ''}"
-        data-space="${def.id}" ${free ? '' : 'disabled'}>
-        <span class="art">${ART.spaceArt(def.id)}</span>
-        <span class="txt">
-          <span class="nm">${esc(def.zh)}</span>
-          <span class="en">${esc(def.en)}</span>
-          <span class="sub">${sub}</span>
-          ${goods ? `<span class="goods">${goods}</span>` : ''}
-        </span>
-        ${sp.occupiedBy !== null ? `<span class="worker">${ART.meeple(PCOLOR[sp.occupiedBy], 22)}</span>` : ''}
-      </button>`);
-    };
-    BASE_SPACES.forEach((d) => draw(d, true));
+    const list = [];
+    BASE_SPACES.forEach((d) => list.push(d));
     G.roundOrder.forEach((id) => {
       if (!G.spaces[id].revealed) return;
       const d = ROUND_SPACES.find((x) => x.id === id);
-      if (d) draw(d, false);
+      if (d) list.push(d);
     });
-    $('spaces').innerHTML = out.join('');
+
+    const rows = Math.ceil(list.length / SP_COLS);
+    const W = SP_PAD * 2 + SP_COLS * SP_W + (SP_COLS - 1) * SP_GAP;
+    const H = SP_PAD * 2 + rows * SP_H + (rows - 1) * SP_GAP;
+    const tiles = list.map((d, i) =>
+      spaceTile(d, G.spaces[d.id], i % SP_COLS, Math.floor(i / SP_COLS), i)).join('');
+
+    $('spaces').innerHTML = `<svg class="boardsvg" viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet">
+      ${ART.board(W, H, 9)}${tiles}</svg>`;
 
     // Remaining cards, grouped by stage and sorted by name — the shuffled order stays hidden.
     const RANGE = { 1: '1–4', 2: '5–7', 3: '8–9', 4: '10–11', 5: '12–13', 6: '14' };
@@ -175,10 +193,40 @@
       `<button data-view="${i}" class="${i === UI.view ? 'sel' : ''}">${ART.meeple(PCOLOR[i], 14)} ${esc(q.name)}</button>`).join('')
       + `<span class="muted farmstat">柵欄 ${fenceCount(p)}/15 · 馬廄 ${stableCount(p)}/4 · ${HOUSE_ZH[p.house]} ${roomCount(p)} 間</span>`;
 
-    const chip = (k, n) => `<span class="chip">${ic(k, 20)}<span class="lb">${esc(k === 'begging' ? '乞討' : LABEL[k])}</span><b>${n}</b></span>`;
-    $('supply').innerHTML = RES.map((k) => chip(k, p.supply[k])).join('')
-      + ANIM.map((k) => chip(k, animalTotal(p, k))).join('')
-      + chip('begging', p.begging);
+    renderMat(p);
+  }
+
+  // ------------------------------------------------------------ player mat
+  const MAT_COLS = 6, MAT_W = 92, MAT_H = 64, MAT_GAP = 8, MAT_PAD = 14, MAT_STRIP = 34;
+
+  function matSlot(key, n, col, row, label) {
+    const x = MAT_PAD + col * (MAT_W + MAT_GAP);
+    const y = MAT_PAD + MAT_STRIP + 8 + row * (MAT_H + MAT_GAP);
+    return `<g transform="translate(${x} ${y})">
+      ${ART.slot(0, 0, MAT_W, MAT_H)}
+      <g transform="translate(7 9)">${ART.icon(key, 30)}</g>
+      <text class="mat-n" x="${MAT_W - 10}" y="34">${n}</text>
+      <text class="mat-lb" x="7" y="${MAT_H - 8}">${esc(label)}</text></g>`;
+  }
+
+  function renderMat(p) {
+    const cells = RES.map((k) => [k, p.supply[k], LABEL[k]])
+      .concat(ANIM.map((k) => [k, animalTotal(p, k), LABEL[k]]))
+      .concat([['begging', p.begging, '乞討']]);
+    const rows = Math.ceil(cells.length / MAT_COLS);
+    const W = MAT_PAD * 2 + MAT_COLS * MAT_W + (MAT_COLS - 1) * MAT_GAP;
+    const H = MAT_PAD * 2 + MAT_STRIP + 8 + rows * MAT_H + (rows - 1) * MAT_GAP;
+
+    const men = Array.from({ length: p.people }, (_, k) =>
+      `<g transform="translate(${k * 22} 0)" opacity="${k < p.workersLeft ? 1 : .3}">${ART.meeple(PCOLOR[G.players.indexOf(p)], 22)}</g>`).join('');
+
+    const strip = `<g transform="translate(${MAT_PAD} ${MAT_PAD})">
+      ${ART.plate(0, 0, W - MAT_PAD * 2, MAT_STRIP, esc(`${HOUSE_ZH[p.house]} · 房間 ${roomCount(p)} · 柵欄 ${fenceCount(p)}/15 · 馬廄 ${stableCount(p)}/4`), '')}
+      <g transform="translate(${W - MAT_PAD * 2 - 12 - p.people * 22} 6)">${men}</g></g>`;
+
+    $('supply').innerHTML = `<svg class="matsvg" viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet">
+      ${ART.board(W, H, 8)}${strip}
+      ${cells.map(([k, n, lb], i) => matSlot(k, n, i % MAT_COLS, Math.floor(i / MAT_COLS), lb)).join('')}</svg>`;
   }
 
   // ------------------------------------------------------------ action panel
@@ -287,11 +335,17 @@
       ? kinds.includes(c.type) && canPay(p, cost) && UI.view === G.current
       : false;
     const owner = c.taken != null ? G.players[c.taken] : null;
+    const band = c.type === 'occ' ? '職業 OCCUPATION'
+      : c.type === 'min' ? '次要發展 MINOR IMPROVEMENT' : '主要發展 MAJOR IMPROVEMENT';
+    const vp = c.vp
+      ? `<svg class="vpseal" viewBox="-16 -16 32 32" width="30" height="30" aria-hidden="true">${ART.seal(c.vp, 0, 0, 14)}</svg>`
+      : '';
     return `<div class="card ${c.type}">
-      <div class="hd"><span class="nm">${esc(c.zh)} <span class="muted">${esc(c.en)}</span></span>
-        ${c.vp ? `<span class="vp">${c.vp} 分</span>` : ''}</div>
+      <div class="band">${esc(band)}</div>
+      ${vp}
+      <div class="hd"><span class="nm">${esc(c.zh)}</span><span class="ennm">${esc(c.en)}</span></div>
       <div class="tx">${esc(c.txz)}</div>
-      <div class="ft"><span class="muted">${c.type === 'occ' ? '職業' : c.type === 'min' ? '次要發展' : '主要發展'} · ${costHtml(cost)}${c.alt ? ' / ' + esc(c.alt) : ''}${c.trav ? ' · 旅行卡' : ''}</span>
+      <div class="ft"><span class="costs">${costHtml(cost)}${c.alt ? `<span class="muted"> / ${esc(c.alt)}</span>` : ''}${c.trav ? '<span class="muted"> · 旅行卡</span>' : ''}</span>
         ${owner ? `<span class="muted">已被 ${esc(owner.name)} 取得</span>`
           : ctx === 'played' ? '' : `<button data-act="play" data-v="${c.uid}" ${canPlay ? '' : 'disabled'}>打出</button>`}
       </div></div>`;
