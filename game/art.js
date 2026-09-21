@@ -271,12 +271,17 @@ const ART = (function () {
     return `<svg x="${x}" y="${y}" width="${w}" height="${h}" viewBox="-24 -2 100 56" preserveAspectRatio="xMidYMid slice">${f()}</svg>`;
   }
 
-  // A parchment name plate, the kind printed on a board space.
-  function plate(x, y, w, h, main, sub) {
-    return `<g transform="translate(${x} ${y})">
+  // A parchment name plate, the kind printed on a board space: the name, its English
+  // name beside it, then one or two lines spelling out what the space actually does.
+  function plate(x, y, w, h, main, en, notes) {
+    const lines = notes || [];
+    let s = `<g transform="translate(${x} ${y})">
       <rect width="${w}" height="${h}" rx="5" fill="var(--art-plate)" stroke="${ink}" stroke-width="1.5" opacity=".95"/>
-      <text class="plate-main" x="9" y="${sub ? 16 : h / 2 + 5}">${main}</text>
-      ${sub ? `<text class="plate-sub" x="9" y="${h - 7}">${sub}</text>` : ''}</g>`;
+      <text class="plate-main" x="9" y="${lines.length ? 19 : h / 2 + 6}">${main}`;
+    if (en) s += `<tspan class="plate-en" dx="6">${en}</tspan>`;
+    s += '</text>';
+    lines.forEach((t, i) => { s += `<text class="plate-note" x="9" y="${36 + i * 14}">${t}</text>`; });
+    return s + '</g>';
   }
 
   // A goods token: the drawn resource on a wooden disc, with its count.
@@ -325,6 +330,105 @@ const ART = (function () {
     return `<svg class="meeple" viewBox="0 0 24 24" width="${size || 16}" height="${size || 16}" style="color:${colorVar}" aria-hidden="true">${ICONS.person}</svg>`;
   }
 
+  // ---------------------------------------------------------------- card faces
+  // A printed card, drawn big enough to stay readable as a 3D texture. SVG has no text
+  // wrapping, so lines are measured by hand: a CJK glyph is one unit, latin about half.
+  const CARD_W = 300, CARD_H = 420;
+  const TYPE_BAND = {
+    occ: { frame: 'var(--occ-frame)', tint: 'var(--occ-tint)', ink: 'var(--occ-ink)', zh: '職業', en: 'OCCUPATION' },
+    min: { frame: 'var(--min-frame)', tint: 'var(--min-tint)', ink: 'var(--min-ink)', zh: '次要發展', en: 'MINOR IMPROVEMENT' },
+    maj: { frame: 'var(--maj-frame)', tint: 'var(--maj-tint)', ink: 'var(--maj-ink)', zh: '主要發展', en: 'MAJOR IMPROVEMENT' },
+  };
+
+  const wide = (ch) => (ch.charCodeAt(0) > 0x2e7f ? 1 : 0.55);
+
+  function wrap(text, perLine, maxLines) {
+    const lines = [];
+    let cur = '', w = 0;
+    for (const ch of String(text || '')) {
+      if (ch === '\n') { lines.push(cur); cur = ''; w = 0; continue; }
+      const cw = wide(ch);
+      if (w + cw > perLine) { lines.push(cur); cur = ''; w = 0; }
+      cur += ch; w += cw;
+    }
+    if (cur) lines.push(cur);
+    if (maxLines && lines.length > maxLines) {
+      const cut = lines.slice(0, maxLines);
+      cut[maxLines - 1] = cut[maxLines - 1].slice(0, -1) + '…';
+      return cut;
+    }
+    return lines;
+  }
+
+  // Cost spelled as icon + number chips, laid out left to right.
+  function costRow(cost, x, y) {
+    const keys = Object.keys(cost || {});
+    if (!keys.length) {
+      return `<text x="${x}" y="${y + 17}" font-size="16" fill="var(--art-ink)" opacity=".75">免費</text>`;
+    }
+    let s = '', cx = x;
+    for (const k of keys) {
+      s += `<g transform="translate(${cx} ${y})">
+        <rect width="52" height="26" rx="13" fill="var(--art-token)" stroke="${ink}" stroke-width="1.4"/>
+        <g transform="translate(4 3) scale(${20 / 24})">${ICONS[k] || ''}</g>
+        <text x="38" y="19" text-anchor="middle" font-size="16" font-weight="700" fill="var(--art-ink)">${cost[k]}</text></g>`;
+      cx += 58;
+    }
+    return s;
+  }
+
+  // opts: { cost, taken, note } — `taken` prints an owner ribbon across the art.
+  function cardFace(c, opts) {
+    const o = opts || {};
+    const t = TYPE_BAND[c.type] || TYPE_BAND.min;
+    const title = wrap(c.zh || c.en, 11, 2);
+    const body = wrap(c.txz || c.tx || '', 17.5, 9);
+    let s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${CARD_W} ${CARD_H}"
+      width="${CARD_W}" height="${CARD_H}" font-family="-apple-system,BlinkMacSystemFont,'PingFang TC','Noto Sans TC',sans-serif">
+      <rect width="${CARD_W}" height="${CARD_H}" rx="18" fill="${t.tint}" stroke="${t.frame}" stroke-width="7"/>
+      <rect x="10" y="10" width="${CARD_W - 20}" height="${CARD_H - 20}" rx="12" fill="none" stroke="${ink}" stroke-width="1.2" opacity=".45"/>
+      <rect x="10" y="10" width="${CARD_W - 20}" height="34" rx="10" fill="${t.frame}"/>
+      <text x="24" y="33" font-size="17" font-weight="700" fill="var(--art-count)">${t.zh}
+        <tspan dx="8" font-size="11" opacity=".85">${t.en}</tspan></text>`;
+
+    title.forEach((ln, i) => {
+      s += `<text x="24" y="${82 + i * 26}" font-size="24" font-weight="700" fill="${t.ink}">${ln}</text>`;
+    });
+    s += `<text x="24" y="${86 + title.length * 26}" font-size="12.5" fill="var(--art-ink)" opacity=".7">${c.en || ''}</text>`;
+
+    const bodyTop = 104 + title.length * 26;
+    s += `<rect x="18" y="${bodyTop}" width="${CARD_W - 36}" height="${CARD_H - bodyTop - 76}" rx="10"
+      fill="var(--art-plate)" stroke="${ink}" stroke-width="1.1" opacity=".9"/>`;
+    body.forEach((ln, i) => {
+      s += `<text x="32" y="${bodyTop + 26 + i * 21}" font-size="15" fill="var(--art-ink)">${ln}</text>`;
+    });
+
+    s += costRow(o.cost, 24, CARD_H - 58);
+    if (c.vp) s += `<g transform="translate(${CARD_W - 44} 74)">${seal(c.vp, 0, 0, 24)}</g>`;
+    if (c.trav) s += `<text x="${CARD_W - 24}" y="${CARD_H - 30}" text-anchor="end" font-size="13" fill="var(--art-ink)" opacity=".7">旅行卡</text>`;
+    if (o.note) s += `<text x="${CARD_W - 24}" y="${CARD_H - 30}" text-anchor="end" font-size="13" fill="${t.ink}">${o.note}</text>`;
+    if (o.taken) {
+      s += `<g transform="translate(${CARD_W / 2} ${CARD_H / 2}) rotate(-14)">
+        <rect x="-130" y="-24" width="260" height="48" rx="10" fill="var(--art-ink)" opacity=".82"/>
+        <text y="8" text-anchor="middle" font-size="21" font-weight="700" fill="var(--art-count)">已被 ${o.taken} 取得</text></g>`;
+    }
+    return s + '</svg>';
+  }
+
+  // The reverse side, for an opponent's hand.
+  function cardBack(kind) {
+    const t = TYPE_BAND[kind] || TYPE_BAND.min;
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${CARD_W} ${CARD_H}" width="${CARD_W}" height="${CARD_H}">
+      <rect width="${CARD_W}" height="${CARD_H}" rx="18" fill="${t.frame}" stroke="${ink}" stroke-width="5"/>
+      <rect x="26" y="26" width="${CARD_W - 52}" height="${CARD_H - 52}" rx="12" fill="none"
+        stroke="var(--art-count)" stroke-width="2.5" opacity=".55"/>
+      <g transform="translate(${CARD_W / 2} ${CARD_H / 2})" opacity=".75">
+        <circle r="62" fill="none" stroke="var(--art-count)" stroke-width="3"/>
+        <g transform="translate(-34 -34) scale(2.9)">${ICONS.grain || ''}</g></g>
+      <rect width="${CARD_W}" height="${CARD_H}" rx="18" fill="url(#grain)" opacity=".4"/></svg>`;
+  }
+
   return { ICONS, icon, spaceArt, sceneMarkup, scene, plate, token, board, slot, seal, meeple,
-    grassTile, fieldTile, houseTile, stableArt, animalsArt, fenceArt, edgeHit, TW, TH };
+    grassTile, fieldTile, houseTile, stableArt, animalsArt, fenceArt, edgeHit, TW, TH,
+    cardFace, cardBack, CARD_W, CARD_H };
 })();
