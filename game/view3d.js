@@ -1103,7 +1103,9 @@ const View3D = (function () {
   const FOCUS = {
     // pol is the angle from straight down: ~0.6 reads as leaning over the table.
     table: () => ({ az: 0, pol: 0.62, pad: 1.02, boxes: ['board', 'majors', 'seat0', 'seat1'] }),
-    board: () => ({ az: 0, pol: 0.46, pad: 0.97, boxes: ['board'] }),
+    // The board is wide, so its view gets tighter margins: the top-left only has the camera
+    // tabs, and the action bar sits over the empty middle of the board's lower edge.
+    board: () => ({ az: 0, pol: 0.34, pad: 0.95, boxes: ['board'], safe: { l: 0.015, r: 0.4, t: 0.2, b: 0.12 } }),
     farm: (UI) => ({ az: 0, pol: 0.56, pad: 1.04, boxes: ['farm' + UI.view] }),
     cards: (UI) => ({ az: 0, pol: 0.5, pad: 1.02, boxes: ['played' + UI.view] }),
     majors: () => ({ az: 0, pol: 0.42, pad: 1.0, boxes: ['majors'] }),
@@ -1114,15 +1116,17 @@ const View3D = (function () {
 
   // Frame a box inside the free middle of the screen: project its corners, then slide the
   // target and pull the camera back until the whole thing clears the HUD on every side.
-  function fitGoal(box3, pad) {
+  function fitGoal(box3, pad, safe) {
     const corners = [];
     for (const x of [box3.min.x, box3.max.x])
       for (const y of [box3.min.y, box3.max.y])
         for (const z of [box3.min.z, box3.max.z]) corners.push(new T.Vector3(x, y, z));
 
-    const availW = 2 - SAFE.l - SAFE.r, availH = 2 - SAFE.t - safeB;
-    const safeCx = -1 + SAFE.l + availW / 2;
-    const safeCy = -1 + safeB + availH / 2;
+    const m = Object.assign({}, SAFE, { b: safeB }, safe || {});
+    if (safeB > m.b) m.b = safeB;                 // the hand always wins the bottom
+    const availW = 2 - m.l - m.r, availH = 2 - m.t - m.b;
+    const safeCx = -1 + m.l + availW / 2;
+    const safeCy = -1 + m.b + availH / 2;
     const v = new T.Vector3();
 
     fitCam.fov = camera.fov;
@@ -1178,7 +1182,7 @@ const View3D = (function () {
     camGoal.pol = f.pol;
     camGoal.target.set(c.x, 0, c.z);
     camGoal.dist = Math.max(box3.getSize(new T.Vector3()).length(), 6);
-    fitGoal(box3, f.pad);
+    fitGoal(box3, f.pad, f.safe);
     camTween = snap ? 1 : 0;
     if (snap) {
       camState.az = camGoal.az; camState.pol = camGoal.pol;
