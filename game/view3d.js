@@ -955,9 +955,14 @@ const View3D = (function () {
     supply.position.set(LAYOUT.supply.x, 0, LAYOUT.supply.z);
     g.add(supply);
 
-    // Cards already in front of this player, five to a row.
+    // Cards already in front of this player, five to a row, on a marked-out patch of felt.
     const playedGroup = new T.Group();
     const at = LAYOUT.played;
+    const zone = new T.Mesh(geo('playedZone', () => new T.PlaneGeometry(5.5, 2.9)),
+      new T.MeshBasicMaterial({ map: svgTexture('zone', ZONE_SVG, 440, 232), transparent: true, depthWrite: false }));
+    zone.rotation.x = -Math.PI / 2;
+    zone.position.set(0, 0.002, at.z + 0.62);
+    playedGroup.add(zone);
     p.played.forEach((c, i) => {
       const cx = at.x + (i % 5) * (MAJ_W + 0.2);
       const cz = at.z + Math.floor(i / 5) * (MAJ_H + 0.12);
@@ -976,6 +981,12 @@ const View3D = (function () {
     g.userData.parts = { farm, played: playedGroup };
     return g;
   }
+
+  const ZONE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 550 290" width="440" height="232">
+    <rect x="6" y="6" width="538" height="278" rx="22" fill="#fff" fill-opacity=".05"
+      stroke="#fff" stroke-opacity=".35" stroke-width="4" stroke-dasharray="18 12"/>
+    <text x="275" y="160" text-anchor="middle" font-size="34" font-weight="700" fill="#fff" fill-opacity=".22"
+      font-family="-apple-system,'PingFang TC',sans-serif" letter-spacing="6">打出嘅卡 · PLAYED</text></svg>`;
 
   // ---------------------------------------------------------------- majors on the table
   function buildMajors(G, UI) {
@@ -1009,7 +1020,7 @@ const View3D = (function () {
   // It only slides up when you can play a card or asked to see it; otherwise it is gone.
   const CARD_STEPS = ['playOcc', 'playMinor', 'playImprovement', 'playAny'];
   function handShown(G, UI) {
-    if (UI.handPinned) return true;
+    if (UI.handPinned || UI.main === 'cards') return true;
     return !G.choice && !G.over && UI.view === G.current && CARD_STEPS.includes(currentStep(G));
   }
 
@@ -1092,10 +1103,10 @@ const View3D = (function () {
   const FOCUS = {
     // pol is the angle from straight down: ~0.6 reads as leaning over the table.
     table: () => ({ az: 0, pol: 0.62, pad: 1.02, boxes: ['board', 'majors', 'seat0', 'seat1'] }),
-    board: () => ({ az: 0, pol: 0.5, pad: 1.0, boxes: ['board', 'majors'] }),
+    board: () => ({ az: 0, pol: 0.46, pad: 0.97, boxes: ['board'] }),
     farm: (UI) => ({ az: 0, pol: 0.56, pad: 1.04, boxes: ['farm' + UI.view] }),
-    cards: (UI) => ({ az: 0, pol: 0.52, pad: 1.03, boxes: ['majors', 'played' + UI.view] }),
-    majors: () => ({ az: 0, pol: 0.52, pad: 1.03, boxes: ['majors'] }),
+    cards: (UI) => ({ az: 0, pol: 0.5, pad: 1.02, boxes: ['played' + UI.view] }),
+    majors: () => ({ az: 0, pol: 0.42, pad: 1.0, boxes: ['majors'] }),
   };
 
   const focusBoxes = {};
@@ -1202,6 +1213,20 @@ const View3D = (function () {
     canvas.addEventListener('pointermove', hover);
     canvas.addEventListener('pointerleave', () => setHover(null));
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    // The wheel steps between the camera views: one notch, one view. A trackpad sends a
+    // stream of small deltas, so they are summed and the step waits for a short cooldown.
+    let wheelSum = 0, wheelAt = 0;
+    canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const now = performance.now();
+      if (now - wheelAt < 450) return;
+      wheelSum += e.deltaY;
+      if (Math.abs(wheelSum) < 40) return;
+      const dir = Math.sign(wheelSum);
+      wheelSum = 0; wheelAt = now;
+      if (hooks && hooks.onStep) hooks.onStep(dir);
+    }, { passive: false });
   }
 
   function ndc(e) {

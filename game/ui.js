@@ -90,7 +90,7 @@
   // On the 3D table these are camera angles; without WebGL they are the old flat pages.
   function renderMainTabs() {
     const tabs = has3d
-      ? [['table', '全景'], ['board', '行動板'], ['farm', '農場'], ['cards', '卡片']]
+      ? [['table', '全景'], ['board', '行動板'], ['farm', '農場'], ['cards', '卡片'], ['majors', '主要發展']]
       : [['board', '行動板'], ['farm', '農場'], ['cards', '卡片']];
     const p = G.players[UI.view];
     const held = p.hand.occ.length + p.hand.min.length;
@@ -495,7 +495,7 @@
   // Mirrors view3d's rule for when the hand is up, so the bar can sit just above it.
   function handUp() {
     if (!has3d) return false;
-    if (UI.handPinned) return true;
+    if (UI.handPinned || UI.main === 'cards') return true;
     return !G.choice && !G.over && UI.view === G.current
       && ['playOcc', 'playMinor', 'playImprovement', 'playAny'].includes(currentStep(G));
   }
@@ -673,7 +673,7 @@
     if (['plow', 'build', 'cottager', 'freestable', 'minipasture', 'sow', 'fences'].includes(st)) return 'farm';
     // Occupations and minors come out of the hand, which pops up by itself; only a major
     // needs the camera to go to the cards on the table.
-    if (st === 'playImprovement') return 'cards';
+    if (st === 'playImprovement') return 'majors';
     if (['playOcc', 'playMinor', 'playAny'].includes(st)) return has3d ? null : 'cards';
     return null;                       // bake, growth, renovate: all done from the dock
   }
@@ -738,6 +738,17 @@
     setTimeout(() => { UI.view = i; render(); }, 150);
   }
 
+  // Scrolling over the table steps through the views, near to far and back.
+  const VIEW_ORDER = ['table', 'board', 'farm', 'cards', 'majors'];
+  function stepView(dir) {
+    if (!G) return;
+    const i = Math.max(0, VIEW_ORDER.indexOf(UI.main));
+    const next = VIEW_ORDER[Math.min(VIEW_ORDER.length - 1, Math.max(0, i + dir))];
+    if (next === UI.main) return;
+    UI.main = next;
+    render();
+  }
+
   const openDrawer = (on) => {
     $('drawer').hidden = !on;
     $('scrim').hidden = !on;
@@ -796,7 +807,7 @@
 
   // The table has to claim the window before anything renders into it.
   let has3d = false;
-  try { has3d = View3D.init($('stage'), { onPick: pick3d, onHover: showTip }); } catch (e) { has3d = false; }
+  try { has3d = View3D.init($('stage'), { onPick: pick3d, onHover: showTip, onStep: stepView }); } catch (e) { has3d = false; }
   if (!has3d) {
     $('stage').hidden = true;
     $('flat').hidden = false;
