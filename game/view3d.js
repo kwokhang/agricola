@@ -381,43 +381,72 @@ const View3D = (function () {
     return g;
   }
 
+  // The three animals follow the colours of the wooden pieces in the box — white sheep,
+  // dark boar, brown cattle — and differ in build, so they read apart even at a glance:
+  // a small round woolly sheep, a low long boar, a tall boxy cow with horns.
   function animalMesh(kind) {
     const g = new T.Group();
-    const legMat = mat(col('--art-ink'));
-    const legGeo = geo('leg', () => new T.CylinderGeometry(0.022, 0.022, 0.12, 5));
-    const legs = kind === 'cattle' ? 0.13 : 0.1;
-    [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sz]) => {
-      const l = new T.Mesh(legGeo, legMat);
-      l.position.set(sx * 0.08, 0.06, sz * legs);
+    const leg = (x, z, h, r, colour) => {
+      const l = new T.Mesh(geo(`leg${h}_${r}`, () => new T.CylinderGeometry(r, r * 0.85, h, 6)), mat(colour));
+      l.position.set(x, h / 2, z);
+      l.castShadow = true;
       g.add(l);
-    });
-    const bodyGeo = geo('animalbody', () => new T.SphereGeometry(0.16, 12, 10));
+    };
+    const blob = (key, r, colour, x, y, z, sx, sy, sz, o) => {
+      const m = new T.Mesh(geo(key + r, () => new T.SphereGeometry(r, 12, 10)), mat(colour, o));
+      m.position.set(x, y, z);
+      m.scale.set(sx || 1, sy || 1, sz || 1);
+      m.castShadow = true;
+      g.add(m);
+      return m;
+    };
+
     if (kind === 'sheep') {
-      const b = new T.Mesh(bodyGeo, mat(col('--art-sheep'), { roughness: 0.6 }));
-      b.scale.set(1, 0.9, 1.25); b.position.y = 0.2; b.castShadow = true; g.add(b);
-      const h = new T.Mesh(geo('head', () => new T.SphereGeometry(0.075, 10, 8)), mat(col('--art-sheep-face')));
-      h.position.set(0, 0.25, 0.21); h.castShadow = true; g.add(h);
-    } else if (kind === 'boar') {
-      const b = new T.Mesh(bodyGeo, mat(col('--art-boar')));
-      b.scale.set(0.92, 0.8, 1.4); b.position.y = 0.18; b.castShadow = true; g.add(b);
-      const snout = new T.Mesh(geo('snout', () => new T.ConeGeometry(0.06, 0.14, 8)), mat(col('--art-boar')));
-      snout.position.set(0, 0.2, 0.27); snout.rotation.x = Math.PI / 2; g.add(snout);
-    } else {
-      const b = new T.Mesh(bodyGeo, mat(col('--art-cattle')));
-      b.scale.set(1.05, 0.95, 1.45); b.position.y = 0.22; b.castShadow = true; g.add(b);
-      const h = new T.Mesh(geo('cowhead', () => new T.SphereGeometry(0.085, 10, 8)), mat(col('--art-cattle')));
-      h.position.set(0, 0.28, 0.26); h.castShadow = true; g.add(h);
-      const patchMat = mat(col('--art-cattle-spot'));
-      [[0.11, 0.28, -0.02], [-0.1, 0.24, 0.12], [0.02, 0.3, -0.16]].forEach(([px, py, pz]) => {
-        const patch = new T.Mesh(geo('patch', () => new T.SphereGeometry(0.06, 8, 6)), patchMat);
-        patch.position.set(px, py, pz);
-        patch.scale.set(1, 0.6, 1.1);
-        g.add(patch);
-      });
+      const wool = col('--art-sheep'), dark = new T.Color(0x2b2622);
+      [[-0.06, -0.08], [0.06, -0.08], [-0.06, 0.07], [0.06, 0.07]].forEach(([x, z]) => leg(x, z, 0.09, 0.018, dark));
+      // a cloud of wool: overlapping puffs rather than one smooth ball
+      [[0, 0.17, 0, 0.1], [-0.06, 0.16, -0.06, 0.08], [0.06, 0.16, -0.05, 0.08], [-0.06, 0.16, 0.06, 0.08],
+        [0.06, 0.16, 0.06, 0.08], [0, 0.22, 0.02, 0.08], [0, 0.2, -0.08, 0.075], [0, 0.15, 0.1, 0.07]]
+        .forEach(([x, y, z, r]) => blob('wool', r, wool, x, y, z, 1, 1, 1, { roughness: 0.95, clearcoat: 0 }));
+      blob('sface', 0.055, dark, 0, 0.19, 0.15, 0.9, 1.1, 1.2);                // black face
       [-1, 1].forEach((s) => {
-        const horn = new T.Mesh(geo('horn', () => new T.ConeGeometry(0.022, 0.09, 6)), mat(col('--art-plate')));
-        horn.position.set(s * 0.07, 0.36, 0.24); horn.rotation.z = s * 0.5; g.add(horn);
+        const ear = blob('sear', 0.022, dark, s * 0.055, 0.2, 0.13, 1.6, 0.6, 1);
+        ear.rotation.z = s * 0.5;
       });
+      blob('stop', 0.04, wool, 0, 0.24, 0.12, 1.2, 0.8, 1, { roughness: 0.95, clearcoat: 0 });   // tuft on the head
+    } else if (kind === 'boar') {
+      const hide = new T.Color(0x3a322d), snoutC = new T.Color(0x8a6a60);
+      [[-0.07, -0.1], [0.07, -0.1], [-0.07, 0.1], [0.07, 0.1]].forEach(([x, z]) => leg(x, z, 0.08, 0.022, hide));
+      blob('bbody', 0.15, hide, 0, 0.16, 0, 0.9, 0.78, 1.45);                  // low and long
+      blob('bhead', 0.08, hide, 0, 0.17, 0.2, 1, 0.95, 1.1);
+      const snout = new T.Mesh(geo('bsnout', () => new T.CylinderGeometry(0.035, 0.04, 0.06, 10)), mat(snoutC));
+      snout.rotation.x = Math.PI / 2; snout.position.set(0, 0.15, 0.29); g.add(snout);
+      [-1, 1].forEach((s) => {
+        const tusk = new T.Mesh(geo('tusk', () => new T.ConeGeometry(0.01, 0.05, 5)), mat(col('--art-count')));
+        tusk.position.set(s * 0.035, 0.14, 0.27); tusk.rotation.x = -0.6; g.add(tusk);
+        const ear = new T.Mesh(geo('bear', () => new T.ConeGeometry(0.025, 0.06, 4)), mat(hide));
+        ear.position.set(s * 0.05, 0.25, 0.18); ear.rotation.z = -s * 0.3; g.add(ear);
+      });
+      const crest = blob('bcrest', 0.05, new T.Color(0x201b18), 0, 0.26, -0.02, 0.5, 0.5, 2.6);   // bristly ridge
+      crest.castShadow = false;
+    } else {
+      const hide = col('--art-boar').clone().lerp(new T.Color(0xa0643a), 0.7);   // warm brown
+      const white = col('--art-cattle'), horn = col('--art-plate'), muzzle = new T.Color(0xd9a38f);
+      [[-0.08, -0.13], [0.08, -0.13], [-0.08, 0.12], [0.08, 0.12]].forEach(([x, z]) => leg(x, z, 0.15, 0.025, hide));
+      const body = new T.Mesh(geo('cbody', () => new T.BoxGeometry(0.22, 0.15, 0.36, 2, 2, 2)), mat(hide));
+      body.position.set(0, 0.22, 0); body.castShadow = true; g.add(body);
+      blob('cback', 0.11, hide, 0, 0.27, -0.02, 1, 0.5, 1.6);                  // rounded back over the box
+      blob('chead', 0.075, hide, 0, 0.28, 0.23, 1, 1, 1.25);
+      blob('cblaze', 0.05, white, 0, 0.3, 0.29, 0.9, 1.1, 0.6);                // white face blaze
+      blob('cmuzzle', 0.045, muzzle, 0, 0.25, 0.31, 1.2, 0.8, 0.8);
+      [-1, 1].forEach((s) => {
+        const h = new T.Mesh(geo('chorn', () => new T.ConeGeometry(0.015, 0.08, 6)), mat(horn));
+        h.position.set(s * 0.075, 0.36, 0.22); h.rotation.z = -s * 1.0; g.add(h);
+        const ear = blob('cear', 0.025, hide, s * 0.085, 0.31, 0.21, 1.6, 0.6, 1);
+        ear.rotation.z = s * 0.3;
+      });
+      const tail = new T.Mesh(geo('ctail', () => new T.CylinderGeometry(0.008, 0.008, 0.16, 4)), mat(hide));
+      tail.position.set(0, 0.19, -0.19); tail.rotation.x = 0.35; g.add(tail);
     }
     return g;
   }
@@ -827,6 +856,25 @@ const View3D = (function () {
         g.add(stripe);
       });
 
+    // The engine keeps a pasture's animals on one of its tiles. On the table they should
+    // spread over the whole pasture, so share each pasture's herd out tile by tile.
+    const shown = p.farm.map((t) => (t.animals && t.animals.n ? { kind: t.animals.kind, n: t.animals.n } : null));
+    for (const reg of regs) {
+      if (!reg.enclosed || reg.tiles.length < 2) continue;
+      let kind = null, total = 0;
+      for (const ti of reg.tiles) {
+        const a = p.farm[ti].animals;
+        if (a && a.n) { kind = a.kind; total += a.n; }
+        shown[ti] = null;
+      }
+      if (!total) continue;
+      const tiles = reg.tiles.slice().sort((a, b) => a - b);
+      tiles.forEach((ti, k) => {
+        const n = Math.floor(total / tiles.length) + (k < total % tiles.length ? 1 : 0);
+        if (n) shown[ti] = { kind, n };
+      });
+    }
+
     for (let i = 0; i < 15; i++) {
       const { x, z } = tilePos(i);
       const t = p.farm[i];
@@ -867,13 +915,19 @@ const View3D = (function () {
         s.position.set(x + (t.animals ? 0.28 : 0), BOARD_Y + 0.015, z - 0.22);
         g.add(s);
       }
-      if (t.animals && t.animals.n) {
-        const spots = [[-0.24, -0.2], [0.22, -0.18], [-0.18, 0.22], [0.24, 0.2], [0, 0]];
-        for (let k = 0; k < Math.min(t.animals.n, 5); k++) {
-          const a = animalMesh(t.animals.kind);
+      const herd = shown[i];
+      if (herd) {
+        const spots = [[-0.24, -0.2], [0.22, -0.18], [-0.18, 0.22], [0.24, 0.2], [0, 0], [0.02, -0.34]];
+        for (let k = 0; k < Math.min(herd.n, spots.length); k++) {
+          const a = animalMesh(herd.kind);
           a.position.set(x + spots[k][0], BOARD_Y + 0.015, z + spots[k][1]);
           a.rotation.y = (k * 1.3) % (Math.PI * 2);
           g.add(a);
+        }
+        if (herd.n > spots.length) {            // a crowded stable: say how many
+          const tag = countPlate(herd.kind, herd.n, 1);
+          tag.position.set(x + 0.3, BOARD_Y + 0.45, z + 0.3);
+          g.add(tag);
         }
       }
     }
