@@ -39,7 +39,7 @@
 
   function start(n) {
     G = newGame(n === 1 ? ['玩家'] : ['玩家 1', '玩家 2']);
-    UI.view = 0; UI.lastCurrent = 0; UI.cardTab = 'occ'; UI.main = 'table'; UI.autoKey = '';
+    UI.view = 0; UI.lastCurrent = 0; UI.cardTab = 'occ'; UI.main = 'table'; UI.autoKey = ''; UI.finalShown = false;
     render();
   }
 
@@ -377,7 +377,8 @@
   function renderPrompt() {
     const el = $('prompt');
     if (G.over) {
-      el.innerHTML = `<div class="panel"><h3>遊戲結束</h3><p>喺「☰ 選單 → 計分」睇最終分數。</p></div>`;
+      el.innerHTML = `<div class="panel"><h3>遊戲結束</h3>
+        <div class="row">${btn('final', '睇最終分數', false, 'class="primary"')}${btn('new2', '新遊戲 · 2 人')}${btn('new1', '新遊戲 · 1 人')}</div></div>`;
       return;
     }
     if (G.feeding) { el.innerHTML = feedPanel(); return; }
@@ -669,6 +670,47 @@
         `<button data-choice="${esc(o.id)}" class="primary">${esc(o.label)}</button>`).join('')}</div></div>`;
   }
 
+  // ------------------------------------------------------------ final scores
+  // Pops up by itself the moment the game ends; after it is closed, the prompt reopens it.
+  function renderFinal() {
+    const box = $('final');
+    if (!G.over) { box.hidden = true; return; }
+    if (!UI.finalShown) { UI.finalShown = true; UI.finalOpen = true; }
+    box.hidden = !UI.finalOpen;
+    if (box.hidden) return;
+
+    const sheets = G.players.map((p, i) => ({ p, i, s: score(G, p) }));
+    const best = Math.max(...sheets.map((x) => x.s.total));
+    const winners = sheets.filter((x) => x.s.total === best);
+    const podium = sheets.slice().sort((a, b) => b.s.total - a.s.total).map((x) => {
+      const win = G.n > 1 && x.s.total === best;
+      return `<div class="who ${win ? 'win' : ''}" style="--pc:${PCOLOR[x.i]}">
+        <div class="nm">${esc(x.p.name)}</div><div class="tot">${x.s.total}</div>
+        ${win ? `<span class="badge">${winners.length > 1 ? '平手' : '勝出'}</span>` : ''}</div>`;
+    }).join('');
+
+    // One row per scoring category, every player side by side.
+    const cats = sheets[0].s.rows.map((r) => r.zh);
+    const rows = cats.map((zh, k) => `<tr><td>${esc(zh)}</td>${sheets.map((x) => {
+      const r = x.s.rows[k];
+      return `<td class="${r.pts < 0 ? 'neg' : ''}"><span class="v">${r.val}</span>${r.pts > 0 ? '+' : ''}${r.pts}</td>`;
+    }).join('')}</tr>`).join('');
+
+    const sub = G.n > 1
+      ? (winners.length > 1 ? `${winners.map((x) => esc(x.p.name)).join('、')} 同分` : `${esc(winners[0].p.name)} 以 ${best} 分勝出`)
+      : `總分 ${best} 分`;
+    box.innerHTML = `<div class="sheet">
+      <h2>遊戲結束</h2><div class="sub">${sub}</div>
+      <div class="podium">${podium}</div>
+      <table><tr><th>項目</th>${sheets.map((x) => `<th style="color:${PCOLOR[x.i]}">${esc(x.p.name)}</th>`).join('')}</tr>
+        ${rows}
+        <tr class="tot"><td>總分</td>${sheets.map((x) => `<td>${x.s.total}</td>`).join('')}</tr></table>
+      ${sheets.some((x) => x.s.bonusDetail.length) ? `<p class="muted" style="font-size:12px;margin-top:8px">卡片獎勵：${
+        sheets.filter((x) => x.s.bonusDetail.length).map((x) => `${esc(x.p.name)} — ${esc(x.s.bonusDetail.join('、'))}`).join('；')}</p>` : ''}
+      <div class="row">${btn('closeFinal', '睇返張檯')}${btn('new2', '新遊戲 · 2 人', false, 'class="primary"')}${btn('new1', '新遊戲 · 1 人')}</div>
+    </div>`;
+  }
+
   // ------------------------------------------------------------ drawer
   function renderDrawer() {
     if ($('drawer').hidden) return;
@@ -690,7 +732,7 @@
       }).join('');
     } else {
       html = `<div class="row" style="margin-top:6px">
-        ${btn('new1', '新遊戲 · 1 人')}${btn('new2', '新遊戲 · 2 人')}${btn('theme', '🌓 深／淺色')}
+        ${btn('new1', '新遊戲 · 1 人')}${btn('new2', '新遊戲 · 2 人')}
       </div><p class="muted" style="font-size:12px;margin-top:10px">
         A、B 兩副卡嘅效果全部自動結算，唔使手動加減物資。</p>`;
     }
@@ -730,7 +772,8 @@
     $('turnTag').textContent = who < 0 ? '' : `${G.players[who].name} 嘅回合`;
     renderStatus(); renderMainTabs();
     renderBoard(); renderFarm(); renderCards();
-    renderPrompt(); renderFree(); renderRes(); renderModal(); renderDrawer(); renderRail();
+    renderPrompt(); renderFree(); renderRes(); renderModal(); renderDrawer(); renderRail(); renderFinal();
+    document.body.classList.toggle('side-strip', has3d && (UI.main === 'board' || UI.main === 'table'));
     if (has3d) { showTip(null); View3D.sync(G, UI); }
     placeActionBar();
     save();
@@ -808,6 +851,8 @@
       case 'allres': UI.allres = !UI.allres; break;
       case 'hand': UI.handPinned = !UI.handPinned; break;
       case 'log': UI.logOpen = !UI.logOpen; renderRail(); save(); return;
+      case 'final': UI.finalOpen = true; break;
+      case 'closeFinal': UI.finalOpen = false; break;
       case 'buildKind': UI.buildKind = v; break;
       case 'sowKind': UI.sowKind = v; break;
       case 'sowBean': sowBeanfield(G); break;
@@ -823,11 +868,6 @@
       case 'confirmFeed': confirmFeed(G); break;
       case 'new1': if (confirm('開新遊戲（1 人局）？現時進度會消失。')) { openDrawer(false); start(1); } return;
       case 'new2': if (confirm('開新遊戲（2 人局）？現時進度會消失。')) { openDrawer(false); start(2); } return;
-      case 'theme': {
-        const cur = document.documentElement.getAttribute('data-theme');
-        document.documentElement.setAttribute('data-theme', cur === 'dark' ? 'light' : 'dark');
-        break;
-      }
       default: return;
     }
     render();

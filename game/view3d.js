@@ -31,7 +31,8 @@ const View3D = (function () {
 
   let renderer, scene, camera, raycaster, host, canvas;
   let root, tableGroup, handGroup, pickables = [], hoverables = [];
-  let hooks = null, ready = false, theme = '';
+  let hooks = null, ready = false;
+  const theme = 'dark';                  // one palette only; kept as a texture-cache key
   let lastG = null, lastUI = null;
   const texCache = new Map();
   const geoCache = new Map();
@@ -43,7 +44,7 @@ const View3D = (function () {
     '--art-food', '--art-sheep', '--art-sheep-face', '--art-boar', '--art-cattle', '--art-cattle-spot',
     '--art-roof', '--art-window', '--art-stable-door', '--art-fence', '--art-fence-dk', '--art-tree',
     '--art-water', '--art-sky', '--art-plate', '--art-token', '--art-count', '--art-frame',
-    '--art-boardface', '--art-slot', '--art-seal', '--art-edge', '--art-board', '--art-table', '--art-mat',
+    '--art-boardface', '--art-slot', '--art-seal', '--art-edge', '--art-board', '--art-table', '--art-mat', '--art-boardprint',
     '--occ-frame', '--occ-tint', '--occ-ink', '--min-frame', '--min-tint', '--min-ink',
     '--maj-frame', '--maj-tint', '--maj-ink', '--rnd-frame', '--rnd-tint', '--rnd-ink',
     '--bg', '--panel', '--ink', '--muted', '--accent', '--p1', '--p2'];
@@ -658,20 +659,25 @@ const View3D = (function () {
 
   const slotSvg = (w, h, round, stage) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}"
     width="${w * 2}" height="${h * 2}" font-family="-apple-system,sans-serif">
-    <rect width="${w}" height="${h}" fill="var(--art-boardface)"/>
-    <rect x="5" y="5" width="${w - 10}" height="${h - 10}" rx="9" fill="none" stroke="var(--art-ink)"
-      stroke-width="2.4" stroke-dasharray="9 6" opacity=".7"/>
+    <rect width="${w}" height="${h}" fill="var(--art-boardprint)"/>
+    <rect width="${w}" height="${h}" fill="#6b4a1e" opacity=".05"/>
+    <rect x="5" y="5" width="${w - 10}" height="${h - 10}" rx="9" fill="none" stroke="#5a4526"
+      stroke-width="2.4" stroke-dasharray="9 6" opacity=".55"/>
     <text x="${w / 2}" y="${h / 2 - 2}" text-anchor="middle" font-size="19" font-weight="700"
       fill="var(--art-ink)" opacity=".55">Round ${round}</text>
     <text x="${w / 2}" y="${h / 2 + 20}" text-anchor="middle" font-size="13"
       fill="var(--art-ink)" opacity=".4">Stage ${stage}</text></svg>`;
 
-  const harvestSvg = (w, h, after) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}"
-    width="${w * 2}" height="${h * 2}" font-family="-apple-system,sans-serif">
-    <rect width="${w}" height="${h}" rx="9" fill="var(--rnd-tint)" stroke="var(--art-ink)" stroke-width="2.4"/>
-    <g transform="translate(${w / 2 - 54} ${h / 2 - 28}) scale(1.3)">${ART.ICONS.grain}</g>
-    <text x="${w / 2 + 14}" y="${h / 2 - 4}" text-anchor="middle" font-size="19" font-weight="700" fill="var(--rnd-ink)">Harvest</text>
-    <text x="${w / 2}" y="${h / 2 + 26}" text-anchor="middle" font-size="15" font-weight="600" fill="var(--rnd-ink)">第 ${after} 回合後收成</text></svg>`;
+  // Harvest is a marker between rounds, not a place to stand: a small ribbon with notched
+  // ends, printed flat, so it never reads as another action space.
+  const HARV_W = 124, HARV_H = 46;
+  const harvestSvg = (after) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${HARV_W} ${HARV_H}"
+    width="${HARV_W * 2}" height="${HARV_H * 2}" font-family="-apple-system,'PingFang TC',sans-serif">
+    <path d="M2 6H122L114 23L122 40H2L10 23z" fill="#b8892a" stroke="#6b4a1e" stroke-width="1.6" stroke-linejoin="round"/>
+    <path d="M10 10H114" stroke="#fff" stroke-width="1.2" opacity=".35"/>
+    <g transform="translate(14 11) scale(1)">${ART.ICONS.grain}</g>
+    <text x="72" y="21" text-anchor="middle" font-size="13" font-weight="800" fill="#fff8e6" letter-spacing="1">收成 HARVEST</text>
+    <text x="72" y="35" text-anchor="middle" font-size="11" font-weight="600" fill="#fff8e6" opacity=".9">第 ${after} 回合之後</text></svg>`;
 
   // A flat printed plate lying on the board face.
   function plateMesh(tex, w, h, x, z, y) {
@@ -685,13 +691,35 @@ const View3D = (function () {
   }
 
   // The wooden frame a board is printed on.
+  // The board is a printed object, so it has its own parchment colour, not a UI colour:
+  // linen weave, a darker edge, a gilt double rule and wheat in the corners.
+  function boardPrintSvg(w, h) {
+    const corner = (x, y, r) => `<g transform="translate(${x} ${y}) rotate(${r}) scale(1.1)" opacity=".55">${ART.ICONS.grain}</g>`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${Math.round(w * 1.2)}" height="${Math.round(h * 1.2)}">
+      <defs>
+        <pattern id="weave" width="6" height="6" patternUnits="userSpaceOnUse">
+          <path d="M0 3H6M3 0V6" stroke="#6b5530" stroke-width=".6" opacity=".09"/></pattern>
+        <radialGradient id="edge" cx=".5" cy=".5" r=".75">
+          <stop offset=".55" stop-color="#6b4a1e" stop-opacity="0"/><stop offset="1" stop-color="#6b4a1e" stop-opacity=".28"/></radialGradient>
+        <linearGradient id="sheen" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset=".6" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>
+      <rect width="${w}" height="${h}" fill="var(--art-boardprint)"/>
+      <rect width="${w}" height="${h}" fill="url(#weave)"/>
+      <rect width="${w}" height="${h}" fill="url(#sheen)"/>
+      <rect width="${w}" height="${h}" fill="url(#edge)"/>
+      <rect x="5" y="5" width="${w - 10}" height="${h - 10}" rx="7" fill="none" stroke="var(--art-seal)" stroke-width="2.2" opacity=".85"/>
+      <rect x="9" y="9" width="${w - 18}" height="${h - 18}" rx="5" fill="none" stroke="var(--art-seal)" stroke-width=".9" opacity=".7"/>
+      ${corner(2, 2, 0)}${corner(w - 2, 2, 90)}${corner(w - 2, h - 2, 180)}${corner(2, h - 2, 270)}</svg>`;
+  }
+
   function boardSlab(wpx, hpx, cxpx, cypx) {
     const g = new T.Group();
     const w = wpx * PS, d = hpx * PS;
-    const frame = box(w, 0.1, d, col('--art-frame'), 0, 0, 0);
-    frame.receiveShadow = true;
+    const frame = new T.Mesh(geo(`bframe${w.toFixed(2)}`, () => new T.BoxGeometry(w, 0.1, d)), mat('#ffffff', { map: frameWood() }));
+    frame.castShadow = true; frame.receiveShadow = true;
     g.add(frame);
-    const face = box(w - 0.14, 0.02, d - 0.14, col('--art-boardface'), 0, 0.05, 0);
+    const print = svgTexture(`bprint:${wpx}x${hpx}`, boardPrintSvg(wpx, hpx), Math.round(wpx * 1.2), Math.round(hpx * 1.2));
+    const face = plateMesh(print, w - 0.1, d - 0.1, 0, 0, 0.05);
     face.receiveShadow = true;
     g.add(face);
     g.position.set(bx(cxpx), 0, bz(cypx));
@@ -734,15 +762,35 @@ const View3D = (function () {
       });
 
       // Whoever took the space stands on it.
+      // Whoever took the space stands on it: a big worker on a disc of their colour, in the
+      // middle of the picture, and the whole space framed in that colour.
       if (sp.occupiedBy !== null) {
-        const m = meeple(col(sp.occupiedBy === 0 ? '--p1' : '--p2'), 0.95);
-        m.position.set(cx + w / 2 - 0.26, BOARD_Y + 0.04, cz - d / 2 + 0.24);
-        g.add(m);
+        const pc = col(sp.occupiedBy === 0 ? '--p1' : '--p2');
         const dim = new T.Mesh(geo(`dim${w.toFixed(3)}_${d.toFixed(3)}`, () => new T.PlaneGeometry(w, d)),
-          new T.MeshBasicMaterial({ color: col('--art-ink'), transparent: true, opacity: 0.28, depthWrite: false }));
+          new T.MeshBasicMaterial({ color: col('--art-ink'), transparent: true, opacity: 0.16, depthWrite: false }));
         dim.rotation.x = -Math.PI / 2;
         dim.position.set(cx, BOARD_Y + 0.035, cz);
         g.add(dim);
+        const fm = mat(pc, { roughness: 0.35 });
+        const t = 0.05;
+        [[w, t, 0, -d / 2 + t / 2], [w, t, 0, d / 2 - t / 2], [t, d, -w / 2 + t / 2, 0], [t, d, w / 2 - t / 2, 0]].forEach(([bw, bd, ox, oz]) => {
+          const bar = new T.Mesh(geo(`occ${bw.toFixed(3)}_${bd.toFixed(3)}`, () => new T.BoxGeometry(bw, 0.025, bd)), fm);
+          bar.position.set(cx + ox, BOARD_Y + 0.045, cz + oz);
+          g.add(bar);
+        });
+        const ax = cx + w * 0.18, az = cz - d * 0.2;     // the picture half, clear of the name plate
+        const base = new T.Mesh(geo('occBase', () => new T.CylinderGeometry(0.3, 0.32, 0.04, 28)), mat(col('--art-count'), { roughness: 0.35 }));
+        base.position.set(ax, BOARD_Y + 0.055, az);
+        base.castShadow = true;
+        g.add(base);
+        // Seen from above, a standing meeple is just its edge, so it lies on its back on the
+        // disc, head towards the far side: the whole silhouette faces the camera.
+        const m = meeple(pc, 0.9);
+        m.material.emissive = pc.clone();
+        m.material.emissiveIntensity = 0.15;
+        m.rotation.x = -Math.PI / 2;
+        m.position.set(ax, BOARD_Y + 0.13, az);
+        g.add(m);
       }
     };
 
@@ -770,10 +818,13 @@ const View3D = (function () {
       if (c > 0) {
         const after = rounds[rounds.length - 1];
         const done = G.round > after || (G.round === after && G.phase !== 'work');
-        const tex = svgTexture(`harv:${after}`, harvestSvg(BG.w, BG.h, after), BG.w * 2, BG.h * 2);
-        const m = plateMesh(tex, BG.w * PS, BG.h * PS, bx(cellX(c) + BG.w / 2), bz(cellY(rounds.length) + BG.h / 2), BOARD_Y + 0.02);
-        if (done) m.material[2].opacity = 0.45, m.material[2].transparent = true;
-        g.add(m);
+        const tex = svgTexture(`harv2:${after}`, harvestSvg(after), HARV_W * 2, HARV_H * 2);
+        const rib = new T.Mesh(geo('harvRibbon', () => new T.PlaneGeometry(HARV_W * PS, HARV_H * PS)),
+          new T.MeshStandardMaterial({ map: tex, transparent: true, roughness: 0.5, opacity: done ? 0.4 : 1 }));
+        rib.rotation.x = -Math.PI / 2;
+        // tucked against the top of its cell, right under the last round of the stage
+        rib.position.set(bx(cellX(c) + BG.w / 2), BOARD_Y + 0.012, bz(cellY(rounds.length) + HARV_H / 2 + 2));
+        g.add(rib);
       }
     });
 
@@ -1245,10 +1296,13 @@ const View3D = (function () {
 
   const FOCUS = {
     // pol is the angle from straight down: ~0.6 reads as leaning over the table.
-    table: () => ({ az: 0, pol: 0.62, pad: 1.02, boxes: ['board', 'majors', 'seat0', 'seat1'] }),
+    // The overview is centred: the right column folds to a strip here too, so both sides
+    // keep the same margin.
+    table: () => ({ az: 0, pol: 0.62, pad: 1.02, boxes: ['board', 'majors', 'farm0', 'farm1'],
+      safe: { l: 0.12, r: 0.12, t: 0.26, b: 0.3 } }),
     // The board is wide, so its view gets tighter margins: the top-left only has the camera
     // tabs, and the action bar sits over the empty middle of the board's lower edge.
-    board: () => ({ az: 0, pol: 0.34, pad: 0.95, boxes: ['board'], safe: { l: 0.015, r: 0.4, t: 0.2, b: 0.12 } }),
+    board: () => ({ az: 0, pol: 0.34, pad: 0.95, boxes: ['board'], safe: { l: 0.015, r: 0.15, t: 0.2, b: 0.12 } }),
     farm: (UI) => ({ az: 0, pol: 0.56, pad: 1.04, boxes: ['farm' + UI.view] }),
     cards: (UI) => ({ az: 0, pol: 0.5, pad: 1.02, boxes: ['played' + UI.view] }),
     majors: () => ({ az: 0, pol: 0.42, pad: 1.0, boxes: ['majors'] }),
@@ -1421,7 +1475,7 @@ const View3D = (function () {
 
   // ---------------------------------------------------------------- the room around the game
   // A wooden table with a felt play mat on it, lit from above so the light pools on the mat
-  // and falls away into a dark room. All of it is painted procedurally, so it follows the theme.
+  // and falls away into a dark room. All of it is painted procedurally from the palette.
   let envGroup = null;
 
   // Small seeded generator, so the grain does not change between rebuilds.
@@ -1666,8 +1720,6 @@ const View3D = (function () {
     scene.add(sun);
     scene.userData.sun = sun;
 
-    theme = document.documentElement.getAttribute('data-theme') ||
-      (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
     buildEnvironment();
 
     installControls();
@@ -1705,9 +1757,6 @@ const View3D = (function () {
 
   function sync(G, UI) {
     if (!ready) return;
-    const nowTheme = document.documentElement.getAttribute('data-theme') ||
-      (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-    if (nowTheme !== theme) { theme = nowTheme; texCache.clear(); buildEnvironment(); }
     const sameView = lastUI && lastUI.main === UI.main && lastUI.view === UI.view;
     lastG = G; lastUI = Object.assign({}, UI);
 

@@ -5,94 +5,27 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Agricola — 1–2 人局 · Revised Edition (2016)</title>
 <style>
+  /* One palette: the table is always dimly lit. */
   :root {
-    --bg: #f4eedc;  --panel: #fdfaf0;  --ink: #33291a;  --muted: #7d6e53;
-    --line: #ddd2b6; --accent: #587a3a; --accent-ink: #f5f2e4; --hover: #efe7cf;
-    --occ-frame: #d7a92c; --occ-tint: #fbf3d9; --occ-ink: #6d5210;
-    --min-frame: #cd7a35; --min-tint: #fbeddc; --min-ink: #7c4413;
-    --maj-frame: #b05030; --maj-tint: #f9e7dc; --maj-ink: #7a3016;
-    --rnd-frame: #5f8140; --rnd-tint: #eef3e0; --rnd-ink: #3c5522;
-    --grass: #cfdca9; --grass-in: #a9c47a; --soil: #c9a878; --wall: #b99b6d;
-    --fence: #7a5a2e; --vp-bg: #8a6d3b;
-    --shadow: 0 2px 10px rgba(60, 45, 20, .2);
-    --p1: #d4572a; --p2: #2f73c2;
-    --art-ink: #4a3a24; --art-board: #e6dcc0; --art-edge: rgba(74,58,36,.4);
-    --art-sky: #dfe9c9;
-    --art-grass: #a7c273; --art-grass-dk: #7e9c4d; --art-pasture: #b9d281;
-    --art-soil: #b98a5c; --art-soil-dk: #96683f;
-    --art-wood: #c08a48; --art-wood-lt: #dcb27a; --art-wood-dk: #8f6127;
-    --art-clay: #c46c44; --art-clay-lt: #dd8f63;
-    --art-stone: #a7a094; --art-stone-lt: #c6c0b4;
-    --art-reed: #86a24e; --art-reed-dk: #5f7a34;
-    --art-grain: #e0b442; --art-veg: #e07b3c; --art-food: #dd9a45;
-    --art-sheep: #f5f0e4; --art-sheep-face: #d8cfba;
-    --art-boar: #7a5b44; --art-cattle: #efe9dc; --art-cattle-spot: #574636;
-    --art-roof: #8d5238; --art-window: #cfe0ea; --art-stable-door: #6b4a2c;
-    --art-fence: #b07f3e; --art-fence-dk: #8a5f2a;
-    --art-tree: #6f9445; --art-water: #7ba6c4;
-    --art-plate: #f3ead2; --art-token: #e8dcbc; --art-count: #fdf8ea;
-    --art-frame: #b99a63; --art-boardface: #e9dfc4; --art-slot: #f2e9d3;
-    --art-seal: #c9a227; --art-table: #7a5a38; --art-mat: #3e5a34;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --bg: #1f1a10; --panel: #2a2315; --ink: #ece2ca; --muted: #a59472;
-      --line: #453a25; --accent: #8fb35e; --accent-ink: #1d2410; --hover: #352d1b;
-      --occ-frame: #a5811f; --occ-tint: #322a12; --occ-ink: #ecd48d;
-      --min-frame: #a5602a; --min-tint: #33240f; --min-ink: #eebe8d;
-      --maj-frame: #96432a; --maj-tint: #331d10; --maj-ink: #e8a988;
-      --rnd-frame: #5d7a3a; --rnd-tint: #232b14; --rnd-ink: #c2d99a;
-      --grass: #3f5228; --grass-in: #55703a; --soil: #5b442a; --wall: #6a5436;
-      --fence: #c9a86a; --vp-bg: #6f5628;
-      --shadow: 0 2px 10px rgba(0, 0, 0, .55);
-      --p1: #f0834a; --p2: #4f9be8;
-      --art-ink: #23190e; --art-board: #3a3120; --art-edge: rgba(20,14,6,.55);
-      --art-sky: #445033;
-      --art-grass: #6d8a45; --art-grass-dk: #52693a; --art-pasture: #7ea052;
-      --art-soil: #8a6540; --art-soil-dk: #6b4c2e;
-      --art-wood: #a5752f; --art-wood-lt: #c39a5c; --art-wood-dk: #6f4a1c;
-      --art-clay: #a95a36; --art-clay-lt: #c1774d;
-      --art-stone: #8d867a; --art-stone-lt: #a8a196;
-      --art-reed: #74904a; --art-reed-dk: #4f662c;
-      --art-grain: #cfa236; --art-veg: #cc6d31; --art-food: #c98a3a;
-      --art-sheep: #e7e0d0; --art-sheep-face: #bfb49b;
-      --art-boar: #634834; --art-cattle: #ded7c7; --art-cattle-spot: #43362a;
-      --art-roof: #74412c; --art-window: #9fbccb; --art-stable-door: #543a22;
-      --art-fence: #98692f; --art-fence-dk: #714b1f;
-      --art-tree: #5b7a38; --art-water: #5c86a3;
-      --art-plate: #d9cba6; --art-token: #6d5b3a; --art-count: #e7dcc0;
-      --art-frame: #55452a; --art-boardface: #4a3d26; --art-slot: #57492e;
-      --art-seal: #a8862a; --art-table: #4a3622; --art-mat: #2c4228;
-    }
-  }
-  :root[data-theme="dark"] {
-    --bg: #1f1a10; --panel: #2a2315; --ink: #ece2ca; --muted: #a59472;
-    --line: #453a25; --accent: #8fb35e; --accent-ink: #1d2410; --hover: #352d1b;
-    --occ-frame: #a5811f; --occ-tint: #322a12; --occ-ink: #ecd48d;
-    --min-frame: #a5602a; --min-tint: #33240f; --min-ink: #eebe8d;
-    --maj-frame: #96432a; --maj-tint: #331d10; --maj-ink: #e8a988;
-    --rnd-frame: #5d7a3a; --rnd-tint: #232b14; --rnd-ink: #c2d99a;
-    --grass: #3f5228; --grass-in: #55703a; --soil: #5b442a; --wall: #6a5436;
-    --fence: #c9a86a; --vp-bg: #6f5628;
-    --shadow: 0 2px 10px rgba(0, 0, 0, .55);
-    --p1: #f0834a; --p2: #4f9be8;
-    --art-ink: #23190e; --art-board: #3a3120; --art-edge: rgba(20,14,6,.55);
-    --art-sky: #445033;
-    --art-grass: #6d8a45; --art-grass-dk: #52693a; --art-pasture: #7ea052;
-    --art-soil: #8a6540; --art-soil-dk: #6b4c2e;
-    --art-wood: #a5752f; --art-wood-lt: #c39a5c; --art-wood-dk: #6f4a1c;
-    --art-clay: #a95a36; --art-clay-lt: #c1774d;
-    --art-stone: #8d867a; --art-stone-lt: #a8a196;
-    --art-reed: #74904a; --art-reed-dk: #4f662c;
-    --art-grain: #cfa236; --art-veg: #cc6d31; --art-food: #c98a3a;
-    --art-sheep: #e7e0d0; --art-sheep-face: #bfb49b;
-    --art-boar: #634834; --art-cattle: #ded7c7; --art-cattle-spot: #43362a;
-    --art-roof: #74412c; --art-window: #9fbccb; --art-stable-door: #543a22;
-    --art-fence: #98692f; --art-fence-dk: #714b1f;
-    --art-tree: #5b7a38; --art-water: #5c86a3;
-    --art-plate: #d9cba6; --art-token: #6d5b3a; --art-count: #e7dcc0;
-    --art-frame: #55452a; --art-boardface: #4a3d26; --art-slot: #57492e;
-    --art-seal: #a8862a; --art-table: #4a3622; --art-mat: #2c4228;
+    color-scheme: dark;
+    --bg: #1f1a10; --panel: #2a2315; --ink: #ece2ca; --muted: #a59472; --line: #453a25;
+    --accent: #8fb35e; --accent-ink: #1d2410; --hover: #352d1b; --occ-frame: #a5811f;
+    --occ-tint: #322a12; --occ-ink: #ecd48d; --min-frame: #a5602a; --min-tint: #33240f;
+    --min-ink: #eebe8d; --maj-frame: #96432a; --maj-tint: #331d10; --maj-ink: #e8a988;
+    --rnd-frame: #5d7a3a; --rnd-tint: #232b14; --rnd-ink: #c2d99a; --grass: #3f5228;
+    --grass-in: #55703a; --soil: #5b442a; --wall: #6a5436; --fence: #c9a86a; --vp-bg: #6f5628;
+    --shadow: 0 2px 10px rgba(0, 0, 0, .55); --p1: #f0834a; --p2: #4f9be8; --art-ink: #23190e;
+    --art-board: #3a3120; --art-edge: rgba(20,14,6,.55); --art-sky: #445033; --art-grass: #6d8a45;
+    --art-grass-dk: #52693a; --art-pasture: #7ea052; --art-soil: #8a6540; --art-soil-dk: #6b4c2e;
+    --art-wood: #a5752f; --art-wood-lt: #c39a5c; --art-wood-dk: #6f4a1c; --art-clay: #a95a36;
+    --art-clay-lt: #c1774d; --art-stone: #8d867a; --art-stone-lt: #a8a196; --art-reed: #74904a;
+    --art-reed-dk: #4f662c; --art-grain: #cfa236; --art-veg: #cc6d31; --art-food: #c98a3a;
+    --art-sheep: #e7e0d0; --art-sheep-face: #bfb49b; --art-boar: #634834; --art-cattle: #ded7c7;
+    --art-cattle-spot: #43362a; --art-roof: #74412c; --art-window: #9fbccb;
+    --art-stable-door: #543a22; --art-fence: #98692f; --art-fence-dk: #714b1f; --art-tree: #5b7a38;
+    --art-water: #5c86a3; --art-plate: #d9cba6; --art-token: #6d5b3a; --art-count: #e7dcc0;
+    --art-frame: #55452a; --art-boardface: #4a3d26; --art-slot: #57492e; --art-seal: #a8862a;
+    --art-table: #4a3622; --art-mat: #2c4228; --art-boardprint: #d8c79f;
   }
 
   * { box-sizing: border-box; }
@@ -521,6 +454,49 @@
   }
   .turnframe span:empty { display: none; }
 
+  /* ---------- on the board view the right column folds to a strip of counts ---------- */
+  body.side-strip .side { width: 84px; transition: width .2s; }
+  body.side-strip .side:hover { width: 304px; }
+  body.side-strip .side:not(:hover) .rail,
+  body.side-strip .side:not(:hover) .rg,
+  body.side-strip .side:not(:hover) .cl,
+  body.side-strip .side:not(:hover) .rtoggle,
+  body.side-strip .side:not(:hover) .allres,
+  body.side-strip .side:not(:hover) .chips > span:empty { display: none !important; }
+  body.side-strip .side:not(:hover) .chips { grid-template-columns: 1fr; gap: 3px; }
+  body.side-strip .side:not(:hover) .dock { padding: 8px 6px; }
+  body.side-strip .side:not(:hover) .resbar .who { justify-content: center; font-size: 0; }
+  body.side-strip .side:not(:hover) .chip { justify-content: space-between; }
+
+  /* ---------- final scores ---------- */
+  .final { z-index: 70; }
+  .final .sheet {
+    width: min(680px, 94vw); max-height: 88vh; overflow: auto; padding: 18px 20px 16px;
+    background: var(--panel); border: 2px solid var(--accent); border-radius: 16px;
+    box-shadow: 0 30px 80px rgba(0,0,0,.6); animation: pvIn .25s ease-out;
+  }
+  .final h2 { font-size: 24px; text-align: center; margin-bottom: 4px; }
+  .final .sub { text-align: center; color: var(--muted); font-size: 13px; margin-bottom: 14px; }
+  .final .podium { display: flex; gap: 12px; justify-content: center; margin-bottom: 14px; flex-wrap: wrap; }
+  .final .who {
+    flex: 1 1 200px; max-width: 280px; border-radius: 14px; padding: 12px 14px; text-align: center;
+    border: 2px solid var(--pc); background: color-mix(in srgb, var(--pc) 12%, var(--bg));
+  }
+  .final .who.win { box-shadow: 0 0 0 4px color-mix(in srgb, var(--pc) 35%, transparent); }
+  .final .who .nm { font-weight: 800; font-size: 16px; }
+  .final .who .tot { font-size: 44px; font-weight: 900; line-height: 1.1; color: var(--pc);
+    font-family: "Iowan Old Style", Palatino, Georgia, serif; }
+  .final .who .badge { display: inline-block; margin-top: 2px; font-size: 12px; font-weight: 800; padding: 2px 10px;
+    border-radius: 999px; background: var(--pc); color: #fff; }
+  .final table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  .final th { font-size: 12px; color: var(--muted); font-weight: 700; text-align: right; padding: 4px 6px; }
+  .final th:first-child, .final td:first-child { text-align: left; }
+  .final td { padding: 5px 6px; border-top: 1px solid var(--line); text-align: right; white-space: nowrap; }
+  .final td .v { color: var(--muted); font-size: 12px; margin-right: 4px; }
+  .final td.neg { color: var(--maj-frame); }
+  .final tr.tot td { font-weight: 900; font-size: 16px; border-top: 2px solid var(--ink); }
+  .final .row { justify-content: center; margin-top: 14px; }
+
   /* ---------- the action bar: the current prompt and its buttons, bottom centre ---------- */
   .actionbar {
     position: fixed; z-index: 4; left: 50%; bottom: 18px; transform: translateX(-50%);
@@ -622,6 +598,7 @@
   <div class="dbody" id="drawerBody"></div>
 </aside>
 <div class="modal" id="modal" hidden></div>
+<div class="modal final" id="final" hidden></div>
 
 <script src="../data.js"></script>
 <script src="vendor/three.min.js"></script>
