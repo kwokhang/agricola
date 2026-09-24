@@ -37,8 +37,21 @@
     } catch (e) { return false; }
   }
 
-  function start(n) {
-    G = newGame(n === 1 ? ['玩家'] : ['玩家 1', '玩家 2']);
+  // Player colours are the player's choice; everything coloured by player reads --p1/--p2.
+  const SWATCHES = [
+    ['#d0582f', '朱'], ['#3a6f9c', '藍'], ['#5e9a6e', '若竹'],
+    ['#7a5a96', '江戸紫'], ['#c26479', '紅梅'], ['#bf9540', '黄土'],
+  ];
+  function applyColors() {
+    const cols = (G && G.colors) || ['#d0582f', '#3a6f9c'];
+    document.documentElement.style.setProperty('--p1', cols[0]);
+    document.documentElement.style.setProperty('--p2', cols[1] || cols[0]);
+  }
+
+  function start(n, setup) {
+    const names = setup ? setup.map((q) => q.name) : (n === 1 ? ['玩家'] : ['玩家 1', '玩家 2']);
+    G = newGame(names);
+    G.colors = setup ? setup.map((q) => q.color) : ['#d0582f', '#3a6f9c'];
     UI.view = 0; UI.lastCurrent = 0; UI.cardTab = 'occ'; UI.main = 'table'; UI.autoKey = ''; UI.finalShown = false;
     render();
   }
@@ -378,7 +391,7 @@
     const el = $('prompt');
     if (G.over) {
       el.innerHTML = `<div class="panel"><h3>遊戲結束</h3>
-        <div class="row">${btn('final', '睇最終分數', false, 'class="primary"')}${btn('new2', '新遊戲 · 2 人')}${btn('new1', '新遊戲 · 1 人')}</div></div>`;
+        <div class="row">${btn('final', '睇最終分數', false, 'class="primary"')}${btn('newGame', '新遊戲')}</div></div>`;
       return;
     }
     if (G.feeding) { el.innerHTML = feedPanel(); return; }
@@ -665,6 +678,61 @@
         `<button data-choice="${esc(o.id)}" class="primary">${esc(o.label)}</button>`).join('')}</div></div>`;
   }
 
+  // ------------------------------------------------------------ new game setup
+  // One button: how many play, and each player's name and colour (no two alike).
+  const NG = { n: 2, players: [] };
+  function openNewGame() {
+    const cur = G ? G.players.map((p, i) => ({ name: p.name, color: (G.colors || [])[i] })) : [];
+    NG.n = G ? G.n : 2;
+    NG.players = [0, 1].map((i) => ({
+      name: (cur[i] && cur[i].name && !/^玩家( \d)?$/.test(cur[i].name)) ? cur[i].name : '',
+      color: (cur[i] && cur[i].color) || SWATCHES[i][0],
+    }));
+    renderNewGame();
+    $('newgame').hidden = false;
+    const first = $('newgame').querySelector('input');
+    if (first) first.focus();
+  }
+
+  function renderNewGame() {
+    const box = $('newgame');
+    const rows = NG.players.slice(0, NG.n).map((q, i) => {
+      const taken = NG.players.slice(0, NG.n).filter((_, j) => j !== i).map((o) => o.color);
+      return `<div class="ngrow" style="--pc:${q.color}">
+        <span class="av">${ART.meeple('#fff', 20)}</span>
+        <label class="ngname">${NG.n === 1 ? '你嘅名' : `玩家 ${i + 1} 嘅名`}
+          <input data-ng-name="${i}" maxlength="10" value="${esc(q.name)}" placeholder="${NG.n === 1 ? '玩家' : `玩家 ${i + 1}`}"></label>
+        <div class="sw">${SWATCHES.map(([c, zh]) => `<button data-act="ngColor" data-v="${i}|${c}" title="${zh}"
+          class="${q.color === c ? 'sel' : ''}" style="--c:${c}" ${taken.includes(c) ? 'disabled' : ''}></button>`).join('')}</div>
+      </div>`;
+    }).join('');
+    box.innerHTML = `<div class="sheet ng">
+      <h2>新遊戲</h2><div class="sub">現時嘅進度會被取代。</div>
+      <div class="ngcount">玩家人數
+        ${[1, 2].map((n) => `<button data-act="ngCount" data-v="${n}" class="${NG.n === n ? 'sel' : ''}">${n} 人</button>`).join('')}</div>
+      ${rows}
+      <div class="row">${btn('ngCancel', '取消')}${btn('ngStart', '開始遊戲', false, 'class="primary"')}</div></div>`;
+  }
+
+  function startFromSetup() {
+    const setup = NG.players.slice(0, NG.n).map((q, i) => ({
+      name: (q.name || '').trim() || (NG.n === 1 ? '玩家' : `玩家 ${i + 1}`),
+      color: q.color,
+    }));
+    $('newgame').hidden = true;
+    UI.finalOpen = false;
+    start(NG.n, setup);
+  }
+
+  // Typing a name updates the draft without redrawing (so the cursor stays put).
+  document.addEventListener('input', (ev) => {
+    const i = ev.target.dataset && ev.target.dataset.ngName;
+    if (i != null) NG.players[+i].name = ev.target.value;
+  });
+  document.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Enter' && ev.target.dataset && ev.target.dataset.ngName != null) startFromSetup();
+  });
+
   // ------------------------------------------------------------ final scores
   // Pops up by itself the moment the game ends; after it is closed, the prompt reopens it.
   function renderFinal() {
@@ -702,7 +770,7 @@
         <tr class="tot"><td>總分</td>${sheets.map((x) => `<td>${x.s.total}</td>`).join('')}</tr></table>
       ${sheets.some((x) => x.s.bonusDetail.length) ? `<p class="muted" style="font-size:12px;margin-top:8px">卡片獎勵：${
         sheets.filter((x) => x.s.bonusDetail.length).map((x) => `${esc(x.p.name)} — ${esc(x.s.bonusDetail.join('、'))}`).join('；')}</p>` : ''}
-      <div class="row">${btn('closeFinal', '睇返張檯')}${btn('new2', '新遊戲 · 2 人', false, 'class="primary"')}${btn('new1', '新遊戲 · 1 人')}</div>
+      <div class="row">${btn('closeFinal', '睇返張檯')}${btn('newGame', '新遊戲', false, 'class="primary"')}</div>
     </div>`;
   }
 
@@ -727,7 +795,7 @@
       }).join('');
     } else {
       html = `<div class="row" style="margin-top:6px">
-        ${btn('new1', '新遊戲 · 1 人')}${btn('new2', '新遊戲 · 2 人')}
+        ${btn('newGame', '新遊戲', false, 'class="primary"')}
       </div><p class="muted" style="font-size:12px;margin-top:10px">
         A、B 兩副卡嘅效果全部自動結算，唔使手動加減物資。</p>`;
     }
@@ -761,6 +829,7 @@
     if (want && key !== UI.autoKey) UI.main = want;
     UI.autoKey = key;
 
+    applyColors();
     // Frame the screen in the colour of whoever has to act.
     const who = G.over ? -1 : G.feeding ? G.feeding.i : G.current;
     document.body.style.setProperty('--turn', who < 0 ? 'transparent' : PCOLOR[who]);
@@ -831,7 +900,7 @@
     if (!t || !G) return;
 
     if (t.dataset.choice) { resolveChoice(G, t.dataset.choice); return render(); }
-    if (G.choice) return;                                   // a choice blocks everything else
+    if (G.choice && !(t.dataset.act || '').startsWith('ng') && t.dataset.act !== 'newGame') return;   // a choice blocks everything else
     if (t.dataset.main) { UI.main = t.dataset.main; return render(); }
     if (t.dataset.view != null) return setView(+t.dataset.view);
     if (t.dataset.ctab) { UI.cardTab = t.dataset.ctab; return render(); }
@@ -861,8 +930,11 @@
       case 'playAlt': playCard(G, v, 'alt'); break;
       case 'discardStaged': discardStaged(G); break;
       case 'confirmFeed': confirmFeed(G); break;
-      case 'new1': if (confirm('開新遊戲（1 人局）？現時進度會消失。')) { openDrawer(false); start(1); } return;
-      case 'new2': if (confirm('開新遊戲（2 人局）？現時進度會消失。')) { openDrawer(false); start(2); } return;
+      case 'newGame': openDrawer(false); openNewGame(); return;
+      case 'ngCount': NG.n = +v; renderNewGame(); return;
+      case 'ngColor': { const [i, c] = v.split('|'); NG.players[+i].color = c; renderNewGame(); return; }
+      case 'ngCancel': $('newgame').hidden = true; return;
+      case 'ngStart': startFromSetup(); return;
       default: return;
     }
     render();

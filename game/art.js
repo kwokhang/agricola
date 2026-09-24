@@ -99,32 +99,35 @@ const ART = (function () {
   // spread round the colour wheel, with a bold light silhouette on it. Used everywhere a
   // good is named at small size: the HUD, costs, tokens on the board, the supply tray.
   const TOKEN = {
-    wood:   { bg: '#8a5424', fg: '#f6e3c4', g: `<rect x="5" y="7.6" width="12" height="4.2" rx="2.1"/><rect x="7" y="12.8" width="12" height="4.2" rx="2.1"/>
-              <circle cx="17" cy="9.7" r="1.2" fill="#8a5424"/><circle cx="19" cy="14.9" r="1.2" fill="#8a5424"/>` },
-    clay:   { bg: '#b8382a', fg: '#ffe2d2', g: `<rect x="4.6" y="13" width="6.8" height="4.2" rx=".6"/><rect x="12.6" y="13" width="6.8" height="4.2" rx=".6"/>
+    wood:   { bg: '#8c5a33', fg: '#f4e4c6', g: `<rect x="5" y="7.6" width="12" height="4.2" rx="2.1"/><rect x="7" y="12.8" width="12" height="4.2" rx="2.1"/>
+              <circle cx="17" cy="9.7" r="1.2" fill="#8c5a33"/><circle cx="19" cy="14.9" r="1.2" fill="#8c5a33"/>` },
+    clay:   { bg: '#a23f2a', fg: '#fbe0d2', g: `<rect x="4.6" y="13" width="6.8" height="4.2" rx=".6"/><rect x="12.6" y="13" width="6.8" height="4.2" rx=".6"/>
               <rect x="8.6" y="7.8" width="6.8" height="4.2" rx=".6"/>` },
-    reed:   { bg: '#5f8f33', fg: '#f3f0d6', g: `<path d="M8.6 19.5L8 9M12 19.5V6.5M15.4 19.5L16 9" stroke="#f3f0d6" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+    reed:   { bg: '#6a8a36', fg: '#f1efd4', g: `<path d="M8.6 19.5L8 9M12 19.5V6.5M15.4 19.5L16 9" stroke="#f3f0d6" stroke-width="1.5" stroke-linecap="round" fill="none"/>
               <rect x="6.9" y="5.6" width="2.2" height="4.4" rx="1.1"/><rect x="10.9" y="3.6" width="2.2" height="4.4" rx="1.1"/><rect x="14.9" y="5.6" width="2.2" height="4.4" rx="1.1"/>` },
-    stone:  { bg: '#4e5b70', fg: '#e3e8f0', g: `<path d="M4.8 16.8L6.6 10.6L10.8 7.2L15.8 8.2L19.4 12.6L17.8 17.4z"/>
-              <path d="M10.8 7.2L12 12.4L6.6 10.6M12 12.4L17.8 17.4" stroke="#4e5b70" stroke-width=".9" fill="none"/>` },
-    grain:  { bg: '#d7a11a', fg: '#4a2f06', g: `<path d="M12 20V7" stroke="#4a2f06" stroke-width="1.4" stroke-linecap="round"/>
+    stone:  { bg: '#5a6068', fg: '#e6e8ea', g: `<path d="M4.8 16.8L6.6 10.6L10.8 7.2L15.8 8.2L19.4 12.6L17.8 17.4z"/>
+              <path d="M10.8 7.2L12 12.4L6.6 10.6M12 12.4L17.8 17.4" stroke="#5a6068" stroke-width=".9" fill="none"/>` },
+    grain:  { bg: '#d3a02c', fg: '#4a2f06', g: `<path d="M12 20V7" stroke="#4a2f06" stroke-width="1.4" stroke-linecap="round"/>
               ${[[8.4, 0], [11.6, 1], [14.8, 0]].map(([y, s]) => `<ellipse cx="9.8" cy="${y}" rx="1.6" ry="2.6" transform="rotate(-35 9.8 ${y})"/>
                 <ellipse cx="14.2" cy="${y}" rx="1.6" ry="2.6" transform="rotate(35 14.2 ${y})"/>`).join('')}
               <ellipse cx="12" cy="5.6" rx="1.5" ry="2.4"/>` },
-    veg:    { bg: '#ee7a18', fg: '#fff3e2', g: `<path d="M12 20.4L8.4 10.4Q12 8.6 15.6 10.4z"/>
-              <path d="M12 10L9.6 5.2M12 10V4.6M12 10L14.4 5.2" stroke="#2f7a2a" stroke-width="1.8" stroke-linecap="round" fill="none"/>
-              <path d="M10.4 13.4h2.2M11 16.2h1.8" stroke="#ee7a18" stroke-width=".9"/>` },
-    food:   { bg: '#23857f', fg: '#ffe9bf', g: `<path d="M4.8 15.6Q4.6 9.2 12 8.8T19.2 15.6z"/><rect x="4.4" y="15.4" width="15.2" height="2.4" rx="1.2"/>
-              <path d="M8.6 12.4l1.2 1.4M11.6 11.6l1.2 1.4M14.6 12.4l1.2 1.4" stroke="#23857f" stroke-width="1"/>` },
-    sheep:  { bg: '#ece6d8', fg: '#ffffff', g: `<g stroke="#3b332d" stroke-width=".8"><circle cx="10" cy="11.4" r="3.2"/><circle cx="13.6" cy="10.6" r="3.4"/>
+    veg:    { bg: '#d4692c', fg: '#fff1e0', g: `<path d="M12 20.4L8.4 10.4Q12 8.6 15.6 10.4z"/>
+              <path d="M12 10L9.6 5.2M12 10V4.6M12 10L14.4 5.2" stroke="#3f6b2a" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+              <path d="M10.4 13.4h2.2M11 16.2h1.8" stroke="#d4692c" stroke-width=".9"/>` },
+    // a steaming bowl of stew: reads as "a meal" rather than as any one crop
+    food:   { bg: '#9c3f58', fg: '#ffe7b8', g: `<path d="M4.6 12.4H19.4Q19 18.4 12 18.6T4.6 12.4z"/>
+              <ellipse cx="12" cy="12.4" rx="7.4" ry="1.7" fill="#8a4a1e"/>
+              <circle cx="9.6" cy="12.1" r=".9" fill="#d4692c"/><circle cx="13.6" cy="12.3" r=".8" fill="#6a8a36"/>
+              <path d="M9 9.6q-1-1.4 0-2.8t0-2.6M12 9.4q-1-1.4 0-2.8t0-2.8M15 9.6q-1-1.4 0-2.8t0-2.6" stroke="#ffe7b8" stroke-width="1.1" stroke-linecap="round" fill="none" opacity=".85"/>` },
+    sheep:  { bg: '#ebe4d4', fg: '#ffffff', g: `<g stroke="#3b332d" stroke-width=".8"><circle cx="10" cy="11.4" r="3.2"/><circle cx="13.6" cy="10.6" r="3.4"/>
               <circle cx="15.4" cy="13.4" r="2.8"/><circle cx="11.4" cy="14.2" r="3"/></g>
               <ellipse cx="6.8" cy="11.8" rx="2.2" ry="2.6" fill="#2b2622"/><path d="M10 17v3M14.4 17v3" stroke="#2b2622" stroke-width="1.4"/>` },
-    boar:   { bg: '#2f2926', fg: '#e9a6a0', g: `<path d="M5.2 13.4Q5.4 8.4 12 8.4T18.8 12.6L20.4 13.2L19.8 15.8L18 15.6Q16.8 17.4 12 17.4T5.2 13.4z"/>
-              <path d="M8 8.8L7.4 6.2L10 8.2" /><path d="M8.6 17v2.6M14.8 17v2.6" stroke="#e9a6a0" stroke-width="1.5"/>
-              <circle cx="16.6" cy="11.8" r=".8" fill="#2f2926"/>` },
-    cattle: { bg: '#2f6a9a', fg: '#ffffff', g: `<path d="M7.4 9.6Q12 7.4 16.6 9.6L15.8 16.4Q12 19.6 8.2 16.4z"/>
+    boar:   { bg: '#36302b', fg: '#dda09a', g: `<path d="M5.2 13.4Q5.4 8.4 12 8.4T18.8 12.6L20.4 13.2L19.8 15.8L18 15.6Q16.8 17.4 12 17.4T5.2 13.4z"/>
+              <path d="M8 8.8L7.4 6.2L10 8.2" /><path d="M8.6 17v2.6M14.8 17v2.6" stroke="#dda09a" stroke-width="1.5"/>
+              <circle cx="16.6" cy="11.8" r=".8" fill="#36302b"/>` },
+    cattle: { bg: '#2f5f86', fg: '#ffffff', g: `<path d="M7.4 9.6Q12 7.4 16.6 9.6L15.8 16.4Q12 19.6 8.2 16.4z"/>
               <path d="M7.6 9.8Q4.6 9 4.4 5.8M16.4 9.8Q19.4 9 19.6 5.8" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round" fill="none"/>
-              <ellipse cx="12" cy="15.8" rx="3" ry="1.9" fill="#f2b8a8"/><circle cx="10" cy="11.8" r=".9" fill="#2f6a9a"/><circle cx="14" cy="11.8" r=".9" fill="#2f6a9a"/>` },
+              <ellipse cx="12" cy="15.8" rx="3" ry="1.9" fill="#f2b8a8"/><circle cx="10" cy="11.8" r=".9" fill="#2f5f86"/><circle cx="14" cy="11.8" r=".9" fill="#2f5f86"/>` },
   };
 
   // The coin itself, in a 24 × 24 box.

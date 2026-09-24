@@ -578,7 +578,7 @@ const View3D = (function () {
       font-family="-apple-system,sans-serif" fill="var(--art-ink)">${n}/${cap}</text></svg>`;
 
   // A pulsing outline drawn as four thin bars, so it reads as a highlight and not a tint.
-  const HILITE = 0xffcf4d;
+  const HILITE = 0xe8b64a;                  // 山吹, a touch brighter so it glows
   function outline(w, d, y, colour, thickness) {
     const g = new T.Group();
     const t = thickness || 0.05;
@@ -673,8 +673,8 @@ const View3D = (function () {
   const HARV_W = 156, HARV_H = 52;
   const harvestSvg = (after) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${HARV_W} ${HARV_H}"
     width="${HARV_W * 2}" height="${HARV_H * 2}" font-family="-apple-system,'PingFang TC','Noto Sans TC',sans-serif">
-    <path d="M2 5H154L144 26L154 47H2L12 26z" fill="#24421f" stroke="#d6a93a" stroke-width="2.2" stroke-linejoin="round"/>
-    <path d="M13 9.5H143" stroke="#d6a93a" stroke-width="1" opacity=".55"/>
+    <path d="M2 5H154L144 26L154 47H2L12 26z" fill="#26402b" stroke="#b8912f" stroke-width="2.2" stroke-linejoin="round"/>
+    <path d="M13 9.5H143" stroke="#b8912f" stroke-width="1" opacity=".55"/>
     <g transform="translate(16 14)">${ART.ICONS.grain}</g>
     <text x="88" y="24" text-anchor="middle" font-size="14" font-weight="800" fill="#fff8e6">收成
       <tspan font-size="10" font-weight="700" dx="3" opacity=".85">HARVEST</tspan></text>
@@ -819,7 +819,7 @@ const View3D = (function () {
       if (c > 0) {
         const after = rounds[rounds.length - 1];
         const done = G.round > after || (G.round === after && G.phase !== 'work');
-        const tex = svgTexture(`harv4:${after}`, harvestSvg(after), HARV_W * 2, HARV_H * 2);
+        const tex = svgTexture(`harv5:${after}`, harvestSvg(after), HARV_W * 2, HARV_H * 2);
         const rib = new T.Mesh(geo('harvRibbon', () => new T.PlaneGeometry(HARV_W * PS, HARV_H * PS)),
           new T.MeshStandardMaterial({ map: tex, transparent: true, roughness: 0.5, opacity: done ? 0.4 : 1 }));
         rib.rotation.x = -Math.PI / 2;
@@ -1105,7 +1105,7 @@ const View3D = (function () {
     const colour = pi === 0 ? '--p1' : '--p2';
     const sub = `${HOUSE_ZH[p.house]} ${roomCount(p)} 間 · 田 ${fieldCount(p)} · 家庭 ${p.people} 人`;
     const plate = new T.Mesh(geo('nameplate', () => new T.PlaneGeometry(1.9, 0.44)),
-      printMat(svgTexture(`name:${pi}:${p.name}:${sub}`, nameSvg(p.name, sub, `var(${colour})`), 520, 120), { transparent: true }));
+      printMat(svgTexture(`name:${pi}:${p.name}:${sub}:${col(colour).getHexString()}`, nameSvg(p.name, sub, `var(${colour})`), 520, 120), { transparent: true }));
     plate.rotation.x = -Math.PI / 2;
     plate.position.set(LAYOUT.plate.x, 0.075, LAYOUT.plate.z);
     plate.userData.hover = { kind: 'seat', pi };

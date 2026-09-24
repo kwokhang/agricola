@@ -6,27 +6,29 @@
 <title>農家樂 Agricola 離線版</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <style>
-  /* One palette: the table is always dimly lit. */
+  /* One palette, drawn from Japanese traditional colours (和色): 墨 ground, 生成 ink,
+     利休鼠 for quiet text, 山吹 as the only accent; 朱・藍 for the players; 常磐 felt,
+     焦茶 table, 砂 board; goods in 檜皮・弁柄・苔・鈍・山吹・柿・蘇芳・生成・墨・藍. */
   :root {
     color-scheme: dark;
-    --bg: #1f1a10; --panel: #2a2315; --ink: #ece2ca; --muted: #a59472; --line: #453a25;
-    --accent: #8fb35e; --accent-ink: #1d2410; --hover: #352d1b; --occ-frame: #a5811f;
-    --occ-tint: #322a12; --occ-ink: #ecd48d; --min-frame: #a5602a; --min-tint: #33240f;
-    --min-ink: #eebe8d; --maj-frame: #96432a; --maj-tint: #331d10; --maj-ink: #e8a988;
-    --rnd-frame: #5d7a3a; --rnd-tint: #232b14; --rnd-ink: #c2d99a; --grass: #3f5228;
+    --bg: #1c1a17; --panel: #26231e; --ink: #efe8d8; --muted: #a39e88; --line: #423d33;
+    --accent: #d9a441; --accent-ink: #1c1a17; --hover: #302c25; --occ-frame: #b68d3a;
+    --occ-tint: #2c2618; --occ-ink: #ecd9a3; --min-frame: #a8612f; --min-tint: #2d2117;
+    --min-ink: #ebc19a; --maj-frame: #8e3b27; --maj-tint: #2b1b16; --maj-ink: #e3a894;
+    --rnd-frame: #3f6b4a; --rnd-tint: #1e2a20; --rnd-ink: #b9d3b0; --grass: #3f5228;
     --grass-in: #55703a; --soil: #5b442a; --wall: #6a5436; --fence: #c9a86a; --vp-bg: #6f5628;
-    --shadow: 0 2px 10px rgba(0, 0, 0, .55); --p1: #f0834a; --p2: #4f9be8; --art-ink: #23190e;
-    --art-board: #3a3120; --art-edge: rgba(20,14,6,.55); --art-sky: #445033; --art-grass: #6d8a45;
-    --art-grass-dk: #52693a; --art-pasture: #7ea052; --art-soil: #8a6540; --art-soil-dk: #6b4c2e;
-    --art-wood: #a5752f; --art-wood-lt: #c39a5c; --art-wood-dk: #6f4a1c; --art-clay: #a95a36;
-    --art-clay-lt: #c1774d; --art-stone: #8d867a; --art-stone-lt: #a8a196; --art-reed: #74904a;
-    --art-reed-dk: #4f662c; --art-grain: #cfa236; --art-veg: #cc6d31; --art-food: #c98a3a;
-    --art-sheep: #e7e0d0; --art-sheep-face: #bfb49b; --art-boar: #634834; --art-cattle: #ded7c7;
-    --art-cattle-spot: #43362a; --art-roof: #74412c; --art-window: #9fbccb;
-    --art-stable-door: #543a22; --art-fence: #98692f; --art-fence-dk: #714b1f; --art-tree: #5b7a38;
-    --art-water: #5c86a3; --art-plate: #d9cba6; --art-token: #6d5b3a; --art-count: #e7dcc0;
-    --art-frame: #55452a; --art-boardface: #4a3d26; --art-slot: #57492e; --art-seal: #a8862a;
-    --art-table: #4a3622; --art-mat: #2c4228; --art-boardprint: #a8966e;
+    --shadow: 0 2px 10px rgba(0, 0, 0, .55); --p1: #d0582f; --p2: #3a6f9c; --art-ink: #23190e;
+    --art-board: #3a3120; --art-edge: rgba(20,14,6,.55); --art-sky: #4d5c52; --art-grass: #6f8a48;
+    --art-grass-dk: #4f6a37; --art-pasture: #86a24f; --art-soil: #8d6644; --art-soil-dk: #5e4330;
+    --art-wood: #9a6a3c; --art-wood-lt: #c2a07a; --art-wood-dk: #6a4526; --art-clay: #a2492f;
+    --art-clay-lt: #bf6e4c; --art-stone: #8a8579; --art-stone-lt: #a8a396; --art-reed: #7a8f48;
+    --art-reed-dk: #52642e; --art-grain: #d3a02c; --art-veg: #d06a33; --art-food: #c48a42;
+    --art-sheep: #ece5d4; --art-sheep-face: #b9ae95; --art-boar: #634834; --art-cattle: #ded7c7;
+    --art-cattle-spot: #43362a; --art-roof: #7e3d28; --art-window: #9fbccb;
+    --art-stable-door: #543a22; --art-fence: #98692f; --art-fence-dk: #714b1f; --art-tree: #4f7438;
+    --art-water: #4f7f8f; --art-plate: #d8cba8; --art-token: #6a583a; --art-count: #ece2c8;
+    --art-frame: #5a4430; --art-boardface: #4a3d26; --art-slot: #57492e; --art-seal: #b8912f;
+    --art-table: #3f2e22; --art-mat: #26402b; --art-boardprint: #a89a78;
   }
 
   * { box-sizing: border-box; }
@@ -485,6 +487,27 @@
   .final tr.tot td { font-weight: 900; font-size: 16px; border-top: 2px solid var(--ink); }
   .final .row { justify-content: center; margin-top: 14px; }
 
+  /* ---------- new game: players, names, colours ---------- */
+  .ng { width: min(520px, 94vw); }
+  .ngcount { display: flex; align-items: center; gap: 8px; justify-content: center; margin-bottom: 14px; font-weight: 700; }
+  .ngcount button { padding: 6px 18px; }
+  .ngcount button.sel { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); outline: none; }
+  .ngrow { display: grid; grid-template-columns: 44px 1fr; gap: 6px 12px; align-items: center;
+    padding: 10px 12px; border-radius: 12px; margin-bottom: 10px;
+    border: 2px solid var(--pc); background: color-mix(in srgb, var(--pc) 10%, var(--bg)); }
+  .ngrow .av { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--pc);
+    grid-row: span 2; box-shadow: inset 0 -3px 0 rgba(0,0,0,.2); }
+  .ngrow .av svg { color: #fff !important; }
+  .ngname { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--muted); }
+  .ngname input { font: inherit; font-size: 16px; font-weight: 700; color: var(--ink); background: var(--bg);
+    border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }
+  .ngname input:focus { outline: 2px solid var(--pc); outline-offset: 1px; }
+  .sw { display: flex; gap: 8px; }
+  .sw button { width: 28px; height: 28px; padding: 0; border-radius: 50%; background: var(--c);
+    border: 2px solid rgba(0,0,0,.35); box-shadow: none; }
+  .sw button.sel { outline: 3px solid var(--ink); outline-offset: 2px; }
+  .sw button:disabled { opacity: .18; }
+
   /* ---------- the action bar: the current prompt and its buttons, bottom centre ---------- */
   .actionbar {
     position: fixed; z-index: 4; left: 50%; bottom: 18px; transform: translateX(-50%);
@@ -587,6 +610,7 @@
 </aside>
 <div class="modal" id="modal" hidden></div>
 <div class="modal final" id="final" hidden></div>
+<div class="modal final" id="newgame" hidden></div>
 
 <script src="../data.js"></script>
 <script src="vendor/three.min.js"></script>
