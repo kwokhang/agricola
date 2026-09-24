@@ -449,13 +449,20 @@ const View3D = (function () {
     } else if (kind === 'clay') {
       g.add(box(0.26, 0.12, 0.15, col('--art-clay'), 0, 0.06, 0));
     } else if (kind === 'reed') {
-      for (let i = 0; i < 4; i++) {
-        const r = new T.Mesh(geo('reedstalk', () => new T.CylinderGeometry(0.018, 0.018, 0.3, 5)), mat(col('--art-reed')));
-        r.position.set((i - 1.5) * 0.045, 0.15, (i % 2) * 0.03);
-        r.rotation.z = (i - 1.5) * 0.06;
+      // A cream bundle lying down, tied in the middle — the colour of the real reed pieces,
+      // so it never vanishes against green art.
+      const stalkMat = mat(col('--art-count'), { roughness: 0.5 });
+      for (let i = 0; i < 5; i++) {
+        const r = new T.Mesh(geo('reedstalk', () => new T.CylinderGeometry(0.026, 0.026, 0.32, 6)), stalkMat);
+        r.rotation.z = Math.PI / 2;
+        r.position.set(0, 0.03 + (i % 2) * 0.04, (i - 2) * 0.03);
         r.castShadow = true;
         g.add(r);
       }
+      const tie = new T.Mesh(geo('reedtie', () => new T.CylinderGeometry(0.075, 0.075, 0.04, 10)), mat(col('--art-wood-dk')));
+      tie.rotation.z = Math.PI / 2;
+      tie.position.y = 0.05;
+      g.add(tie);
     } else if (kind === 'stone') {
       const s = new T.Mesh(geo('rock', () => new T.IcosahedronGeometry(0.11, 0)), mat(col('--art-stone'), { flatShading: true }));
       s.position.y = 0.09; s.rotation.set(0.5, 0.8, 0.2); s.castShadow = true;
@@ -483,10 +490,38 @@ const View3D = (function () {
   function goodsPile(kind, n, opts) {
     const g = new T.Group();
     const o = opts || {};
+    if (o.base) {
+      const r = 0.36 * (o.spread || 1) + 0.12;
+      const rim = new T.Mesh(geo(`pileRim${r.toFixed(2)}`, () => new T.CylinderGeometry(r + 0.03, r + 0.03, 0.03, 28)),
+        mat(o.base === true ? col('--art-ink') : o.base, { roughness: 0.4 }));
+      rim.position.y = 0.012;
+      rim.receiveShadow = true;
+      g.add(rim);
+      // The token's face is printed with the same icon the HUD uses, so a pile reads at a glance.
+      const iconTex = svgTexture('tokenIcon:' + kind, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -4 32 32" width="192" height="192">
+        <circle cx="12" cy="12" r="15.6" fill="var(--art-count)"/>${ART.ICONS[kind] || ''}</svg>`, 192, 192);
+      const face = new T.Mesh(geo(`pileFace${r.toFixed(2)}`, () => new T.CylinderGeometry(r, r, 0.035, 28)),
+        mat(col('--art-count'), { roughness: 0.45 }));
+      face.position.y = 0.018;
+      face.receiveShadow = true;
+      g.add(face);
+      // A circle has clean 0–1 UVs, unlike a cylinder cap, so the icon lands dead centre.
+      const icon = new T.Mesh(geo(`pileIcon${r.toFixed(2)}`, () => new T.CircleGeometry(r * 0.96, 32)),
+        printMat(iconTex, { roughness: 0.45 }));
+      icon.rotation.x = -Math.PI / 2;
+      icon.position.y = 0.037;
+      g.add(icon);
+      // the count sits on the token's rim, never over the icon
+      const plate = countPlate(kind, n, 1);
+      plate.position.set(r * 0.8, 0.07, r * 0.72);
+      g.add(plate);
+      return g;
+    }
+    const lift = 0;
     const shown = Math.min(n, o.max || 6);
     for (let i = 0; i < shown; i++) {
       const m = goodsMesh(kind);
-      m.position.set(PILE[i][0] * (o.spread || 1), 0, PILE[i][1] * (o.spread || 1));
+      m.position.set(PILE[i][0] * (o.spread || 1), lift, PILE[i][1] * (o.spread || 1));
       m.rotation.y = i * 1.1;
       g.add(m);
     }
@@ -663,9 +698,9 @@ const View3D = (function () {
       // Goods that have accumulated, piled in the free corner of the space.
       const kinds = Object.keys(sp.goods).filter((k) => sp.goods[k] > 0);
       kinds.forEach((k, i) => {
-        const pile = goodsPile(k, sp.goods[k], { spread: 0.52, max: 5, alwaysCount: sp.goods[k] > 1 });
-        pile.position.set(cx - w / 2 + 0.3 + i * 0.6, BOARD_Y + 0.04, cz - d / 2 + 0.28);
-        pile.scale.setScalar(0.78);
+        const pile = goodsPile(k, sp.goods[k], { spread: 0.52, max: 5, alwaysCount: sp.goods[k] > 1, base: true });
+        pile.position.set(cx - w / 2 + 0.34 + i * 0.66, BOARD_Y + 0.04, cz - d / 2 + 0.3);
+        pile.scale.setScalar(0.85);
         g.add(pile);
       });
 
@@ -697,7 +732,10 @@ const View3D = (function () {
           addSpace(spaceDef(id), cellX(c), cellY(r), BG.w, BG.h);
         } else {
           const tex = svgTexture(`slot:${n}`, slotSvg(BG.w, BG.h, n, STAGE_OF[id]), BG.w * 2, BG.h * 2);
-          g.add(plateMesh(tex, BG.w * PS, BG.h * PS, bx(cellX(c) + BG.w / 2), bz(cellY(r) + BG.h / 2), BOARD_Y + 0.005));
+          const slot = plateMesh(tex, BG.w * PS, BG.h * PS, bx(cellX(c) + BG.w / 2), bz(cellY(r) + BG.h / 2), BOARD_Y + 0.005);
+          slot.userData.hover = { kind: 'slot', round: n };
+          hoverables.push(slot);
+          g.add(slot);
         }
       });
       if (c > 0) {
@@ -712,6 +750,37 @@ const View3D = (function () {
 
     BOARD_LAYOUT.accum.forEach((id, i) => {
       addSpace(spaceDef(id), cellX(0), cellY(i + 1), BG.w, BG.h);
+    });
+
+    // Goods that cards have parked on future round spaces sit on those spaces, each player's
+    // on a disc of their colour, exactly where the rules say they wait.
+    const roundCell = {};
+    BOARD_LAYOUT.roundCols.forEach((rounds, c) => rounds.forEach((n, r) => { roundCell[n] = [c, r]; }));
+    G.players.forEach((q, pi) => {
+      const parked = Object.assign({}, q.futures);
+      if (q.handplow && q.handplow > G.round && q.handplow <= 14) {
+        parked[q.handplow] = Object.assign({ field: 1 }, parked[q.handplow] || {});
+      }
+      Object.keys(parked).forEach((rs) => {
+        const n = +rs;
+        if (!roundCell[n] || n <= G.round) return;
+        const [c, r] = roundCell[n];
+        const w = BG.w * PS, d = BG.h * PS;
+        const cx = bx(cellX(c) + BG.w / 2) + (pi === 0 ? -w / 4 : w / 4);
+        const cz = bz(cellY(r) + BG.h / 2) + d * 0.2;
+        const kinds = Object.keys(parked[n]).filter((k) => parked[n][k] > 0);
+        kinds.forEach((k, j) => {
+          const piece = k === 'field'
+            ? box(0.3, 0.05, 0.3, col('--art-soil'), 0, 0.05, 0)
+            : goodsPile(k, parked[n][k], { spread: 0.34, max: 3, alwaysCount: parked[n][k] > 1,
+              base: col(pi === 0 ? '--p1' : '--p2') });
+          const holder = new T.Group();
+          holder.add(piece);
+          holder.position.set(cx + (j - (kinds.length - 1) / 2) * 0.3, BOARD_Y + 0.04, cz);
+          holder.scale.setScalar(0.62);
+          g.add(holder);
+        });
+      });
     });
 
     g.position.set(LAYOUT.board.x, 0, LAYOUT.board.z);
@@ -972,6 +1041,26 @@ const View3D = (function () {
       m.userData.hover = { kind: 'card', uid: c.uid, pi };
       playedGroup.add(m);
       hoverables.push(m);
+
+      // Whatever the card holds sits on it: the Grocer's pile, the Moldboard Plow's fields.
+      const on = new T.Group();
+      on.position.set(cx, BOARD_Y, cz + 0.12);
+      if (c.en === 'Grocer' && p.grocer < GROCER_PILE.length) {
+        const left = GROCER_PILE.length - p.grocer;
+        for (let k = 0; k < Math.min(left, 4); k++) {    // the stack, top good on top
+          const layer = box(0.4, 0.035, 0.4, col('--art-wood-lt'), 0, 0.02 + k * 0.04, 0);
+          on.add(layer);
+        }
+        const top = goodsMesh(GROCER_PILE[p.grocer]);
+        top.position.y = 0.04 * Math.min(left, 4) + 0.02;
+        top.scale.setScalar(0.9);
+        on.add(top);
+        on.add(countPlate(GROCER_PILE[p.grocer], left, 0.9));
+      }
+      if (c.en === 'Moldboard Plow' && p.moldboard > 0) {
+        for (let k = 0; k < p.moldboard; k++) on.add(box(0.36, 0.05, 0.36, col('--art-soil'), k * 0.12 - 0.06, 0.03 + k * 0.05, 0));
+      }
+      if (on.children.length) playedGroup.add(on);
     });
     g.add(playedGroup);
 

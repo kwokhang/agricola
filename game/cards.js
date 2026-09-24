@@ -23,9 +23,9 @@
 //   score({G,p,pts,detail})            bonus victory points
 //   doFree({G,p,pi,id})                run a free action this card offered
 
-// The Grocer's printed pile, repeated: vegetable, stone, reed, grain.
-const GROCER_PILE = ['veg', 'stone', 'reed', 'grain', 'veg', 'stone', 'reed', 'grain',
-                     'veg', 'stone', 'reed', 'grain'];
+// The Grocer's printed pile, top first (the card lists it bottom to top: wood, grain, reed,
+// stone, vegetable, clay, reed, vegetable).
+const GROCER_PILE = ['veg', 'reed', 'clay', 'veg', 'stone', 'reed', 'grain', 'wood'];
 
 // ---------------------------------------------------------------- small helpers
 function future(G, p, rounds, goods) {
@@ -114,7 +114,8 @@ const CARD_FX = {
   'Grocer': {
     free(x, c) {
       const good = GROCER_PILE[x.p.grocer];
-      if (good) offer(x, c, 'grocer', `雜貨商：1 食物買 1 ${LABEL[good]}`, x.p.supply.food >= 1);
+      const left = GROCER_PILE.length - x.p.grocer;
+      if (good) offer(x, c, 'grocer', `雜貨商：1 食物買 1 ${LABEL[good]}（仲有 ${left} 件）`, x.p.supply.food >= 1);
     },
     doFree(x) {
       const good = GROCER_PILE[x.p.grocer];
@@ -340,14 +341,14 @@ const CARD_FX = {
   'Sheep Walker': {
     free(x, c) {
       const have = animalTotal(x.p, 'sheep') > 0;
-      offer(x, c, 'sheepwalk:boar', '牧羊人：1 綿羊 → 1 野豬', have);
-      offer(x, c, 'sheepwalk:veg', '牧羊人：1 綿羊 → 1 蔬菜', have);
-      offer(x, c, 'sheepwalk:stone', '牧羊人：1 綿羊 → 1 石頭', have);
+      offer(x, c, 'sheepwalk:boar', '趕羊人：1 綿羊 → 1 野豬', have);
+      offer(x, c, 'sheepwalk:veg', '趕羊人：1 綿羊 → 1 蔬菜', have);
+      offer(x, c, 'sheepwalk:stone', '趕羊人：1 綿羊 → 1 石頭', have);
     },
     doFree(x) {
       const to = x.id.split(':')[1];
       if (!removeAnimal(x.p, 'sheep')) return false;
-      gain(x.G, x.p, { [to]: 1 }, '牧羊人換到');
+      gain(x.G, x.p, { [to]: 1 }, '趕羊人換到');
     },
   },
 

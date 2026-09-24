@@ -486,8 +486,11 @@
   function renderFree() {
     const acts = freeActions(G, UI.view);
     if (!acts.length) { $('free').innerHTML = ''; return; }
-    const mine = !G.choice && (G.feeding ? G.feeding.i === UI.view : G.current === UI.view);
-    $('free').innerHTML = '<span class="lb">隨時可做</span>' + acts.map((a) =>
+    // "At any time" cards work on anyone's turn; cards that need your own turn check that
+    // themselves (x.acting), so only a pending choice or the end of the game blocks these.
+    const mine = !G.choice && !G.over;
+    const who = G.players[UI.view].name;
+    $('free').innerHTML = `<span class="lb">${esc(who)} 隨時可做</span>` + acts.map((a) =>
       `<button data-free="${esc(a.id)}" ${a.ok && mine ? '' : 'disabled'}>${esc(a.label)}</button>`).join('');
   }
 
@@ -571,6 +574,19 @@
     return G.majors.find((c) => c.uid === uid) || null;
   }
 
+  // Goods that cards have left on a round space, per player.
+  function parkedHtml(spaceId) {
+    const n = G.roundOrder.indexOf(spaceId) + 1;
+    if (!n || n <= G.round) return '';
+    const bits = G.players.map((q) => {
+      const due = Object.assign({}, q.futures[n] || {});
+      const parts = Object.keys(due).map((k) => `${due[k]} ${LABEL[k]}`);
+      if (q.handplow === n) parts.push('1 塊田（手犁）');
+      return parts.length ? `${esc(q.name)}：${parts.join('、')}` : '';
+    }).filter(Boolean);
+    return bits.length ? `<p class="parked">第 ${n} 回合開始時收：<br>${bits.join('<br>')}</p>` : '';
+  }
+
   function showTip(info) {
     const el = $('tip');
     if (!el) return;
@@ -593,6 +609,15 @@
       const vp = c.vp
         ? `<svg class="vpseal" viewBox="-16 -16 32 32" width="38" height="38" aria-hidden="true">${ART.seal(c.vp, 0, 0, 14)}</svg>` : '';
       let status = '';
+      const holder = G.players.find((q) => q.played.includes(c));
+      let extra = '';
+      if (c.en === 'Grocer' && holder) {
+        const left = GROCER_PILE.slice(holder.grocer);
+        extra = left.length
+          ? `<div class="pile">疊頂：<b>${LABEL[left[0]]}</b>　之後：${left.slice(1).map((k) => LABEL[k]).join('、') || '冇'}</div>`
+          : '<div class="pile">疊上已經冇嘢</div>';
+      }
+      if (c.en === 'Moldboard Plow' && holder) extra = `<div class="pile">卡上仲有 <b>${holder.moldboard}</b> 塊田</div>`;
       if (owner) status = `已被 ${esc(owner.name)} 取得`;
       else if (c.played || G.players.some((q) => q.played.includes(c))) status = '已打出';
       else if ((inHand || c.type === 'maj') && UI.view === G.current && !G.choice
@@ -601,10 +626,18 @@
         <div class="band">${esc(band)}</div>${vp}
         <div class="hd"><span class="nm">${esc(c.zh)}</span><span class="ennm">${esc(c.en)}</span></div>
         <div class="art">${ART.cardArt(c, 324, 124)}</div>
-        <div class="tx">${esc(c.txz || '')}</div>
+        <div class="tx">${esc(c.txz || '')}</div>${extra}
         <div class="ft"><span class="costs">${costHtml(cost)}${c.trav ? '<span class="muted"> · 旅行卡</span>' : ''}</span>
           <span class="st">${status}</span></div></div>`;
       pv.hidden = false;
+      return;
+    }
+
+    if (info.kind === 'slot') {
+      const parked = parkedHtml(G.roundOrder[info.round - 1]);
+      el.innerHTML = `<h3>第 ${info.round} 回合</h3><div class="en">未翻開嘅行動格</div>
+        ${parked || '<p class="muted">呢格暫時冇卡放物資。</p>'}`;
+      el.hidden = false;
       return;
     }
 
@@ -616,7 +649,7 @@
         .map((k) => `<span class="cst">${ic(k, 16)}<b>${sp.goods[k]}</b></span>`).join(' ');
       const who = sp.occupiedBy !== null ? `<span class="muted">${esc(G.players[sp.occupiedBy].name)} 已經放咗人</span>`
         : canPlace(G, info.id) ? '<span style="color:var(--accent)">可以放人</span>' : '';
-      el.innerHTML = `<h3>${esc(def.zh)}</h3><div class="en">${esc(def.en)}</div>
+      el.innerHTML = `<h3>${esc(def.zh)}</h3><div class="en">${esc(def.en)}</div>${parkedHtml(info.id)}
         <p>${spaceNotes(G, G.players[UI.view], def).map(esc).join('<br>')}</p>
         <div class="costs">${goods}${goods && who ? ' · ' : ''}${who}</div>`;
       el.hidden = false;
