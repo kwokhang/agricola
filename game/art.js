@@ -736,46 +736,104 @@ const ART = (function () {
   }
 
   // opts: { cost, taken, note } — `taken` prints an owner ribbon across the art.
+  //
+  // One fixed layout for every card, the way trading cards do it, so the eye always finds
+  // things in the same place:
+  //   name bar ........ 14–50   name (shrinks to fit), cost gems at the right
+  //   picture ......... 56–240  about 44% of the card
+  //   type line ....... 246–270 kind of card, victory points badge
+  //   rules box ....... 276–386 about 26%; the type size steps down until the text fits
+  //   footer .......... 392–410 English name, travelling card, play hint
+  const FACE = { name: [14, 36], art: [56, 184], type: [246, 24], rules: [276, 110], foot: [392, 18] };
+
+  function fitCard(markup, x, y, w, h) {
+    const s = Math.min(w / 46, h / 28);
+    const vw = w / s, vh = h / s;
+    return `<svg x="${x}" y="${y}" width="${w}" height="${h}" viewBox="${(26 - vw / 2).toFixed(2)} ${(24 - vh).toFixed(2)} ${vw.toFixed(2)} ${vh.toFixed(2)}" preserveAspectRatio="none">${markup}</svg>`;
+  }
+
+  // A cost gem: the good's icon in a coin, with the count on a small badge.
+  function gem(k, n, cx, cy) {
+    return `<g transform="translate(${cx} ${cy})">
+      <circle r="15" fill="var(--art-count)" stroke="${ink}" stroke-width="1.6"/>
+      <circle r="12.5" fill="none" stroke="${ink}" stroke-width=".6" opacity=".35"/>
+      <g transform="translate(-10 -10.5) scale(${20 / 24})">${ICONS[k] || ''}</g>
+      <circle cx="10" cy="10" r="8" fill="${ink}"/>
+      <text x="10" y="14" text-anchor="middle" font-size="11.5" font-weight="800" fill="var(--art-count)">${n}</text></g>`;
+  }
+
+  // Wrap at the largest type size that still fits the box.
+  function fitRules(text, w, h) {
+    for (const [size, lh] of [[15.5, 21], [14.5, 19.5], [13.5, 18], [12.5, 16.5], [11.5, 15]]) {
+      const per = (w - 4) / size;
+      const lines = wrap(text, per, 99);
+      if (lines.length * lh <= h) return { size, lh, lines };
+    }
+    const size = 11.5, lh = 15;
+    return { size, lh, lines: wrap(text, (w - 4) / size, Math.floor(h / lh)) };
+  }
+
   function cardFace(c, opts) {
     const o = opts || {};
     const t = TYPE_BAND[c.type] || TYPE_BAND.min;
-    const title = wrap(c.zh || c.en, 11, 2);
-    let s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${CARD_W} ${CARD_H}"
-      width="${CARD_W}" height="${CARD_H}" font-family="-apple-system,BlinkMacSystemFont,'PingFang TC','Noto Sans TC',sans-serif">
-      <rect width="${CARD_W}" height="${CARD_H}" rx="18" fill="${t.tint}" stroke="${t.frame}" stroke-width="7"/>
-      <rect x="10" y="10" width="${CARD_W - 20}" height="${CARD_H - 20}" rx="12" fill="none" stroke="${ink}" stroke-width="1.2" opacity=".45"/>
-      <rect x="10" y="10" width="${CARD_W - 20}" height="34" rx="10" fill="${t.frame}"/>
-      <text x="24" y="33" font-size="17" font-weight="700" fill="var(--art-count)">${t.zh}
-        <tspan dx="8" font-size="11" opacity=".85">${t.en}</tspan></text>`;
+    const W = CARD_W, Hh = CARD_H, IN = 12;           // inner margin
+    const cost = o.cost || {};
+    const kinds = Object.keys(cost);
+    let s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${Hh}" width="${W}" height="${Hh}"
+      font-family="-apple-system,BlinkMacSystemFont,'PingFang TC','Noto Sans TC',sans-serif">
+      <defs>
+        <linearGradient id="bev" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#fff" stop-opacity=".35"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/>
+          <stop offset="1" stop-color="#000" stop-opacity=".25"/></linearGradient>
+        <clipPath id="art"><rect x="${IN}" y="${FACE.art[0]}" width="${W - IN * 2}" height="${FACE.art[1]}" rx="6"/></clipPath></defs>
+      <rect width="${W}" height="${Hh}" rx="16" fill="${t.frame}"/>
+      <rect width="${W}" height="${Hh}" rx="16" fill="url(#bev)"/>
+      <rect x="6" y="6" width="${W - 12}" height="${Hh - 12}" rx="11" fill="${t.tint}" stroke="${ink}" stroke-width="1.2" opacity=".98"/>`;
 
-    title.forEach((ln, i) => {
-      s += `<text x="24" y="${76 + i * 25}" font-size="23" font-weight="700" fill="${t.ink}">${ln}</text>`;
+    // name bar, with cost gems on the right
+    const gemsW = kinds.length ? kinds.length * 32 + 4 : 0;
+    const nameW = W - IN * 2 - 14 - gemsW;
+    const name = c.zh || c.en;
+    const nameSize = Math.min(21, Math.floor(nameW / Math.max(1, [...name].reduce((n, ch) => n + wide(ch), 0))));
+    s += `<rect x="${IN}" y="${FACE.name[0]}" width="${W - IN * 2}" height="${FACE.name[1]}" rx="8" fill="var(--art-plate)" stroke="${ink}" stroke-width="1.2"/>
+      <rect x="${IN + 2}" y="${FACE.name[0] + 2}" width="${W - IN * 2 - 4}" height="10" rx="5" fill="#fff" opacity=".3"/>
+      <text x="${IN + 10}" y="${FACE.name[0] + FACE.name[1] / 2 + nameSize * 0.36}" font-size="${nameSize}" font-weight="800" fill="var(--art-ink)">${name}</text>`;
+    if (kinds.length) {
+      kinds.forEach((k, i) => { s += gem(k, cost[k], W - IN - 18 - (kinds.length - 1 - i) * 32, FACE.name[0] + FACE.name[1] / 2); });
+    } else {
+      s += `<text x="${W - IN - 10}" y="${FACE.name[0] + FACE.name[1] / 2 + 5}" text-anchor="end" font-size="13" font-weight="700" fill="var(--art-ink)" opacity=".7">免費</text>`;
+    }
+
+    // picture
+    s += `<g clip-path="url(#art)">${fitCard(cardScene(c), IN, FACE.art[0], W - IN * 2, FACE.art[1])}</g>
+      <rect x="${IN}" y="${FACE.art[0]}" width="${W - IN * 2}" height="${FACE.art[1]}" rx="6" fill="none" stroke="${ink}" stroke-width="2"/>
+      <rect x="${IN + 2}" y="${FACE.art[0] + 2}" width="${W - IN * 2 - 4}" height="${FACE.art[1] - 4}" rx="5" fill="none" stroke="#fff" stroke-width="1" opacity=".35"/>`;
+
+    // type line and victory points
+    s += `<rect x="${IN}" y="${FACE.type[0]}" width="${W - IN * 2}" height="${FACE.type[1]}" rx="6" fill="${t.frame}" stroke="${ink}" stroke-width="1.1"/>
+      <text x="${IN + 10}" y="${FACE.type[0] + 16.5}" font-size="13" font-weight="800" fill="var(--art-count)">${t.zh}
+        <tspan dx="6" font-size="10" font-weight="700" opacity=".85" letter-spacing="1">${t.en}</tspan></text>`;
+    if (c.vp) s += `<g transform="translate(${W - IN - 20} ${FACE.type[0] + FACE.type[1] / 2})">${seal(c.vp, 0, 0, 17)}</g>`;
+
+    // rules text, fitted
+    const box = { x: IN, y: FACE.rules[0], w: W - IN * 2, h: FACE.rules[1] };
+    s += `<rect x="${box.x}" y="${box.y}" width="${box.w}" height="${box.h}" rx="8" fill="var(--art-plate)" stroke="${ink}" stroke-width="1.1"/>`;
+    const fit = fitRules(c.txz || c.tx || '', box.w - 20, box.h - 14);
+    const top = box.y + 8 + (box.h - 14 - fit.lines.length * fit.lh) / 2 + fit.size * 0.95;
+    fit.lines.forEach((ln, i) => {
+      s += `<text x="${box.x + 10}" y="${(top + i * fit.lh).toFixed(1)}" font-size="${fit.size}" fill="var(--art-ink)">${ln}</text>`;
     });
-    s += `<text x="24" y="${80 + title.length * 25}" font-size="12" fill="var(--art-ink)" opacity=".7">${c.en || ''}</text>`;
 
-    // The picture window.
-    const artTop = 88 + title.length * 25, artH = 104;
-    s += `<clipPath id="art"><rect x="18" y="${artTop}" width="${CARD_W - 36}" height="${artH}" rx="9"/></clipPath>
-      <g clip-path="url(#art)">${fitMarkup(cardScene(c), 18, artTop, CARD_W - 36, artH)}</g>
-      <rect x="18" y="${artTop}" width="${CARD_W - 36}" height="${artH}" rx="9" fill="none" stroke="${t.frame}" stroke-width="2.4"/>`;
+    // footer
+    const fy = FACE.foot[0] + 12;
+    s += `<text x="${IN + 4}" y="${fy}" font-size="11" font-style="italic" fill="${t.ink}" opacity=".8">${c.en || ''}</text>`;
+    const tags = [c.trav ? '旅行卡' : '', o.note || ''].filter(Boolean).join(' · ');
+    if (tags) s += `<text x="${W - IN - 4}" y="${fy}" text-anchor="end" font-size="11.5" font-weight="800" fill="${t.ink}">${tags}</text>`;
 
-    const bodyTop = artTop + artH + 8;
-    const boxH = CARD_H - bodyTop - 70;
-    s += `<rect x="18" y="${bodyTop}" width="${CARD_W - 36}" height="${boxH}" rx="10"
-      fill="var(--art-plate)" stroke="${ink}" stroke-width="1.1" opacity=".9"/>`;
-    const fit = wrap(c.txz || c.tx || '', 17.6, Math.floor((boxH - 12) / 19));
-    fit.forEach((ln, i) => {
-      s += `<text x="30" y="${bodyTop + 21 + i * 19}" font-size="14.5" fill="var(--art-ink)">${ln}</text>`;
-    });
-
-    s += costRow(o.cost, 24, CARD_H - 58);
-    if (c.vp) s += `<g transform="translate(${CARD_W - 40} 70)">${seal(c.vp, 0, 0, 22)}</g>`;
-    if (c.trav) s += `<text x="${CARD_W - 24}" y="${CARD_H - 30}" text-anchor="end" font-size="13" fill="var(--art-ink)" opacity=".7">旅行卡</text>`;
-    if (o.note) s += `<text x="${CARD_W - 24}" y="${CARD_H - 30}" text-anchor="end" font-size="13" fill="${t.ink}">${o.note}</text>`;
     if (o.taken) {
-      s += `<g transform="translate(${CARD_W / 2} ${CARD_H / 2}) rotate(-14)">
-        <rect x="-130" y="-24" width="260" height="48" rx="10" fill="var(--art-ink)" opacity=".82"/>
-        <text y="8" text-anchor="middle" font-size="21" font-weight="700" fill="var(--art-count)">已被 ${o.taken} 取得</text></g>`;
+      s += `<g transform="translate(${W / 2} ${FACE.art[0] + FACE.art[1] / 2}) rotate(-12)">
+        <rect x="-128" y="-22" width="256" height="44" rx="9" fill="var(--art-ink)" opacity=".85"/>
+        <text y="7" text-anchor="middle" font-size="20" font-weight="800" fill="var(--art-count)">已被 ${o.taken} 取得</text></g>`;
     }
     return s + '</svg>';
   }

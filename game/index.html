@@ -26,7 +26,7 @@
     --art-stable-door: #543a22; --art-fence: #98692f; --art-fence-dk: #714b1f; --art-tree: #5b7a38;
     --art-water: #5c86a3; --art-plate: #d9cba6; --art-token: #6d5b3a; --art-count: #e7dcc0;
     --art-frame: #55452a; --art-boardface: #4a3d26; --art-slot: #57492e; --art-seal: #a8862a;
-    --art-table: #4a3622; --art-mat: #2c4228; --art-boardprint: #d8c79f;
+    --art-table: #4a3622; --art-mat: #2c4228; --art-boardprint: #a8966e;
   }
 
   * { box-sizing: border-box; }
@@ -196,30 +196,17 @@
 
   /* ---------- a card you point at, upright and large in the middle ---------- */
   .preview {
-    position: fixed; z-index: 6; left: 50%; top: 36%; width: 360px;
+    position: fixed; z-index: 6; left: 50%; top: 42%; width: 300px;
     transform: translate(-50%, -50%); pointer-events: none;
     animation: pvIn .14s ease-out;
   }
-  .preview .card {
-    min-height: 0; padding: 28px 16px 12px;
-    box-shadow: 0 24px 60px rgba(0, 0, 0, .55), 0 0 0 1px rgba(255, 255, 255, .06);
-  }
-  .preview .card .band { height: 20px; font-size: 10.5px; }
-  .preview .card .nm { font-size: 23px; }
-  .preview .card .ennm { font-size: 13px; }
-  .preview .card .tx { color: var(--ink); font-size: 16px; line-height: 1.7; margin-top: 12px; }
-  .preview .card .ft { margin-top: 14px; }
-  .preview .card .st { font-size: 13px; font-weight: 700; color: var(--accent); white-space: nowrap; }
-  .preview .vpseal { top: 26px; right: 12px; }
-  .preview .pile { margin-top: 8px; font-size: 13.5px; padding: 6px 9px; border-radius: 7px;
-    background: color-mix(in srgb, var(--accent) 14%, transparent); }
+  .preview .face svg { display: block; width: 100%; height: auto;
+    filter: drop-shadow(0 24px 40px rgba(0,0,0,.6)); }
+  .preview > .st { margin-top: 8px; text-align: center; font-size: 14px; font-weight: 800; color: var(--accent);
+    background: color-mix(in srgb, var(--panel) 92%, transparent); border-radius: 999px; padding: 4px 12px; }
+  .preview .pile { margin-top: 8px; font-size: 13.5px; padding: 6px 10px; border-radius: 9px; color: var(--ink);
+    background: color-mix(in srgb, var(--panel) 92%, transparent); }
   .tip .parked { color: var(--accent); font-weight: 600; }
-  .preview .art { margin-top: 10px; border-radius: 9px; overflow: hidden; line-height: 0;
-    border: 2px solid var(--line); }
-  .preview .art svg { width: 100%; height: auto; display: block; }
-  .preview .card.occ .art { border-color: var(--occ-frame); }
-  .preview .card.min .art { border-color: var(--min-frame); }
-  .preview .card.maj .art { border-color: var(--maj-frame); }
   @keyframes pvIn { from { opacity: 0; transform: translate(-50%, -46%) scale(.96); } }
 
   /* ---------- this table wants a landscape desktop ---------- */

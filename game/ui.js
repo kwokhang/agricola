@@ -623,13 +623,8 @@
       else if (c.played || G.players.some((q) => q.played.includes(c))) status = '已打出';
       else if ((inHand || c.type === 'maj') && UI.view === G.current && !G.choice
         && playableNow(G).includes(c.type)) status = canPay(p, cost) ? '✓ 可以打出' : '資源唔夠';
-      pv.innerHTML = `<div class="card ${c.type}">
-        <div class="band">${esc(band)}</div>${vp}
-        <div class="hd"><span class="nm">${esc(c.zh)}</span><span class="ennm">${esc(c.en)}</span></div>
-        <div class="art">${ART.cardArt(c, 324, 124)}</div>
-        <div class="tx">${esc(c.txz || '')}</div>${extra}
-        <div class="ft"><span class="costs">${costHtml(cost)}${c.trav ? '<span class="muted"> · 旅行卡</span>' : ''}</span>
-          <span class="st">${status}</span></div></div>`;
+      pv.innerHTML = `<div class="face">${ART.cardFace(c, { cost, taken: owner ? owner.name : '' })}</div>
+        ${extra}${status ? `<div class="st">${status}</div>` : ''}`;
       pv.hidden = false;
       return;
     }
