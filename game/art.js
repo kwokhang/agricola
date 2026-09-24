@@ -218,61 +218,290 @@ const ART = (function () {
   }
 
   // ---------------------------------------------------------------- action-space vignettes
-  // Scenes bleed well past their nominal 56×42 so any crop still lands on artwork.
-  const SKY = (c) => `<rect x="-34" y="-14" width="124" height="76" fill="${c || 'var(--art-sky)'}"/>`;
-  const GROUND = (c) => {
-    const col = c || 'var(--art-grass)';
-    return `<path d="M-34 22c16-9 28-6 40 1s26 5 40-3 30-6 44 3v39H-34z" fill="${col}" opacity=".45"/>
-      <path d="M-34 30c15-9 27-9 39-1s27 6 39-2 27-7 46 3v32H-34z" fill="${col}"/>`;
+  // Little storybook landscapes, one light source (the sun, upper right), every prop with a
+  // highlight, a shade side and a contact shadow. Coordinates are in a 100 × 56 box, but the
+  // name plate covers the lower half of each space, so the subject lives in y 0–23 and
+  // x −12…64 — the strip that shows on both the small and the big board.
+  const H = 13;                                             // horizon
+  const INK = 'stroke="var(--art-ink)" stroke-width=".7" stroke-linejoin="round"';
+  const HI = (d) => `<path d="${d}" fill="#fff" opacity=".28"/>`;
+  const SH = (d) => `<path d="${d}" fill="#000" opacity=".16"/>`;
+  const shadow = (x, y, w) => `<ellipse cx="${x}" cy="${y}" rx="${w}" ry="${(w * 0.24).toFixed(2)}" fill="#000" opacity=".22"/>`;
+  const at = (x, y, s, body) => `<g transform="translate(${x} ${y}) scale(${s || 1})">${body}</g>`;
+
+  const cloud = (x, y, s) => at(x, y, s, `<g fill="#fff" opacity=".78">
+    <ellipse cx="0" cy="0" rx="5" ry="2.2"/><ellipse cx="3.6" cy="-1.3" rx="3.4" ry="2.4"/>
+    <ellipse cx="-3" cy="-.6" rx="2.6" ry="1.8"/></g>`);
+
+  function land(id, o) {
+    o = o || {};
+    const ground = o.ground || 'var(--art-grass)';
+    const far = o.far || 'var(--art-grass-dk)';
+    let s = `<defs>
+      <linearGradient id="sky-${id}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity=".6"/></linearGradient>
+      <radialGradient id="sun-${id}">
+        <stop offset="0" stop-color="#fffbe6" stop-opacity="1"/><stop offset=".3" stop-color="#ffefb8" stop-opacity=".6"/>
+        <stop offset="1" stop-color="#ffefb8" stop-opacity="0"/></radialGradient>
+      <linearGradient id="gnd-${id}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#fff" stop-opacity=".25"/><stop offset=".3" stop-color="#000" stop-opacity="0"/>
+        <stop offset="1" stop-color="#000" stop-opacity=".3"/></linearGradient></defs>
+      <rect x="-34" y="-14" width="124" height="${H + 18}" fill="${o.sky || 'var(--art-sky)'}"/>
+      <rect x="-34" y="-14" width="124" height="${H + 18}" fill="url(#sky-${id})"/>
+      <circle cx="${o.sunX == null ? 54 : o.sunX}" cy="0" r="13" fill="url(#sun-${id})"/>`;
+    if (!o.noClouds) s += cloud(o.cloudX == null ? -4 : o.cloudX, 3, 0.8) + cloud(36, 5.5, 0.55);
+    s += `<path d="M-34 ${H + 1}C-20 ${H - 6} -8 ${H - 5} 4 ${H - 1}S26 ${H - 8} 40 ${H - 3}S66 ${H - 7} 90 ${H}V${H + 6}H-34z" fill="${far}" opacity=".4"/>
+      <path d="M-34 ${H + 3}C-18 ${H - 2} -2 ${H} 12 ${H + 2}S40 ${H - 3} 58 ${H + 1}S80 ${H} 90 ${H + 2}V${H + 8}H-34z" fill="${far}" opacity=".78"/>
+      <rect x="-34" y="${H + 2}" width="124" height="${60 - H}" fill="${ground}"/>
+      <rect x="-34" y="${H + 2}" width="124" height="${60 - H}" fill="url(#gnd-${id})"/>`;
+    if (!o.bare) s += tufts(id.length * 7 + 3);
+    return s;
+  }
+
+  function tufts(seed) {
+    let s = '', r = seed;
+    const next = () => ((r = (r * 9301 + 49297) % 233280) / 233280);
+    for (let i = 0; i < 9; i++) {
+      const x = -10 + next() * 72, y = H + 4 + next() * 18;
+      s += `<path d="M${x} ${y}l-.8-1.8M${x} ${y}l.1-2.2M${x} ${y}l.9-1.7" stroke="var(--art-grass-dk)" stroke-width=".55" stroke-linecap="round" opacity=".8"/>`;
+    }
+    return s;
+  }
+
+  // Water: the ground swapped for a pond with a bright near-shore and ripples.
+  const water = (id) => `<rect x="-34" y="${H + 3}" width="124" height="60" fill="var(--art-water)"/>
+    <rect x="-34" y="${H + 3}" width="124" height="60" fill="url(#gnd-${id})"/>
+    ${[[-6, 17, 7], [20, 20, 9], [44, 16.5, 6], [8, 22.5, 6]].map(([x, y, w]) =>
+      `<path d="M${x} ${y}q${w / 2} -.9 ${w} 0" fill="none" stroke="#fff" stroke-width=".6" opacity=".55"/>`).join('')}`;
+
+  // Plough furrows running away to the horizon.
+  const furrows = (col) => {
+    let s = `<path d="M-34 ${H + 2}H90V60H-34z" fill="${col || 'var(--art-soil)'}"/>`;
+    for (let k = -6; k <= 6; k++) {
+      s += `<path d="M${26 + k * 2.4} ${H + 2}L${26 + k * 16} 40" stroke="var(--art-soil-dk)" stroke-width="${(1.1 - Math.abs(k) * 0.05).toFixed(2)}" opacity=".75"/>`;
+    }
+    return s;
   };
-  const put = (key, x, y, s) => `<g transform="translate(${x} ${y}) scale(${s || 1})">${ICONS[key]}</g>`;
+
+  // ---- props, all standing on their own origin
+  const tree = (x, y, s) => at(x, y, s, `${shadow(0.6, 0, 5)}
+    <rect x="-.9" y="-6.5" width="1.8" height="6.5" fill="var(--art-wood-dk)" ${INK}/>
+    <g ${INK}><circle cx="0" cy="-11" r="5" fill="var(--art-tree)"/>
+      <circle cx="-3.4" cy="-8.4" r="3.6" fill="var(--art-tree)"/><circle cx="3.4" cy="-8.2" r="3.8" fill="var(--art-tree)"/></g>
+    <circle cx="2.6" cy="-8" r="3" fill="#000" opacity=".14"/>
+    <circle cx="-1.6" cy="-12.6" r="2.3" fill="#fff" opacity=".25"/>`);
+
+  const pine = (x, y, s) => at(x, y, s, `${shadow(0.5, 0, 4)}
+    <rect x="-.7" y="-3" width="1.4" height="3" fill="var(--art-wood-dk)"/>
+    <path d="M0 -17L6 -7H3.5L7 -2.5H-7L-3.5 -7H-6z" fill="var(--art-tree)" ${INK}/>
+    ${SH('M0 -17L6 -7H3.5L7 -2.5H0z')}${HI('M0 -17L-3 -9.5H-1.5L-4.4 -5H-1z')}`);
+
+  function house(x, y, s, wall, o) {
+    o = o || {};
+    const w = `var(--art-${wall || 'wood'})`;
+    const courses = wall === 'wood' || !wall
+      ? [-7, -4.6, -2.2].map((yy) => `<path d="M-7 ${yy}H5" stroke="var(--art-wood-dk)" stroke-width=".5" opacity=".7"/>`).join('')
+      : [-7.2, -4.8, -2.4].map((yy, i) => `<path d="M-7 ${yy}H5" stroke="#000" stroke-width=".35" opacity=".3"/>` +
+        [-5, -1, 3].map((xx) => `<path d="M${xx + (i % 2) * 2} ${yy}v2.4" stroke="#000" stroke-width=".3" opacity=".25"/>`).join('')).join('');
+    return at(x, y, s, `${shadow(1.5, 0, 10)}
+      <path d="M5 0V-9.4L9 -12V-2.6z" fill="${w}" ${INK}/>${SH('M5 0V-9.4L9 -12V-2.6z')}
+      <rect x="-7" y="-9.4" width="12" height="9.4" fill="${w}" ${INK}/>${courses}
+      <path d="M-8.4 -9L-1 -16.4L5.8 -9.6z" fill="var(--art-roof)" ${INK}/>
+      <path d="M-1 -16.4L3 -19L10 -12.2L5.8 -9.6z" fill="var(--art-roof)" ${INK}/>${SH('M-1 -16.4L3 -19L10 -12.2L5.8 -9.6z')}
+      ${HI('M-8.4 -9L-1 -16.4L-.2 -15.2L-6.6 -9z')}
+      <rect x="-2.6" y="-5" width="3" height="5" fill="var(--art-stable-door)" ${INK}/>
+      <rect x="1.4" y="-7.4" width="2.6" height="2.4" fill="var(--art-grain)" ${INK}/>
+      <rect x="-6" y="-7.4" width="2.6" height="2.4" fill="var(--art-grain)" ${INK}/>
+      ${o.scaffold ? `<g stroke="var(--art-wood-dk)" stroke-width=".7"><path d="M-9.4 0V-12M7 1V-14M-9.4 -6H10.6M-9.4 -11H9"/></g>` : ''}`);
+  }
+
+  const person = (x, y, s, col) => at(x, y, s, `${shadow(0, 0, 3)}
+    <path d="M-2.6 0V-5.4Q-2.6 -8.4 0 -8.4T2.6 -5.4V0z" fill="${col || 'var(--p1)'}" ${INK}/>
+    ${SH('M.6 0V-8.3Q2.6 -8 2.6 -5.4V0z')}
+    <circle cx="0" cy="-10.4" r="2.2" fill="var(--art-sheep-face)" ${INK}/>
+    <circle cx="-.7" cy="-11.1" r=".8" fill="#fff" opacity=".5"/>`);
+
+  const sheep = (x, y, s) => at(x, y, s, `${shadow(0, 0, 4.4)}
+    <path d="M-2.4 -.2V-3M2 -.2V-3" stroke="var(--art-ink)" stroke-width=".9"/>
+    <g fill="var(--art-sheep)" ${INK}><circle cx="-2.2" cy="-4.6" r="2.4"/><circle cx="1" cy="-5.4" r="2.6"/>
+      <circle cx="2.6" cy="-3.8" r="2.1"/><circle cx="-1" cy="-3.2" r="2.2"/></g>
+    <circle cx="1.4" cy="-3" r="2.2" fill="#000" opacity=".1"/><circle cx="-.4" cy="-6.4" r="1.4" fill="#fff" opacity=".6"/>
+    <ellipse cx="-4.6" cy="-5" rx="1.5" ry="1.9" fill="var(--art-ink)"/>`);
+
+  const boar = (x, y, s) => at(x, y, s, `${shadow(0, 0, 4.6)}
+    <path d="M-2.6 -.2V-2.6M2.4 -.2V-2.6" stroke="var(--art-ink)" stroke-width=".9"/>
+    <ellipse cx="0" cy="-3.8" rx="4.6" ry="2.9" fill="var(--art-boar)" ${INK}/>
+    ${SH('M-4 -2.2Q0 -.6 4.4 -2.8Q3 -1 0 -.9T-4 -2.2z')}<ellipse cx="-.8" cy="-5.4" rx="2.4" ry=".9" fill="#fff" opacity=".22"/>
+    <path d="M-4.4 -5.4L-7 -4.6L-6.8 -2.6L-4.4 -2.8z" fill="var(--art-boar)" ${INK}/>
+    <path d="M-3.8 -6.2l-.6 -1.8 1.6 1z" fill="var(--art-boar)" ${INK}/>
+    <path d="M-6.4 -2.8l-.4 1.1" stroke="#fff" stroke-width=".5"/>`);
+
+  const cow = (x, y, s) => at(x, y, s, `${shadow(0, 0, 5.4)}
+    <path d="M-3.4 -.2V-3.4M3 -.2V-3.4" stroke="var(--art-ink)" stroke-width="1"/>
+    <rect x="-5" y="-7.4" width="10" height="5" rx="2.3" fill="var(--art-cattle)" ${INK}/>
+    <circle cx="-1.2" cy="-5.8" r="1.5" fill="var(--art-cattle-spot)"/><circle cx="2.6" cy="-4.2" r="1.1" fill="var(--art-cattle-spot)"/>
+    ${SH('M-5 -3.8Q0 -2 5 -3.8V-3Q5 -2.4 3 -2.4H-3Q-5 -2.4 -5 -3z')}<rect x="-3.8" y="-7.1" width="6" height="1" rx=".5" fill="#fff" opacity=".35"/>
+    <rect x="-7.6" y="-8" width="3.4" height="3.6" rx="1.4" fill="var(--art-cattle)" ${INK}/>
+    <path d="M-7.4 -8.2l-.8 -1.3M-4.6 -8.2l.8 -1.3" stroke="var(--art-plate)" stroke-width=".7" stroke-linecap="round"/>`);
+
+  const rock = (x, y, s) => at(x, y, s, `${shadow(0, 0, 5)}
+    <path d="M-5 0L-4.2 -3.6L-1.4 -6L2.6 -5.4L5 -2.4L4.6 0z" fill="var(--art-stone)" ${INK}/>
+    <path d="M-4.2 -3.6L-1.4 -6L.6 -3.2L-2 -1.6z" fill="var(--art-stone-lt)"/>
+    ${SH('M2.6 -5.4L5 -2.4L4.6 0H1L.6 -3.2z')}`);
+
+  const bricks = (x, y, s) => at(x, y, s, `${shadow(0, 0, 6)}
+    <g ${INK}>${[[-5.4, -2.4], [-.2, -2.4], [-2.8, -4.8], [2.4, -4.8], [-.2, -7.2]].map(([bx, by]) =>
+      `<rect x="${bx}" y="${by}" width="5" height="2.4" fill="var(--art-clay)"/>`).join('')}</g>
+    ${[[-5.4, -2.4], [-.2, -2.4], [-2.8, -4.8], [2.4, -4.8], [-.2, -7.2]].map(([bx, by]) =>
+      `<rect x="${bx + .3}" y="${by + .3}" width="4.4" height=".6" fill="#fff" opacity=".3"/>`).join('')}`);
+
+  const logs = (x, y, s) => at(x, y, s, `${shadow(0, 0, 6)}
+    ${[[-3, -1.6], [1.6, -1.6], [-.7, -4.4]].map(([lx, ly]) => `
+      <rect x="${lx - 4}" y="${ly - 1.5}" width="8" height="3" rx="1.5" fill="var(--art-wood)" ${INK}/>
+      <ellipse cx="${lx + 4}" cy="${ly}" rx="1.2" ry="1.5" fill="var(--art-wood-lt)" ${INK}/>
+      <rect x="${lx - 3.4}" y="${ly - 1.1}" width="6" height=".6" fill="#fff" opacity=".3"/>`).join('')}`);
+
+  const reeds = (x, y, s) => at(x, y, s, `
+    ${[[-3, 12, -.4], [-1, 15, .1], [1.4, 13.5, .35], [3.4, 10.5, .6]].map(([rx, h, lean]) => `
+      <path d="M${rx} 0Q${rx + lean * 2} ${-h / 2} ${rx + lean * 4} ${-h}" fill="none" stroke="var(--art-reed-dk)" stroke-width=".7"/>
+      <rect x="${rx + lean * 4 - .7}" y="${-h}" width="1.4" height="3.6" rx=".7" fill="var(--art-wood-dk)" ${INK}/>`).join('')}
+    <path d="M-5 0Q-6 -4 -8 -6M5 0Q6.4 -3.4 8.6 -5" fill="none" stroke="var(--art-reed)" stroke-width=".9"/>`);
+
+  const fish = (x, y, s, flip) => at(x, y, s, `<g transform="scale(${flip ? -1 : 1} 1) rotate(-24)">
+    <path d="M-5 0Q-1 -3.6 3.4 -1.2L6 -3V3L3.4 1.2Q-1 3.6 -5 0z" fill="var(--art-water)" ${INK}/>
+    <path d="M-5 0Q-1 -3.6 3.4 -1.2Q-1 -1.6 -4.4 .2z" fill="#fff" opacity=".45"/>
+    <circle cx="-2.8" cy="-.6" r=".55" fill="var(--art-ink)"/></g>
+    <path d="M-4 5q2 -1.4 4 0t4 0" fill="none" stroke="#fff" stroke-width=".6" opacity=".7"/>`);
+
+  const boat = (x, y, s) => at(x, y, s, `<path d="M-8 -2H8L5.6 1.4H-5.6z" fill="var(--art-wood)" ${INK}/>
+    ${SH('M-8 -2H8L7 -.8H-7z')}<path d="M2 -2L7 -14" stroke="var(--art-wood-dk)" stroke-width=".7"/>
+    <path d="M7 -14Q9.6 -8 9.2 -1" fill="none" stroke="var(--art-ink)" stroke-width=".3"/>`);
+
+  const plough = (x, y, s) => at(x, y, s, `${shadow(0, 0, 7)}
+    <path d="M-7 -1L4 -6.6L9 -11" fill="none" stroke="var(--art-wood-dk)" stroke-width="1.5" stroke-linecap="round"/>
+    <path d="M-8.4 0L-3.6 -3.4L-2 -.2z" fill="var(--art-stone-lt)" ${INK}/>
+    <circle cx="3.4" cy="-2.4" r="2.4" fill="none" stroke="var(--art-wood-dk)" stroke-width="1"/>`);
+
+  const sheaf = (x, y, s) => at(x, y, s, `${shadow(0, 0, 4.6)}
+    ${[-2.6, -1.2, 0, 1.2, 2.6].map((dx) => `<path d="M${dx * .4} 0L${dx} -9" stroke="var(--art-grain)" stroke-width=".8"/>
+      <ellipse cx="${dx}" cy="-10.6" rx=".9" ry="2" fill="var(--art-grain)" transform="rotate(${dx * 6} ${dx} -10.6)" ${INK}/>`).join('')}
+    <rect x="-2" y="-5" width="4" height="1.4" rx=".5" fill="var(--art-wood-dk)"/>`);
+
+  const sack = (x, y, s) => at(x, y, s, `${shadow(0, 0, 4.4)}
+    <path d="M-3.8 0Q-4.6 -4.6 -2 -7.4H2Q4.6 -4.6 3.8 0z" fill="var(--art-plate)" ${INK}/>
+    ${SH('M1 -7.4H2Q4.6 -4.6 3.8 0H1.4Q2.6 -3.6 1 -7.4z')}<path d="M-2.2 -7.4Q0 -9.2 2.2 -7.4" fill="none" stroke="var(--art-wood-dk)" stroke-width=".7"/>
+    ${[[5, -.6], [6.2, -.3], [5.6, -1.4]].map(([gx, gy]) => `<ellipse cx="${gx}" cy="${gy}" rx=".7" ry=".45" fill="var(--art-grain)"/>`).join('')}`);
+
+  const bread = (x, y, s) => at(x, y, s, `${shadow(0, 0, 4.4)}
+    <path d="M-4.4 0Q-4.6 -4 0 -4.4T4.4 0z" fill="var(--art-food)" ${INK}/>
+    <path d="M-2.4 -3l1 1.2M0 -3.4l1 1.2M2.2 -3l.9 1.1" stroke="var(--art-wood-dk)" stroke-width=".5"/>
+    ${HI('M-3.8 -1.4Q-3.6 -3.8 0 -4.1Q-2.4 -3 -2.8 -1.2z')}`);
+
+  const oven = (x, y, s) => at(x, y, s, `${shadow(0, 0, 8)}
+    <defs><radialGradient id="fire"><stop offset="0" stop-color="#fff4c2"/><stop offset=".5" stop-color="var(--art-veg)"/>
+      <stop offset="1" stop-color="var(--art-clay)" stop-opacity="0"/></radialGradient></defs>
+    <path d="M-7.4 0Q-7.8 -10.4 0 -10.8T7.4 0z" fill="var(--art-clay)" ${INK}/>
+    ${SH('M2.4 -10.4Q7.8 -8 7.4 0H3.4Q5 -6 2.4 -10.4z')}${HI('M-6.4 -2Q-6.8 -9 -1 -10.2Q-4.6 -7 -4.6 -2z')}
+    <circle cx="0" cy="-2.6" r="6" fill="url(#fire)" opacity=".9"/>
+    <path d="M-2.8 0V-2.6Q-2.8 -5.4 0 -5.4T2.8 -2.6V0z" fill="#2a1406"/>
+    <path d="M-1.4 0Q-1.8 -2 -.2 -3.6Q0 -2.2 1.2 -1.6Q1.6 -.6 1.2 0z" fill="var(--art-veg)"/>
+    <path d="M1.6 -10.4v-3.4h2.4v4.2" fill="var(--art-clay-lt)" ${INK}/>`);
+
+  const lectern = (x, y, s) => at(x, y, s, `${shadow(0, 0, 4.4)}
+    <path d="M-.6 0V-6.4H.6V0zM-3 0H3" stroke="var(--art-wood-dk)" stroke-width=".9"/>
+    <path d="M-5.2 -6.2L0 -8.4L5.2 -6.2L0 -4.6z" fill="var(--art-plate)" ${INK}/>
+    <path d="M0 -8.4V-4.6" stroke="var(--art-ink)" stroke-width=".4"/>
+    ${[-6.9, -6.3, -5.7].map((ly) => `<path d="M-3.4 ${ly + .4}L-.8 ${ly - .6}M.8 ${ly - .6}L3.4 ${ly + .4}" stroke="var(--art-ink)" stroke-width=".3" opacity=".6"/>`).join('')}`);
+
+  const fence = (x1, x2, y, s, back) => {
+    let out = '';
+    const n = Math.max(2, Math.round((x2 - x1) / 5));
+    for (let i = 0; i <= n; i++) {
+      const px = x1 + (x2 - x1) * i / n;
+      out += `<rect x="${px - .6}" y="${y - 6 * s}" width="${1.2 * s}" height="${6.2 * s}" rx=".3" fill="var(--art-fence-dk)" ${INK}/>`;
+    }
+    const rail = (ry) => `<rect x="${x1 - .5}" y="${ry}" width="${x2 - x1 + 1}" height="${1 * s}" rx=".4" fill="var(--art-fence)" ${INK}/>
+      <rect x="${x1}" y="${ry + .15}" width="${x2 - x1}" height=".3" fill="#fff" opacity=".35"/>`;
+    return (back ? '' : shadow((x1 + x2) / 2, y + .2, (x2 - x1) / 2)) + out + rail(y - 4.6 * s) + rail(y - 2.4 * s);
+  };
+
+  const carrots = (x, y, s) => at(x, y, s, `${[-4, 0, 4].map((cx) => `
+    <path d="M${cx - 1.1} -1.6Q${cx} 2.4 ${cx + 1.1} -1.6z" fill="var(--art-veg)" ${INK}/>
+    <path d="M${cx} -1.6l-1.4 -3.4M${cx} -1.6l0 -4M${cx} -1.6l1.4 -3.4" stroke="var(--art-reed)" stroke-width=".8" stroke-linecap="round"/>`).join('')}
+    <ellipse cx="0" cy="-1.5" rx="7" ry=".9" fill="var(--art-soil-dk)" opacity=".6"/>`);
+
+  const cradle = (x, y, s) => at(x, y, s, `${shadow(0, 0, 5)}
+    <path d="M-5.4 -1Q0 2 5.4 -1" fill="none" stroke="var(--art-wood-dk)" stroke-width=".9"/>
+    <path d="M-5 -2L-4.6 -6.4H4.6L5 -2Q0 -.4 -5 -2z" fill="var(--art-wood)" ${INK}/>
+    <path d="M-4 -6.4Q0 -8.6 4 -6.4" fill="var(--art-plate)" ${INK}/>
+    <circle cx="-2" cy="-7" r="1.6" fill="var(--art-sheep-face)" ${INK}/>${SH('M1 -6.4H4.6L5 -2Q3 -1.2 1.4 -1.4z')}`);
+
+  const startDisc = (x, y, s) => at(x, y, s, `${shadow(0, 0, 3.4)}
+    <ellipse cx="0" cy="-1.4" rx="3.4" ry="1.5" fill="var(--art-seal)" ${INK}/>
+    <ellipse cx="0" cy="-2.2" rx="3.4" ry="1.5" fill="var(--art-seal)" ${INK}/>
+    <ellipse cx="-.8" cy="-2.6" rx="1.6" ry=".5" fill="#fff" opacity=".5"/>`);
+
+  const well = (x, y, s) => at(x, y, s, `${shadow(0, 0, 5.4)}
+    <rect x="-4.4" y="-4" width="8.8" height="4" rx="1" fill="var(--art-stone)" ${INK}/>
+    <path d="M-4.4 -2.4H4.4" stroke="#000" stroke-width=".3" opacity=".3"/>
+    <path d="M-3.8 -4V-10M3.8 -4V-10" stroke="var(--art-wood-dk)" stroke-width=".9"/>
+    <path d="M-5.4 -9.6L0 -12.6L5.4 -9.6z" fill="var(--art-roof)" ${INK}/>`);
 
   const SCENES = {
-    farmland: () => SKY() + `<path d="M-34 26h124v36H-34z" fill="var(--art-soil)"/>` +
-      [30, 36, 42].map((y) => `<path d="M-20 ${y}q16 -3 30 0t30 0 30 0" fill="none" stroke="var(--art-soil-dk)" stroke-width="2.6" stroke-linecap="round"/>`).join('') + put('plow', 16, 6, .9),
-    grain_seeds: () => SKY() + GROUND() + put('grain', 12, 6, 1.2) + put('grain', 28, 10, .9),
-    farm_expansion: () => SKY() + GROUND() +
-      `<path d="M2 18L16 5l14 13z" fill="var(--art-roof)" stroke="${ink}" stroke-width="1.6" stroke-linejoin="round"/>
-       <rect x="6" y="17" width="20" height="14" fill="var(--art-wood)" stroke="${ink}" stroke-width="1.6"/>
-       <path d="M6 22h20M6 26h20" stroke="var(--art-wood-dk)" stroke-width="1.4"/>` + put('hammer', 30, 5, .9),
-    meeting_place: () => SKY() + GROUND() + put('start', 8, 10, 1) + put('person', 30, 8, .95),
-    lessons: () => SKY() + GROUND() + put('book', 6, 8, 1.1) + put('person', 32, 9, .9),
-    day_laborer: () => SKY() + GROUND() + put('person', 6, 8, 1) + put('food', 30, 12, 1),
-    forest: () => SKY() + GROUND('var(--art-grass-dk)') + put('tree', 2, 4, 1.1) + put('tree', 20, 8, .95) + put('tree', 36, 5, 1.05),
-    clay_pit: () => SKY() + `<path d="M-34 28h124v34H-34z" fill="var(--art-soil-dk)"/>` + put('clay', 8, 10, 1.2) + put('clay', 28, 14, .85),
-    reed_bank: () => SKY() + `<path d="M-34 32h124v30H-34z" fill="var(--art-water)"/>` + put('reed', 8, 6, 1.2) + put('reed', 28, 9, 1),
-    fishing: () => SKY() + `<path d="M-34 24h124v38H-34z" fill="var(--art-water)"/>` + put('fish', 8, 10, 1.1) + put('fish', 30, 18, .75),
-    major: () => SKY() + GROUND() + `<path d="M10 28h30l-4-16H14z" fill="var(--art-clay)" stroke="${ink}" stroke-width="1.6" stroke-linejoin="round"/>
-      <path d="M18 24c1-4 3-5 3-8 2 2 4 3 4 6s-2 4-3.4 4z" fill="var(--art-food)" stroke="${ink}" stroke-width="1.2"/>`,
-    sheep_market: () => SKY() + GROUND('var(--art-pasture)') + put('sheep', 6, 8, 1.15) + put('sheep', 28, 12, .85),
-    pig_market: () => SKY() + GROUND('var(--art-pasture)') + put('boar', 6, 8, 1.15) + put('boar', 28, 12, .85),
-    cattle_market: () => SKY() + GROUND('var(--art-pasture)') + put('cattle', 4, 8, 1.15) + put('cattle', 28, 12, .8),
-    fencing: () => SKY() + GROUND('var(--art-pasture)') +
-      `<g>${[6, 24, 42].map((x) => `<rect x="${x}" y="9" width="5" height="20" rx="2" fill="var(--art-fence-dk)" stroke="${ink}" stroke-width="1.3"/>`).join('')}
-      <rect x="4" y="12" width="44" height="5" rx="2.5" fill="var(--art-fence)" stroke="${ink}" stroke-width="1.3"/>
-      <rect x="4" y="22" width="44" height="5" rx="2.5" fill="var(--art-fence)" stroke="${ink}" stroke-width="1.3"/></g>`,
-    grain_util: () => SKY() + GROUND() + put('grain', 4, 8, 1.1) + put('food', 28, 12, 1.1),
-    family_growth: () => SKY() + GROUND() + put('person', 2, 8, 1) + put('person', 22, 10, .85) + put('person', 38, 16, .6),
-    renovation: () => SKY() + GROUND() +
-      `<path d="M4 20L18 6l14 14z" fill="var(--art-roof)" stroke="${ink}" stroke-width="1.6" stroke-linejoin="round"/>
-       <rect x="8" y="19" width="20" height="13" fill="var(--art-clay)" stroke="${ink}" stroke-width="1.6"/>` + put('hammer', 32, 4, .85),
-    west_quarry: () => SKY() + `<path d="M-34 28h124v34H-34z" fill="var(--art-stone-lt)"/>` + put('stone', 6, 10, 1.2) + put('stone', 28, 14, .85),
-    veg_seeds: () => SKY() + GROUND() + put('veg', 10, 6, 1.2) + put('veg', 28, 12, .85),
-    cultivation: () => SKY() + `<path d="M-34 26h124v36H-34z" fill="var(--art-soil)"/>` + put('plow', 4, 8, .95) + put('grain', 30, 8, 1),
-    urgent_growth: () => SKY() + GROUND() + put('person', 4, 6, 1.15) + put('person', 30, 16, .7),
-    farm_redev: () => SKY() + GROUND() +
-      `<path d="M2 20L16 6l14 14z" fill="var(--art-roof)" stroke="${ink}" stroke-width="1.6" stroke-linejoin="round"/>
-       <rect x="6" y="19" width="20" height="13" fill="var(--art-stone)" stroke="${ink}" stroke-width="1.6"/>
-       <rect x="34" y="10" width="4" height="20" rx="2" fill="var(--art-fence-dk)" stroke="${ink}" stroke-width="1.2"/>
-       <rect x="46" y="10" width="4" height="20" rx="2" fill="var(--art-fence-dk)" stroke="${ink}" stroke-width="1.2"/>
-       <rect x="32" y="14" width="20" height="4" rx="2" fill="var(--art-fence)" stroke="${ink}" stroke-width="1.2"/>`,
+    farmland: () => land('farmland', { bare: true }) + furrows() + tree(56, 14, .6) + plough(22, 21, 1.15),
+    grain_seeds: () => land('grain_seeds') + sheaf(14, 21, 1.15) + sack(30, 21.5, 1.05) + sheaf(44, 17, .75),
+    farm_expansion: () => land('farm_expansion') + house(14, 21, .95, 'wood') + logs(38, 21, .9) + tree(56, 16, .55),
+    meeting_place: () => land('meeting_place') + well(4, 20, .9) + person(22, 21.5, 1, 'var(--p1)') +
+      person(30, 21, .95, 'var(--p2)') + startDisc(42, 21.5, 1),
+    lessons: () => land('lessons') + tree(-4, 18, .8) + lectern(16, 21, 1.1) + person(28, 21.5, .95, 'var(--occ-frame)') +
+      person(38, 21, .8, 'var(--p1)') + person(46, 20.5, .7, 'var(--p2)'),
+    day_laborer: () => land('day_laborer') + tree(-2, 17, .8) + person(18, 21.5, 1.1, 'var(--p1)') + bread(30, 21.5, 1) +
+      bread(37, 21, .8) + sack(48, 20, .8),
+    forest: () => land('forest', { far: 'var(--art-tree)' }) + pine(-6, 16, .9) + pine(42, 15.5, .85) + tree(54, 18, .8) +
+      pine(8, 19, 1.15) + pine(28, 21.5, 1.25) + logs(16, 22, .6),
+    clay_pit: () => land('clay_pit', { ground: 'var(--art-soil)', bare: true }) +
+      `<ellipse cx="18" cy="21" rx="16" ry="3.6" fill="var(--art-soil-dk)"/><ellipse cx="18" cy="20.4" rx="13" ry="2.4" fill="var(--art-clay)" opacity=".85"/>` +
+      bricks(38, 21.5, 1.05) + tree(56, 15, .55),
+    reed_bank: () => land('reed_bank', { bare: true }) + water('reed_bank') + reeds(2, 21, 1) + reeds(24, 22, 1.15) + reeds(44, 19.5, .8),
+    fishing: () => land('fishing', { bare: true }) + water('fishing') + boat(8, 19, .9) + fish(30, 18, 1.05) + fish(44, 21, .8, true),
+    major: () => land('major') + oven(22, 21.5, 1.15) + bread(38, 21.5, .9) + logs(4, 21, .7),
+    sheep_market: () => land('sheep_market', { ground: 'var(--art-pasture)' }) + fence(-12, 64, 16.5, .8, true) +
+      sheep(10, 21, 1.1) + sheep(26, 21.5, 1.2) + sheep(42, 20, .9),
+    pig_market: () => land('pig_market', { ground: 'var(--art-pasture)' }) + fence(-12, 64, 16.5, .8, true) +
+      boar(12, 21.5, 1.15) + boar(32, 20.5, 1) + tree(54, 16, .6),
+    cattle_market: () => land('cattle_market', { ground: 'var(--art-pasture)' }) + fence(-12, 64, 16.5, .8, true) +
+      cow(14, 21.5, 1.15) + cow(36, 20.5, .95),
+    fencing: () => land('fencing', { ground: 'var(--art-pasture)' }) + fence(-8, 58, 18, 1.1) + fence(-2, 40, 22.5, 1.3) +
+      logs(50, 22, .6),
+    grain_util: () => land('grain_util') + sheaf(4, 21, 1) + oven(24, 21.5, 1) + bread(38, 21.5, .9) + bread(45, 21, .75),
+    family_growth: () => land('family_growth') + house(8, 21, .95, 'wood') + person(26, 21.5, 1, 'var(--p1)') +
+      person(33, 21.5, .95, 'var(--p2)') + person(29.5, 21.8, .6, 'var(--occ-frame)'),
+    renovation: () => land('renovation') + house(14, 21, 1, 'clay', { scaffold: true }) + bricks(36, 21.5, .85) + rock(48, 21, .7),
+    west_quarry: () => land('west_quarry', { ground: 'var(--art-stone-lt)', far: 'var(--art-stone)', bare: true }) +
+      `<path d="M-34 ${H + 3}L-8 -2L10 6L22 ${H + 3}z" fill="var(--art-stone)" stroke="var(--art-ink)" stroke-width=".7"/>
+       <path d="M-8 -2L10 6L4 9L-6 4z" fill="#fff" opacity=".2"/>` +
+      rock(18, 21, 1.1) + rock(32, 22, .85) + rock(44, 19.5, .7),
+    veg_seeds: () => land('veg_seeds') + `<path d="M-12 18H64V24H-12z" fill="var(--art-soil)" opacity=".85"/>` +
+      carrots(8, 21.5, 1.25) + carrots(28, 22, 1.35) + carrots(47, 21, 1.05),
+    cultivation: () => land('cultivation', { bare: true }) + furrows() + plough(8, 21, .95) + sheaf(36, 21.5, 1) + sack(48, 21, .8),
+    urgent_growth: () => land('urgent_growth') + house(4, 20, .8, 'wood') + person(24, 21.5, 1, 'var(--p1)') + cradle(36, 21.5, 1.05),
+    farm_redev: () => land('farm_redev', { ground: 'var(--art-pasture)' }) + house(10, 21, .95, 'stone') +
+      fence(26, 60, 21.5, .95) + sheep(44, 19.4, .7),
   };
-  SCENES.east_quarry = SCENES.west_quarry;
+  SCENES.east_quarry = () => SCENES.west_quarry().replace(/west_quarry/g, 'east_quarry');
+  const SKY = () => `<rect x="-34" y="-14" width="124" height="76" fill="var(--art-sky)"/>`;
+  const GROUND = () => '';
 
-  // A scene scaled into an arbitrary box, cropped rather than letterboxed.
-  function scene(id, x, y, w, h) {
+  // A scene scaled into an arbitrary box. `open` is how much of the box stays uncovered
+  // above the name plate: the subject strip (x −3…55, y 1…23) is fitted into exactly that,
+  // and the landscape simply continues underneath the plate.
+  function scene(id, x, y, w, h, open) {
     const f = SCENES[id] || (() => SKY() + GROUND());
-    return `<svg x="${x}" y="${y}" width="${w}" height="${h}" viewBox="-24 -2 100 56" preserveAspectRatio="xMidYMid slice">${f()}</svg>`;
+    const vis = open || h * 0.5;
+    const s = Math.min(w / 58, vis / 22);
+    const vw = w / s, vh = h / s;
+    const vx = 26 - vw / 2, vy = 23 - vis / s;
+    return `<svg x="${x}" y="${y}" width="${w}" height="${h}" viewBox="${vx.toFixed(2)} ${vy.toFixed(2)} ${vw.toFixed(2)} ${vh.toFixed(2)}" preserveAspectRatio="none">${f()}</svg>`;
   }
 
   // A parchment name plate, the kind printed on a board space: the name, its English

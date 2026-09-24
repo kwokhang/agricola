@@ -390,7 +390,7 @@ const View3D = (function () {
         .plate-en{font-size:10px;fill:var(--art-ink);opacity:.6}
         .plate-note{font-size:11.5px;fill:var(--art-ink);opacity:.85}</style>
       <rect width="${w}" height="${h}" fill="var(--art-boardface)"/>
-      ${ART.scene(def.id, 0, 0, w, h)}
+      ${ART.scene(def.id, 0, 0, w, h, h - plateH - 6)}
       ${ART.plate(6, h - plateH - 6, w - 12, plateH, def.zh, en, notes)}
       <rect width="${w}" height="${h}" fill="none" stroke="var(--art-ink)" stroke-width="3"/></svg>`;
     return svgTexture(`sp:${def.id}:${notes.join('|')}:${w}`, svg, w * 2, h * 2);

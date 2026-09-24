@@ -162,7 +162,7 @@
     let s = `<g class="sp ${free ? 'free' : ''}" transform="translate(${x} ${y})">
       <clipPath id="clip${key}"><rect width="${w}" height="${h}" rx="9"/></clipPath>
       <g clip-path="url(#clip${key})">
-        ${ART.scene(def.id, 0, 0, w, h)}
+        ${ART.scene(def.id, 0, 0, w, h, h - plateH - 6)}
         ${ART.plate(6, h - plateH - 6, plateW, plateH, esc(def.zh), en, notes.map(esc))}
         ${sp.occupiedBy !== null ? `<rect width="${w}" height="${h}" fill="var(--art-ink)" opacity=".3"/>` : ''}
       </g>
