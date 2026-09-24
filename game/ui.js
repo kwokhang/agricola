@@ -18,7 +18,7 @@
 
   let G = null;
   const UI = {
-    main: 'table', view: 0, lastCurrent: 0, autoKey: '', hand: true,
+    main: 'table', view: 0, lastCurrent: 0, autoKey: '', handPinned: false,
     buildKind: 'room', sowKind: 'grain', cardTab: 'occ', drawerTab: 'log', allres: false,
   };
 
@@ -72,7 +72,8 @@
     const held = p.hand.occ.length + p.hand.min.length;
     $('mainTabs').innerHTML = tabs.map(([k, l]) =>
       `<button data-main="${k}" class="${UI.main === k ? 'sel' : ''}">${esc(l)}</button>`).join('')
-      + (has3d ? `<button data-act="hand" class="${UI.hand ? 'sel' : ''}">${UI.hand ? '▼' : '▲'} 手牌 ${held}</button>` : '');
+      + (has3d ? `<button data-act="hand" class="${UI.handPinned ? 'sel' : ''}"
+          title="手牌平時收埋，要打卡先會自動彈出；撳呢個掣可以一直攤開">${UI.handPinned ? '▼ 收起' : '▲ 攤開'}手牌 ${held}</button>` : '');
 
     $('playerTabs').innerHTML = G.n < 2 ? '' : '睇邊個：' + G.players.map((q, i) =>
       `<button data-view="${i}" class="${i === UI.view ? 'sel' : ''}">${ART.meeple(PCOLOR[i], 14)} ${esc(q.name)}</button>`).join('');
@@ -434,7 +435,9 @@
           ? `<div class="row">${btn('renovate', `翻新為${HOUSE_ZH[nextHouse(p)]} ${costText(cost)}`, !canPay(p, cost))}${btn('skip', '跳過')}</div>`
           : `<div class="row">${btn('skip', '跳過')}<span class="muted">${p.noRenovate ? '壁爐架令你唔可以再翻新。' : '已經係石屋，唔使翻新。'}</span></div>`;
       } else {
-        body = `<div class="row">${btn('skip', '跳過')}<span class="muted">喺「卡片」撳「打出」。</span></div>`;
+        body = `<div class="row">${btn('skip', '跳過')}<span class="muted">${has3d
+          ? '手牌彈咗出嚟，撳一張金框嘅打出；主要發展直接喺檯上撳。'
+          : '喺「卡片」撳「打出」。'}</span></div>`;
       }
 
       parts.push(`<div class="panel"><h3>${esc(title)} — ${esc(STEP_ZH[st] || st)}</h3>
@@ -591,7 +594,10 @@
     const st = currentStep(G);
     if (!st) return G.feeding ? null : 'board';
     if (['plow', 'build', 'cottager', 'freestable', 'minipasture', 'sow', 'fences'].includes(st)) return 'farm';
-    if (['playOcc', 'playMinor', 'playImprovement', 'playAny'].includes(st)) return 'cards';
+    // Occupations and minors come out of the hand, which pops up by itself; only a major
+    // needs the camera to go to the cards on the table.
+    if (st === 'playImprovement') return 'cards';
+    if (['playOcc', 'playMinor', 'playAny'].includes(st)) return has3d ? null : 'cards';
     return null;                       // bake, growth, renovate: all done from the dock
   }
 
@@ -674,7 +680,7 @@
     const v = t.dataset.v;
     switch (t.dataset.act) {
       case 'allres': UI.allres = !UI.allres; break;
-      case 'hand': UI.hand = !UI.hand; break;
+      case 'hand': UI.handPinned = !UI.handPinned; break;
       case 'buildKind': UI.buildKind = v; break;
       case 'sowKind': UI.sowKind = v; break;
       case 'sowBean': sowBeanfield(G); break;

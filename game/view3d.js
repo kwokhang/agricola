@@ -14,15 +14,22 @@ const View3D = (function () {
   const BOARD_Y = 0.06;            // top surface of a board
   const CARD_W = 1.0, CARD_H = 1.4;
 
-  // Where each component sits on the table. Seats face each other across the action board.
+  // Where each component sits on the table, packed the way people actually play: the action
+  // board in the middle, your farm tucked right under its left half and the major
+  // improvements under its right half, your supply and played cards in front of those.
+  // The other seat is the same arrangement turned round on the far side.
   const LAYOUT = {
-    board: { x: 0, z: -3.6 },
-    majors: { x: -9.6, z: -3.6 },
-    seat: [{ x: 0, z: 3.2, rot: 0 }, { x: 0, z: -10.4, rot: Math.PI }],
-    farm: { x: 0, z: 0 },          // seat-local
-    played: { x: 5.0, z: 0 },      // seat-local
-    supply: { x: 0.2, z: 2.95 },   // seat-local
+    board: { x: 0, z: -3.6 },                                   // spans z -6.2 … -1.0
+    majors: { x: 3.0, z: 1.05 },                                // world; beside your farm
+    seat: [{ x: 0, z: 1.0, rot: 0 }, { x: 0, z: -8.2, rot: Math.PI }],
+    farm: { x: -3.0, z: 0 },                                    // seat-local
+    plate: { x: -4.4, z: 1.98 },                                // seat-local
+    supply: { x: -3.0, z: 2.95 },                               // seat-local
+    // Seat 0 lays played cards in front of the majors; seat 1 has no majors beside it,
+    // so its cards take that spot instead.
+    played: [{ x: 0.9, z: 3.2 }, { x: 0.9, z: -0.35 }],        // seat-local, first card
   };
+  const MAJ_W = 0.95, MAJ_H = 1.33;
 
   let renderer, scene, camera, raycaster, host, canvas;
   let root, tableGroup, handGroup, pickables = [], hoverables = [];
@@ -38,7 +45,7 @@ const View3D = (function () {
     '--art-food', '--art-sheep', '--art-sheep-face', '--art-boar', '--art-cattle', '--art-cattle-spot',
     '--art-roof', '--art-window', '--art-stable-door', '--art-fence', '--art-fence-dk', '--art-tree',
     '--art-water', '--art-sky', '--art-plate', '--art-token', '--art-count', '--art-frame',
-    '--art-boardface', '--art-slot', '--art-seal', '--art-edge', '--art-board', '--art-table',
+    '--art-boardface', '--art-slot', '--art-seal', '--art-edge', '--art-board', '--art-table', '--art-mat',
     '--occ-frame', '--occ-tint', '--occ-ink', '--min-frame', '--min-tint', '--min-ink',
     '--maj-frame', '--maj-tint', '--maj-ink', '--rnd-frame', '--rnd-tint', '--rnd-ink',
     '--bg', '--panel', '--ink', '--muted', '--accent', '--p1', '--p2'];
@@ -674,9 +681,16 @@ const View3D = (function () {
       const x = -2.45 + i * 0.545;
       const slot = box(0.48, 0.02, 0.9, col('--art-boardface'), x, 0.05, 0);
       g.add(slot);
+      // Each slot is printed with the goods it holds, like the recesses on a player mat.
+      const icon = new T.Mesh(geo('slotIcon', () => new T.PlaneGeometry(0.34, 0.34)),
+        new T.MeshBasicMaterial({ transparent: true, depthWrite: false, opacity: n ? 0.9 : 0.45,
+          map: svgTexture('slot:' + k, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="128" height="128">${ART.ICONS[k] || ''}</svg>`, 128, 128) }));
+      icon.rotation.x = -Math.PI / 2;
+      icon.position.set(x, 0.065, -0.24);
+      g.add(icon);
       if (!n) return;
       const pile = goodsPile(k, n, { spread: 0.34, max: 3, alwaysCount: true });
-      pile.position.set(x, 0.06, 0);
+      pile.position.set(x, 0.06, 0.14);
       pile.scale.setScalar(0.62);
       g.add(pile);
     });
@@ -699,7 +713,7 @@ const View3D = (function () {
     const plate = new T.Mesh(geo('nameplate', () => new T.PlaneGeometry(1.9, 0.44)),
       new T.MeshBasicMaterial({ map: svgTexture(`name:${pi}:${p.name}:${sub}`, nameSvg(p.name, sub, `var(${colour})`), 520, 120), transparent: true }));
     plate.rotation.x = -Math.PI / 2;
-    plate.position.set(-1.75, 0.075, 1.98);
+    plate.position.set(LAYOUT.plate.x, 0.075, LAYOUT.plate.z);
     plate.userData.hover = { kind: 'seat', pi };
     if (pi !== UI.view) {
       plate.userData.pick = { type: 'seat', pi };
@@ -710,34 +724,36 @@ const View3D = (function () {
 
     for (let i = 0; i < p.people; i++) {
       const m = meeple(col(colour), i < p.workersLeft ? 1 : 0.85);
-      m.position.set(0.55 + i * 0.42, 0.06, 1.98);
+      m.position.set(LAYOUT.plate.x + 1.35 + i * 0.42, 0.06, LAYOUT.plate.z);
       if (i >= p.workersLeft) { m.rotation.z = Math.PI / 2; m.position.y = 0.12; }
       g.add(m);
     }
     if (acting) {
-      g.add(outline(5.6, 3.6, 0.09, col(colour).getHex(), 0.07));
+      g.add(outline(5.6, 3.6, 0.09, col(colour).getHex(), 0.07).translateX(LAYOUT.farm.x).translateZ(LAYOUT.farm.z));
     }
 
     const supply = buildSupply(G, pi);
     supply.position.set(LAYOUT.supply.x, 0, LAYOUT.supply.z);
     g.add(supply);
 
-    // Cards already in front of this player, laid out in columns beside the farm.
-    const played = p.played;
-    played.forEach((c, i) => {
-      const cols = 4;
-      const cx = LAYOUT.played.x + (i % cols) * (CARD_W + 0.14);
-      const cz = LAYOUT.played.z - 1.2 + Math.floor(i / cols) * (CARD_H + 0.16);
-      const m = cardMesh(cardTexture(c, { cost: {} }), CARD_W, CARD_H);
+    // Cards already in front of this player, five to a row.
+    const playedGroup = new T.Group();
+    const at = LAYOUT.played[pi];
+    p.played.forEach((c, i) => {
+      const cx = at.x + (i % 5) * (MAJ_W + 0.11);
+      const cz = at.z + Math.floor(i / 5) * (MAJ_H + 0.12);
+      const m = cardMesh(cardTexture(c, { cost: {} }), MAJ_W, MAJ_H);
       m.position.set(cx, BOARD_Y - 0.02, cz);
       m.rotation.y = ((i * 37) % 11 - 5) * 0.004;
       m.userData.hover = { kind: 'card', uid: c.uid, pi };
-      g.add(m);
+      playedGroup.add(m);
       hoverables.push(m);
     });
+    g.add(playedGroup);
 
     g.position.set(LAYOUT.seat[pi].x, 0, LAYOUT.seat[pi].z);
     g.rotation.y = LAYOUT.seat[pi].rot;
+    g.userData.parts = { farm, played: playedGroup };
     return g;
   }
 
@@ -750,9 +766,10 @@ const View3D = (function () {
     G.majors.forEach((c, i) => {
       const owner = c.taken != null ? G.players[c.taken] : null;
       const cost = cardCost(G, p, c);
-      const m = cardMesh(cardTexture(c, { cost, taken: owner ? owner.name : '' }), CARD_W * 1.15, CARD_H * 1.15);
-      const cx = (i % 2) * (CARD_W * 1.15 + 0.2) - 0.6;
-      const cz = Math.floor(i / 2) * (CARD_H * 1.15 + 0.2) - 3.3;
+      // A 5 × 2 grid, centred on the majors spot.
+      const m = cardMesh(cardTexture(c, { cost, taken: owner ? owner.name : '' }), MAJ_W, MAJ_H);
+      const cx = ((i % 5) - 2) * (MAJ_W + 0.11);
+      const cz = (Math.floor(i / 5) - 0.5) * (MAJ_H + 0.12);
       m.position.set(cx, BOARD_Y - 0.02, cz);
       m.userData.hover = { kind: 'card', uid: c.uid };
       g.add(m);
@@ -760,7 +777,7 @@ const View3D = (function () {
       if (!owner && mine && kinds.includes('maj') && canPay(p, cost)) {
         m.userData.pick = { type: 'card', uid: c.uid };
         pickables.push(m);
-        g.add(outline(CARD_W * 1.2, CARD_H * 1.2, BOARD_Y + 0.02, HILITE, 0.05).translateX(cx).translateZ(cz));
+        g.add(outline(MAJ_W + 0.07, MAJ_H + 0.07, BOARD_Y + 0.02, HILITE, 0.045).translateX(cx).translateZ(cz));
       }
     });
     g.position.set(LAYOUT.majors.x, 0, LAYOUT.majors.z);
@@ -769,8 +786,20 @@ const View3D = (function () {
 
   // ---------------------------------------------------------------- the hand you hold
   // Parented to the camera, so it stays in front of you however the table is framed.
+  // It only slides up when you can play a card or asked to see it; otherwise it is gone.
+  const CARD_STEPS = ['playOcc', 'playMinor', 'playImprovement', 'playAny'];
+  function handShown(G, UI) {
+    if (UI.handPinned) return true;
+    return !G.choice && !G.over && UI.view === G.current && CARD_STEPS.includes(currentStep(G));
+  }
+
+  let handY = -2.4;                      // where the fan is right now, kept across rebuilds
   function buildHand(G, UI) {
     const g = new T.Group();
+    const shown = handShown(G, UI);
+    g.position.set(0, handY, -3.4);
+    g.rotation.x = 0.14;
+    g.userData.goalY = shown ? -0.96 : -2.4;
     const p = G.players[UI.view];
     if (!p) return g;
     const cards = p.hand.occ.concat(p.hand.min);
@@ -796,29 +825,30 @@ const View3D = (function () {
       m.rotation.x = Math.PI / 2;      // stand the card up to face the camera
       slot.add(m);
 
-      m.userData.hand = { slot, baseY: slot.position.y };
+
       m.userData.hover = { kind: 'card', uid: c.uid, hand: true };
-      if (playable) {
+      if (playable && shown) {
         m.userData.pick = { type: 'card', uid: c.uid };
         pickables.push(m);
-        const ring = outline(w + 0.07, h + 0.07, 0, HILITE, 0.035);
-        ring.rotation.x = Math.PI / 2;
-        ring.position.z = 0.012;
-        slot.add(ring);
       }
-      hoverables.push(m);
+      if (playable) {
+        // A gold plate just behind the card, so only a thin rim shows round its edge.
+        const glow = new T.Mesh(geo('handGlow', () => new T.PlaneGeometry(w + 0.05, h + 0.05)),
+          new T.MeshBasicMaterial({ color: HILITE, toneMapped: false }));
+        glow.position.z = -0.012;
+        slot.add(glow);
+        slot.position.y += 0.05;         // playable cards sit a little proud of the fan
+      }
+      m.userData.hand = { slot, baseY: slot.position.y };
+      if (shown) hoverables.push(m);
       g.add(slot);
     });
-
-    // Held just below the line of sight, so the top two thirds of each card show.
-    g.position.set(0, UI.hand === false ? -1.5 : -0.96, -3.4);
-    g.rotation.x = 0.14;
     return g;
   }
 
   // ---------------------------------------------------------------- camera rig
-  const camState = { az: 0, pol: 1.02, dist: 15, target: new T.Vector3(0, 0, -2) };
-  const camGoal = { az: 0, pol: 1.02, dist: 15, target: new T.Vector3(0, 0, -2) };
+  const camState = { az: 0, pol: 0.62, dist: 15, target: new T.Vector3(0, 0, -2) };
+  const camGoal = { az: 0, pol: 0.62, dist: 15, target: new T.Vector3(0, 0, -2) };
   let camTween = 1;
 
   function applyCamera() {
@@ -832,14 +862,19 @@ const View3D = (function () {
 
   // The HUD covers these fractions of the screen, in NDC units (the full screen is 2 wide):
   // the dock on the left, the log rail on the right, the bars on top, the hand along the bottom.
-  const SAFE = { l: 0.20, r: 0.17, t: 0.15, b: 0.34 };
+  // The bottom margin only matters while the hand is up.
+  const SAFE = { l: 0.20, r: 0.17, t: 0.16, b: 0.08 };
+  const SAFE_HAND_B = 0.4;
+  let safeB = SAFE.b;
 
   const FOCUS = {
-    table: () => ({ az: 0, pol: 0.99, pad: 1.02, boxes: ['board', 'seat0', 'majors'] }),
-    board: () => ({ az: 0, pol: 0.94, pad: 1.0, boxes: ['board'] }),
-    farm: (UI) => ({ az: UI.view === 1 ? Math.PI : 0, pol: 1.05, pad: 1.06, boxes: ['seat' + UI.view] }),
-    cards: (UI) => ({ az: UI.view === 1 ? Math.PI : 0, pol: 1.0, pad: 1.04, boxes: ['played' + UI.view, 'majors'] }),
-    majors: () => ({ az: 0, pol: 1.0, pad: 1.04, boxes: ['majors'] }),
+    // pol is the angle from straight down: ~0.6 reads as leaning over the table.
+    table: () => ({ az: 0, pol: 0.62, pad: 1.02, boxes: ['board', 'seat0', 'majors'] }),
+    board: () => ({ az: 0, pol: 0.5, pad: 1.0, boxes: ['board'] }),
+    farm: (UI) => ({ az: UI.view === 1 ? Math.PI : 0, pol: 0.56, pad: 1.04, boxes: ['farm' + UI.view] }),
+    cards: (UI) => ({ az: UI.view === 1 ? Math.PI : 0, pol: 0.52, pad: 1.03,
+      boxes: UI.view === 1 ? ['played1'] : ['majors', 'played0'] }),
+    majors: () => ({ az: 0, pol: 0.52, pad: 1.03, boxes: ['majors'] }),
   };
 
   const focusBoxes = {};
@@ -853,9 +888,9 @@ const View3D = (function () {
       for (const y of [box3.min.y, box3.max.y])
         for (const z of [box3.min.z, box3.max.z]) corners.push(new T.Vector3(x, y, z));
 
-    const availW = 2 - SAFE.l - SAFE.r, availH = 2 - SAFE.t - SAFE.b;
+    const availW = 2 - SAFE.l - SAFE.r, availH = 2 - SAFE.t - safeB;
     const safeCx = -1 + SAFE.l + availW / 2;
-    const safeCy = -1 + SAFE.b + availH / 2;
+    const safeCy = -1 + safeB + availH / 2;
     const v = new T.Vector3();
 
     fitCam.fov = camera.fov;
@@ -901,7 +936,11 @@ const View3D = (function () {
       const b = focusBoxes[key];
       if (b) { box3.union(b); any = true; }
     }
-    if (!any) return;
+    if (!any) {
+      const fb = focusBoxes['farm' + ((UI || lastUI || {}).view || 0)];
+      if (!fb) return;
+      box3.union(fb);
+    }
     const c = box3.getCenter(new T.Vector3());
     camGoal.az = f.az;
     camGoal.pol = f.pol;
@@ -983,6 +1022,163 @@ const View3D = (function () {
     setHover(hits.length ? hits[0].object : null);
   }
 
+  // ---------------------------------------------------------------- the room around the game
+  // A wooden table with a felt play mat on it, lit from above so the light pools on the mat
+  // and falls away into a dark room. All of it is painted procedurally, so it follows the theme.
+  let envGroup = null;
+
+  // Small seeded generator, so the grain does not change between rebuilds.
+  function rng(seed) {
+    let s = seed >>> 0;
+    return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);
+  }
+
+  function shade(c, dl) { return c.clone().offsetHSL(0, 0, dl).getStyle(); }
+
+  function woodTexture() {
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = 1024;
+    const x = cv.getContext('2d');
+    const base = col('--art-table');
+    const r = rng(7);
+    const plank = 128;
+    for (let row = 0; row < 1024 / plank; row++) {
+      const y0 = row * plank;
+      x.fillStyle = shade(base, (r() - 0.5) * 0.06);
+      x.fillRect(0, y0, 1024, plank);
+      // Grain: long, gently wavy strokes running along the plank.
+      for (let k = 0; k < 46; k++) {
+        const y = y0 + r() * plank;
+        const amp = 1 + r() * 4, freq = 0.004 + r() * 0.01, ph = r() * 6.28;
+        x.strokeStyle = shade(base, (r() - 0.55) * 0.14);
+        x.globalAlpha = 0.18 + r() * 0.3;
+        x.lineWidth = 0.6 + r() * 1.8;
+        x.beginPath();
+        for (let px = 0; px <= 1024; px += 16) {
+          const py = y + Math.sin(px * freq + ph) * amp;
+          if (px === 0) x.moveTo(px, py); else x.lineTo(px, py);
+        }
+        x.stroke();
+      }
+      // A knot now and then.
+      if (r() < 0.6) {
+        const kx = r() * 1024, ky = y0 + 20 + r() * (plank - 40);
+        for (let ring = 6; ring > 0; ring--) {
+          x.globalAlpha = 0.12;
+          x.strokeStyle = shade(base, -0.12);
+          x.lineWidth = 1.4;
+          x.beginPath();
+          x.ellipse(kx, ky, ring * 7, ring * 2.6, 0, 0, Math.PI * 2);
+          x.stroke();
+        }
+      }
+      x.globalAlpha = 0.55;
+      x.fillStyle = shade(base, -0.16);
+      x.fillRect(0, y0, 1024, 2.5);                    // the seam between planks
+      x.globalAlpha = 1;
+    }
+    const tex = new T.CanvasTexture(cv);
+    tex.colorSpace = T.SRGBColorSpace;
+    tex.wrapS = tex.wrapT = T.RepeatWrapping;
+    tex.anisotropy = 8;
+    return tex;
+  }
+
+  // Felt: fine speckle, a slightly lighter centre, and a stitched border.
+  function matTexture(w, h) {
+    const cv = document.createElement('canvas');
+    cv.width = 1024; cv.height = Math.round(1024 * h / w);
+    const x = cv.getContext('2d');
+    const base = col('--art-mat');
+    const W = cv.width, H = cv.height;
+    x.fillStyle = base.getStyle();
+    x.fillRect(0, 0, W, H);
+    const glow = x.createRadialGradient(W / 2, H * 0.45, 0, W / 2, H * 0.45, Math.max(W, H) * 0.7);
+    glow.addColorStop(0, shade(base, 0.05));
+    glow.addColorStop(1, shade(base, -0.05));
+    x.fillStyle = glow;
+    x.fillRect(0, 0, W, H);
+    const r = rng(11);
+    for (let i = 0; i < 26000; i++) {
+      x.fillStyle = r() < 0.5 ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.07)';
+      x.fillRect(r() * W, r() * H, 1.4, 1.4);
+    }
+    const inset = 26;
+    x.strokeStyle = shade(base, 0.2);
+    x.globalAlpha = 0.55;
+    x.lineWidth = 3;
+    x.setLineDash([14, 9]);
+    x.strokeRect(inset, inset, W - inset * 2, H - inset * 2);
+    x.setLineDash([]);
+    x.globalAlpha = 0.35;
+    x.lineWidth = 1.5;
+    x.strokeRect(inset + 12, inset + 12, W - (inset + 12) * 2, H - (inset + 12) * 2);
+    x.globalAlpha = 1;
+    const tex = new T.CanvasTexture(cv);
+    tex.colorSpace = T.SRGBColorSpace;
+    tex.anisotropy = 8;
+    return tex;
+  }
+
+  // The room: warm in the middle, near black at the edges. Drawn behind everything.
+  function backdropTexture() {
+    const cv = document.createElement('canvas');
+    cv.width = 512; cv.height = 512;
+    const x = cv.getContext('2d');
+    const base = col('--art-table');
+    const g = x.createRadialGradient(256, 200, 20, 256, 256, 380);
+    g.addColorStop(0, shade(base, -0.08));
+    g.addColorStop(0.6, shade(base, -0.2));
+    g.addColorStop(1, shade(base, -0.3));
+    x.fillStyle = g;
+    x.fillRect(0, 0, 512, 512);
+    const tex = new T.CanvasTexture(cv);
+    tex.colorSpace = T.SRGBColorSpace;
+    return tex;
+  }
+
+  function buildEnvironment() {
+    if (envGroup) {
+      envGroup.traverse((o) => {
+        if (!o.isMesh) return;
+        const ms = Array.isArray(o.material) ? o.material : [o.material];
+        ms.forEach((m) => { if (m.map) m.map.dispose(); m.dispose(); });
+      });
+      scene.remove(envGroup);
+    }
+    envGroup = new T.Group();
+
+    // The table: a thick wooden top, big enough that its edges fall into the dark.
+    const wood = woodTexture();
+    wood.repeat.set(5, 4);
+    const woodMat = new T.MeshStandardMaterial({ map: wood, roughness: 0.62, metalness: 0 });
+    const table = new T.Mesh(new T.BoxGeometry(40, 0.8, 32), woodMat);
+    table.position.set(0, -0.09 - 0.4, -3.6);
+    table.receiveShadow = true;
+    envGroup.add(table);
+
+    // The play mat under both seats and the action board.
+    const mw = 14.2, mh = 18.4;
+    const mat = new T.Mesh(new T.BoxGeometry(mw, 0.03, mh), [
+      new T.MeshStandardMaterial({ color: col('--art-mat'), roughness: 1 }),
+      new T.MeshStandardMaterial({ color: col('--art-mat'), roughness: 1 }),
+      new T.MeshStandardMaterial({ map: matTexture(mw, mh), roughness: 1 }),
+      new T.MeshStandardMaterial({ color: col('--art-mat'), roughness: 1 }),
+      new T.MeshStandardMaterial({ color: col('--art-mat'), roughness: 1 }),
+      new T.MeshStandardMaterial({ color: col('--art-mat'), roughness: 1 }),
+    ]);
+    mat.position.set(0, -0.075, -3.6);
+    mat.receiveShadow = true;
+    envGroup.add(mat);
+
+    scene.add(envGroup);
+    const bd = backdropTexture();
+    if (scene.background && scene.background.isTexture) scene.background.dispose();
+    scene.background = bd;
+    const fogCol = col('--art-table').clone().offsetHSL(0, 0, -0.3);
+    scene.fog = new T.Fog(fogCol, 26, 58);
+  }
+
   // ---------------------------------------------------------------- lifecycle
   function init(hostEl, handlers) {
     if (ready) return true;
@@ -1011,12 +1207,17 @@ const View3D = (function () {
     root = new T.Group();
     scene.add(root);
 
-    const hemi = new T.HemisphereLight(0xffffff, 0x8a7550, 1.15);
+    // A dim room, one warm lamp over the play area, and a key light for the shadows.
+    const hemi = new T.HemisphereLight(0xffffff, 0x6d5a3a, 0.55);
     scene.add(hemi);
-    const fill = new T.DirectionalLight(0xdce8ff, 0.55);
+    const fill = new T.DirectionalLight(0xdce8ff, 0.35);
     fill.position.set(-9, 7, 4);
     scene.add(fill);
-    const sun = new T.DirectionalLight(0xfff1d6, 2.5);
+    const lamp = new T.SpotLight(0xffe7c2, 2.6, 0, 0.62, 0.75, 0);
+    lamp.position.set(0, 22, -2.6);
+    lamp.target.position.set(0, 0, -3.6);
+    scene.add(lamp, lamp.target);
+    const sun = new T.DirectionalLight(0xfff1d6, 1.5);
     sun.position.set(6, 15, 8);
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
@@ -1029,14 +1230,9 @@ const View3D = (function () {
     scene.add(sun);
     scene.userData.sun = sun;
 
-    const table = new T.Mesh(new T.PlaneGeometry(90, 90),
-      new T.MeshStandardMaterial({ color: col('--art-table'), roughness: 0.95 }));
-    table.rotation.x = -Math.PI / 2;
-    table.position.y = -0.09;
-    table.receiveShadow = true;
-    scene.add(table);
-    scene.userData.table = table;
-    scene.background = col('--art-table').clone().multiplyScalar(0.6);
+    theme = document.documentElement.getAttribute('data-theme') ||
+      (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    buildEnvironment();
 
     installControls();
     applyCamera();
@@ -1075,7 +1271,7 @@ const View3D = (function () {
     if (!ready) return;
     const nowTheme = document.documentElement.getAttribute('data-theme') ||
       (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-    if (nowTheme !== theme) { theme = nowTheme; texCache.clear(); }
+    if (nowTheme !== theme) { theme = nowTheme; texCache.clear(); buildEnvironment(); }
     const sameView = lastUI && lastUI.main === UI.main && lastUI.view === UI.view;
     lastG = G; lastUI = Object.assign({}, UI);
 
@@ -1098,31 +1294,40 @@ const View3D = (function () {
 
     handGroup = buildHand(G, UI);
     camera.add(handGroup);
+    const handUp = handShown(G, UI);
+    const handChanged = handUp !== (safeB === SAFE_HAND_B);
+    safeB = handUp ? SAFE_HAND_B : SAFE.b;
 
     focusBoxes.board = boxOf(board);
     focusBoxes.majors = boxOf(majors);
     seats.forEach((s, i) => {
       focusBoxes['seat' + i] = boxOf(s);
-      // The card area of a seat, for the cards view: the far half of the seat box.
-      const b = focusBoxes['seat' + i].clone();
-      focusBoxes['played' + i] = b;
+      focusBoxes['farm' + i] = boxOf(s.userData.parts.farm);
+      // No cards played yet: fall back to the farm so the view still has something to frame.
+      focusBoxes['played' + i] = s.userData.parts.played.children.length
+        ? boxOf(s.userData.parts.played) : null;
     });
 
-    if (scene.userData.table) scene.userData.table.material.color = col('--art-table');
     resize();
-    focus(UI.main, UI, !sameView ? false : true);
+    focus(UI.main, UI, sameView && !handChanged);
   }
 
-  let t0 = 0;
+  let t0 = null;
   function animate(t) {
     requestAnimationFrame(animate);
-    if (!ready) return;
-    const dt = t - t0;
+    // The first call comes straight from init with no timestamp; wait for a real frame.
+    if (!ready || t === undefined) return;
+    if (t0 === null) t0 = t;
+    const dt = Math.min(t - t0, 100);     // a background tab must not make everything jump
     if (dt < 16) return;
     t0 = t;
     const pulse = 0.62 + 0.33 * Math.sin(t * 0.005);
     if (tableGroup) tableGroup.traverse((o) => { if (o.userData.pulse && o.material) o.material.opacity = pulse; });
     stepCamera(dt);
+    if (handGroup) {
+      handY += (handGroup.userData.goalY - handY) * Math.min(1, dt / 110);
+      handGroup.position.y = handY;
+    }
     renderer.render(scene, camera);
   }
 
@@ -1133,13 +1338,14 @@ const View3D = (function () {
     root.traverse((o) => { if (o.isMesh) meshes++; if (o.userData.pulse) pulsing++; });
     texCache.forEach((tx) => { if (tx.image && tx.image.width) loaded++; });
     return {
+      hand: handGroup ? { y: +handY.toFixed(2), goal: handGroup.userData.goalY, n: handGroup.children.length, parent: !!handGroup.parent } : null,
       meshes, pulsing, pickables: pickables.length, hoverables: hoverables.length,
       textures: texCache.size, loaded, dist: +camState.dist.toFixed(2), pol: +camState.pol.toFixed(2),
       az: +camState.az.toFixed(2),
       target: [camState.target.x, camState.target.y, camState.target.z].map((n) => +n.toFixed(2)),
       boxes: Object.keys(focusBoxes).reduce((o, k) => {
         const b = focusBoxes[k];
-        o[k] = [b.min.x, b.min.z, b.max.x, b.max.z].map((n) => +n.toFixed(1));
+        o[k] = b ? [b.min.x, b.min.z, b.max.x, b.max.z].map((n) => +n.toFixed(1)) : null;
         return o;
       }, {}),
     };
