@@ -492,6 +492,126 @@ const ART = (function () {
   const SKY = () => `<rect x="-34" y="-14" width="124" height="76" fill="var(--art-sky)"/>`;
   const GROUND = () => '';
 
+  // ---------------------------------------------------------------- card illustrations
+  // Every card gets a little scene built from the same props as the board. Majors are drawn
+  // one by one; occupations show a person with the tools of their trade; minor improvements
+  // show the object. Which props appear is read off the card: its name first, then the
+  // earliest things its rules text mentions.
+  const pot = (x, y, s) => at(x, y, s, `${shadow(0, 0, 3.6)}
+    <path d="M-2.4 0Q-4.2 -2.6 -3 -5.4H3Q4.2 -2.6 2.4 0z" fill="var(--art-clay)" ${INK}/>
+    <rect x="-3.4" y="-6.4" width="6.8" height="1.2" rx=".5" fill="var(--art-clay-lt)" ${INK}/>
+    ${HI('M-2.6 -1Q-3.6 -3 -2.6 -5.2H-1.4Q-2.4 -3 -1.6 -1z')}`);
+
+  const basket = (x, y, s) => at(x, y, s, `${shadow(0, 0, 4.2)}
+    <path d="M-4.2 -4.2H4.2L3.2 0H-3.2z" fill="var(--art-grain)" ${INK}/>
+    ${[-3, -1.6, 0, 1.6, 3].map((bx) => `<path d="M${bx} -4.2L${bx * .78} 0" stroke="var(--art-wood-dk)" stroke-width=".45"/>`).join('')}
+    <path d="M-4 -2.6H4M-3.6 -1.2H3.6" stroke="var(--art-wood-dk)" stroke-width=".45"/>
+    <path d="M-3.4 -4.2Q0 -9 3.4 -4.2" fill="none" stroke="var(--art-wood-dk)" stroke-width=".8"/>`);
+
+  const barn = (x, y, s) => at(x, y, s, `${shadow(1, 0, 6)}
+    <path d="M-5 0V-5.4L0 -9.4L5 -5.4V0z" fill="var(--art-wood-dk)" ${INK}/>
+    ${SH('M0 -9.4L5 -5.4V0H0z')}<rect x="-2.2" y="-4.4" width="4.4" height="4.4" fill="var(--art-stable-door)" ${INK}/>
+    <path d="M-2.2 -4.4L2.2 0M2.2 -4.4L-2.2 0" stroke="var(--art-wood-lt)" stroke-width=".6"/>
+    <path d="M-5.8 -5L0 -10.2L5.8 -5" fill="none" stroke="var(--art-roof)" stroke-width="1.4" stroke-linejoin="round"/>`);
+
+  const pumpkin = (x, y, s) => at(x, y, s, `${shadow(0, 0, 4)}
+    <ellipse cx="0" cy="-2.6" rx="4" ry="2.8" fill="var(--art-veg)" ${INK}/>
+    <path d="M-1.4 -5.2Q-2 -2.6 -1.4 -.1M1.4 -5.2Q2 -2.6 1.4 -.1" fill="none" stroke="#000" stroke-width=".4" opacity=".3"/>
+    ${HI('M-3.4 -3.2Q-3 -4.8 -1.2 -5.2Q-2.6 -4 -2.6 -2.6z')}
+    <path d="M0 -5.2l.6 -1.6" stroke="var(--art-wood-dk)" stroke-width=".8"/>
+    <ellipse cx="1.8" cy="-5.8" rx="1.6" ry=".6" fill="var(--art-reed)" transform="rotate(-20 1.8 -5.8)"/>`);
+
+  const coin = (x, y, s) => at(x, y, s, `${shadow(0, 0, 3.6)}
+    <circle cx="0" cy="-4" r="3.6" fill="var(--art-seal)" ${INK}/>
+    <circle cx="0" cy="-4" r="2.5" fill="none" stroke="var(--art-ink)" stroke-width=".4" opacity=".5"/>
+    <path d="M0 -5.6l.5 1 1.1.2-.8.8.2 1.1-1-.5-1 .5.2-1.1-.8-.8 1.1-.2z" fill="#fff" opacity=".85"/>`);
+
+  // Keyword → how to draw it, and what ground it needs.
+  const ART_KEYS = [
+    [/魚/, 'fish'], [/綿羊|羊/, 'sheep'], [/野豬|豬/, 'boar'], [/牛/, 'cow'],
+    [/馬廄/, 'barn'], [/柵欄|牧場/, 'fence'], [/房間|房屋|木屋|黏土屋|石屋|屋/, 'house'],
+    [/麵包|烤/, 'bread'], [/爐|灶/, 'oven'], [/井/, 'well'], [/籃/, 'basket'],
+    [/蘆葦/, 'reeds'], [/陶|罐|瓶/, 'pot'], [/黏土|磚/, 'bricks'], [/石/, 'rock'],
+    [/木材|木匠|木/, 'logs'], [/犁|耕|田/, 'plough'], [/穀物|穀|麥/, 'sheaf'],
+    [/蔬菜|南瓜|菜/, 'pumpkin'], [/食物|餐|煮/, 'bread'], [/書|學|授課|教|師/, 'lectern'],
+    [/分|獎勵/, 'coin'],
+  ];
+  const PROP = {
+    fish: (x, y, s) => fish(x, y - 3, s), sheep, boar, cow, barn, house: (x, y, s) => house(x, y, s * .8, 'wood'),
+    bread, oven, well, basket, reeds, pot, bricks, rock, logs, plough, sheaf, pumpkin, lectern, coin, sack,
+    fence: (x, y, s) => fence(x - 7 * s, x + 7 * s, y, s),
+  };
+  const GROUND_FOR = { fish: 'water', reeds: 'water', plough: 'field', rock: 'stone', sheep: 'pasture', boar: 'pasture', cow: 'pasture', fence: 'pasture' };
+
+  function cardProps(c) {
+    const found = [];
+    const scan = (text) => {
+      const hits = [];
+      for (const [re, key] of ART_KEYS) {
+        const m = text.match(re);
+        if (m) hits.push([m.index, key]);
+      }
+      hits.sort((a, b) => a[0] - b[0]).forEach(([, k]) => { if (!found.includes(k)) found.push(k); });
+    };
+    scan(c.zh || '');
+    scan(c.txz || '');
+    if (!found.length) found.push('sack');
+    return found;
+  }
+
+  function cardBackdrop(id, kind) {
+    if (kind === 'water') return land(id, { bare: true }) + water(id);
+    if (kind === 'field') return land(id, { bare: true }) + furrows();
+    if (kind === 'stone') return land(id, { ground: 'var(--art-stone-lt)', far: 'var(--art-stone)', bare: true });
+    if (kind === 'pasture') return land(id, { ground: 'var(--art-pasture)' });
+    return land(id);
+  }
+
+  const MAJOR_ART = {
+    'Fireplace': (id) => land(id) + logs(8, 21, .9) + oven(26, 21.5, 1.15) + tree(48, 17, .7),
+    'Cooking Hearth': (id) => land(id) + pumpkin(6, 21.5, 1) + oven(24, 21.5, 1.2) + pot(38, 21.5, 1.1) + sheep(50, 20, .75),
+    'Well': (id) => land(id) + tree(-2, 17, .8) + well(20, 21.5, 1.35) + person(36, 21.5, 1, 'var(--p2)') + pot(45, 21.5, .9),
+    'Clay Oven': (id) => land(id) + sheaf(6, 21.5, 1) + oven(26, 21.5, 1.25) + bread(42, 21.5, 1) + bread(49, 21, .8),
+    'Stone Oven': (id) => land(id, { ground: 'var(--art-stone-lt)' }) + rock(4, 21, .9) + oven(24, 21.5, 1.3) + bread(40, 21.5, 1) + bread(47, 21, .85),
+    'Joinery': (id) => land(id) + house(12, 21.5, .9, 'wood', { scaffold: true }) + logs(32, 21.5, 1) + logs(45, 21, .75),
+    'Pottery': (id) => land(id) + bricks(6, 21.5, .9) + pot(22, 21.5, 1.3) + pot(32, 21.5, 1) + pot(40, 21, .8) + oven(51, 20, .6),
+    "Basketmaker's Workshop": (id) => land(id, { bare: true }) + water(id) + reeds(4, 21, 1) + basket(24, 21.5, 1.3) + basket(36, 21.5, 1) + reeds(48, 20, .8),
+  };
+
+  function cardScene(c) {
+    const id = 'c' + String(c.en || c.zh).replace(/[^A-Za-z0-9]/g, '');
+    if (c.type === 'maj' && MAJOR_ART[c.en]) return MAJOR_ART[c.en](id);
+    const props = cardProps(c);
+    const [a, b] = props;
+    let s = cardBackdrop(id, GROUND_FOR[a]);
+    if (c.type === 'occ') {
+      // The worker in front, the tools of the trade beside them.
+      s += tree(-2, 17, .7);
+      s += person(16, 22, 1.25, 'var(--occ-frame)');
+      s += PROP[a](32, 22, 1.2);
+      if (b) s += PROP[b](47, 21, .85);
+    } else {
+      s += b ? PROP[b](6, 21, .9) : tree(4, 18, .8);
+      s += PROP[a](26, 22, 1.45);
+      s += tree(50, 17, .65);
+    }
+    return s;
+  }
+
+  // Fit the subject strip into a box that nothing covers.
+  function fitMarkup(markup, x, y, w, h, open) {
+    const vis = open || h;
+    const s = Math.min(w / 58, vis / 22);
+    const vw = w / s, vh = h / s;
+    const vx = 26 - vw / 2, vy = 23 - vis / s;
+    return `<svg x="${x}" y="${y}" width="${w}" height="${h}" viewBox="${vx.toFixed(2)} ${vy.toFixed(2)} ${vw.toFixed(2)} ${vh.toFixed(2)}" preserveAspectRatio="none">${markup}</svg>`;
+  }
+
+  // A card's picture as a standalone SVG, for the HTML preview.
+  function cardArt(c, w, h) {
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">${fitMarkup(cardScene(c), 0, 0, w, h)}</svg>`;
+  }
+
   // A scene scaled into an arbitrary box. `open` is how much of the box stays uncovered
   // above the name plate: the subject strip (x −3…55, y 1…23) is fitted into exactly that,
   // and the landscape simply continues underneath the plate.
@@ -620,7 +740,6 @@ const ART = (function () {
     const o = opts || {};
     const t = TYPE_BAND[c.type] || TYPE_BAND.min;
     const title = wrap(c.zh || c.en, 11, 2);
-    const body = wrap(c.txz || c.tx || '', 17.5, 9);
     let s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${CARD_W} ${CARD_H}"
       width="${CARD_W}" height="${CARD_H}" font-family="-apple-system,BlinkMacSystemFont,'PingFang TC','Noto Sans TC',sans-serif">
       <rect width="${CARD_W}" height="${CARD_H}" rx="18" fill="${t.tint}" stroke="${t.frame}" stroke-width="7"/>
@@ -630,19 +749,27 @@ const ART = (function () {
         <tspan dx="8" font-size="11" opacity=".85">${t.en}</tspan></text>`;
 
     title.forEach((ln, i) => {
-      s += `<text x="24" y="${82 + i * 26}" font-size="24" font-weight="700" fill="${t.ink}">${ln}</text>`;
+      s += `<text x="24" y="${76 + i * 25}" font-size="23" font-weight="700" fill="${t.ink}">${ln}</text>`;
     });
-    s += `<text x="24" y="${86 + title.length * 26}" font-size="12.5" fill="var(--art-ink)" opacity=".7">${c.en || ''}</text>`;
+    s += `<text x="24" y="${80 + title.length * 25}" font-size="12" fill="var(--art-ink)" opacity=".7">${c.en || ''}</text>`;
 
-    const bodyTop = 104 + title.length * 26;
-    s += `<rect x="18" y="${bodyTop}" width="${CARD_W - 36}" height="${CARD_H - bodyTop - 76}" rx="10"
+    // The picture window.
+    const artTop = 88 + title.length * 25, artH = 104;
+    s += `<clipPath id="art"><rect x="18" y="${artTop}" width="${CARD_W - 36}" height="${artH}" rx="9"/></clipPath>
+      <g clip-path="url(#art)">${fitMarkup(cardScene(c), 18, artTop, CARD_W - 36, artH)}</g>
+      <rect x="18" y="${artTop}" width="${CARD_W - 36}" height="${artH}" rx="9" fill="none" stroke="${t.frame}" stroke-width="2.4"/>`;
+
+    const bodyTop = artTop + artH + 8;
+    const boxH = CARD_H - bodyTop - 70;
+    s += `<rect x="18" y="${bodyTop}" width="${CARD_W - 36}" height="${boxH}" rx="10"
       fill="var(--art-plate)" stroke="${ink}" stroke-width="1.1" opacity=".9"/>`;
-    body.forEach((ln, i) => {
-      s += `<text x="32" y="${bodyTop + 26 + i * 21}" font-size="15" fill="var(--art-ink)">${ln}</text>`;
+    const fit = wrap(c.txz || c.tx || '', 17.6, Math.floor((boxH - 12) / 19));
+    fit.forEach((ln, i) => {
+      s += `<text x="30" y="${bodyTop + 21 + i * 19}" font-size="14.5" fill="var(--art-ink)">${ln}</text>`;
     });
 
     s += costRow(o.cost, 24, CARD_H - 58);
-    if (c.vp) s += `<g transform="translate(${CARD_W - 44} 74)">${seal(c.vp, 0, 0, 24)}</g>`;
+    if (c.vp) s += `<g transform="translate(${CARD_W - 40} 70)">${seal(c.vp, 0, 0, 22)}</g>`;
     if (c.trav) s += `<text x="${CARD_W - 24}" y="${CARD_H - 30}" text-anchor="end" font-size="13" fill="var(--art-ink)" opacity=".7">旅行卡</text>`;
     if (o.note) s += `<text x="${CARD_W - 24}" y="${CARD_H - 30}" text-anchor="end" font-size="13" fill="${t.ink}">${o.note}</text>`;
     if (o.taken) {
@@ -668,5 +795,5 @@ const ART = (function () {
 
   return { ICONS, icon, spaceArt, sceneMarkup, scene, plate, token, board, slot, seal, meeple,
     grassTile, fieldTile, houseTile, stableArt, animalsArt, fenceArt, edgeHit, TW, TH,
-    cardFace, cardBack, CARD_W, CARD_H, NAMES };
+    cardFace, cardBack, cardArt, CARD_W, CARD_H, NAMES };
 })();

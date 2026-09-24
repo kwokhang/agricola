@@ -600,6 +600,7 @@
       pv.innerHTML = `<div class="card ${c.type}">
         <div class="band">${esc(band)}</div>${vp}
         <div class="hd"><span class="nm">${esc(c.zh)}</span><span class="ennm">${esc(c.en)}</span></div>
+        <div class="art">${ART.cardArt(c, 324, 124)}</div>
         <div class="tx">${esc(c.txz || '')}</div>
         <div class="ft"><span class="costs">${costHtml(cost)}${c.trav ? '<span class="muted"> · 旅行卡</span>' : ''}</span>
           <span class="st">${status}</span></div></div>`;
