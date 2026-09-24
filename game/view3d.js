@@ -528,8 +528,8 @@ const View3D = (function () {
       rim.receiveShadow = true;
       g.add(rim);
       // The token's face is printed with the same icon the HUD uses, so a pile reads at a glance.
-      const iconTex = svgTexture('tokenIcon:' + kind, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -4 32 32" width="192" height="192">
-        <circle cx="12" cy="12" r="15.6" fill="var(--art-count)"/>${ART.ICONS[kind] || ''}</svg>`, 192, 192);
+      const iconTex = svgTexture('tokenIcon2:' + kind, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -4 32 32" width="192" height="192">
+        <circle cx="12" cy="12" r="15.6" fill="var(--art-count)"/>${ART.tokenMarkup(kind)}</svg>`, 192, 192);
       const face = new T.Mesh(geo(`pileFace${r.toFixed(2)}`, () => new T.CylinderGeometry(r, r, 0.035, 28)),
         mat(col('--art-count'), { roughness: 0.45 }));
       face.position.y = 0.018;
@@ -673,8 +673,8 @@ const View3D = (function () {
   const HARV_W = 156, HARV_H = 52;
   const harvestSvg = (after) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${HARV_W} ${HARV_H}"
     width="${HARV_W * 2}" height="${HARV_H * 2}" font-family="-apple-system,'PingFang TC','Noto Sans TC',sans-serif">
-    <path d="M2 5H154L144 26L154 47H2L12 26z" fill="#b8892a" stroke="#6b4a1e" stroke-width="1.6" stroke-linejoin="round"/>
-    <path d="M13 9.5H143" stroke="#fff" stroke-width="1.2" opacity=".35"/>
+    <path d="M2 5H154L144 26L154 47H2L12 26z" fill="#24421f" stroke="#d6a93a" stroke-width="2.2" stroke-linejoin="round"/>
+    <path d="M13 9.5H143" stroke="#d6a93a" stroke-width="1" opacity=".55"/>
     <g transform="translate(16 14)">${ART.ICONS.grain}</g>
     <text x="88" y="24" text-anchor="middle" font-size="14" font-weight="800" fill="#fff8e6">收成
       <tspan font-size="10" font-weight="700" dx="3" opacity=".85">HARVEST</tspan></text>
@@ -756,9 +756,9 @@ const View3D = (function () {
       // Goods that have accumulated, piled in the free corner of the space.
       const kinds = Object.keys(sp.goods).filter((k) => sp.goods[k] > 0);
       kinds.forEach((k, i) => {
-        const pile = goodsPile(k, sp.goods[k], { spread: 0.52, max: 5, alwaysCount: sp.goods[k] > 1, base: true });
-        pile.position.set(cx - w / 2 + 0.34 + i * 0.66, BOARD_Y + 0.04, cz - d / 2 + 0.3);
-        pile.scale.setScalar(0.85);
+        const pile = goodsPile(k, sp.goods[k], { spread: 0.52, max: 5, alwaysCount: true, base: true });
+        pile.position.set(cx - w / 2 + 0.22 + i * 0.44, BOARD_Y + 0.04, cz - d / 2 + 0.2);
+        pile.scale.setScalar(0.56);
         g.add(pile);
       });
 
@@ -819,7 +819,7 @@ const View3D = (function () {
       if (c > 0) {
         const after = rounds[rounds.length - 1];
         const done = G.round > after || (G.round === after && G.phase !== 'work');
-        const tex = svgTexture(`harv3:${after}`, harvestSvg(after), HARV_W * 2, HARV_H * 2);
+        const tex = svgTexture(`harv4:${after}`, harvestSvg(after), HARV_W * 2, HARV_H * 2);
         const rib = new T.Mesh(geo('harvRibbon', () => new T.PlaneGeometry(HARV_W * PS, HARV_H * PS)),
           new T.MeshStandardMaterial({ map: tex, transparent: true, roughness: 0.5, opacity: done ? 0.4 : 1 }));
         rib.rotation.x = -Math.PI / 2;
@@ -1075,8 +1075,8 @@ const View3D = (function () {
       // Each slot is printed with the goods it holds, like the recesses on a player mat.
       const icon = new T.Mesh(geo('slotIcon', () => new T.PlaneGeometry(0.44, 0.44)),
         printMat(null, { transparent: true, depthWrite: false, opacity: n ? 0.95 : 0.55,
-          map: svgTexture('slot:' + k, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="160" height="160">
-            <g transform="translate(6 0) scale(.84)">${ART.ICONS[k] || ''}</g>
+          map: svgTexture('slot2:' + k, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="160" height="160">
+            <g transform="translate(6.5 .5) scale(.8)">${ART.tokenMarkup(k)}</g>
             <text x="16" y="29.5" text-anchor="middle" font-size="8" font-weight="700" fill="var(--art-ink)"
               font-family="-apple-system,'PingFang TC',sans-serif">${ART.NAMES[k]}</text></svg>`, 160, 160) }));
       icon.rotation.x = -Math.PI / 2;

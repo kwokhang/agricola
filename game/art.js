@@ -94,8 +94,51 @@ const ART = (function () {
       <path d="M12 6.4l1.7 3.6 3.9.5-2.9 2.7.8 3.9-3.5-2-3.5 2 .8-3.9-2.9-2.7 3.9-.5z" fill="${ink}" opacity=".75"/>`,
   };
 
+  // ---------------------------------------------------------------- resource tokens
+  // Small icons live or die by colour and silhouette, so each good gets its own coin colour,
+  // spread round the colour wheel, with a bold light silhouette on it. Used everywhere a
+  // good is named at small size: the HUD, costs, tokens on the board, the supply tray.
+  const TOKEN = {
+    wood:   { bg: '#8a5424', fg: '#f6e3c4', g: `<rect x="5" y="7.6" width="12" height="4.2" rx="2.1"/><rect x="7" y="12.8" width="12" height="4.2" rx="2.1"/>
+              <circle cx="17" cy="9.7" r="1.2" fill="#8a5424"/><circle cx="19" cy="14.9" r="1.2" fill="#8a5424"/>` },
+    clay:   { bg: '#b8382a', fg: '#ffe2d2', g: `<rect x="4.6" y="13" width="6.8" height="4.2" rx=".6"/><rect x="12.6" y="13" width="6.8" height="4.2" rx=".6"/>
+              <rect x="8.6" y="7.8" width="6.8" height="4.2" rx=".6"/>` },
+    reed:   { bg: '#5f8f33', fg: '#f3f0d6', g: `<path d="M8.6 19.5L8 9M12 19.5V6.5M15.4 19.5L16 9" stroke="#f3f0d6" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+              <rect x="6.9" y="5.6" width="2.2" height="4.4" rx="1.1"/><rect x="10.9" y="3.6" width="2.2" height="4.4" rx="1.1"/><rect x="14.9" y="5.6" width="2.2" height="4.4" rx="1.1"/>` },
+    stone:  { bg: '#4e5b70', fg: '#e3e8f0', g: `<path d="M4.8 16.8L6.6 10.6L10.8 7.2L15.8 8.2L19.4 12.6L17.8 17.4z"/>
+              <path d="M10.8 7.2L12 12.4L6.6 10.6M12 12.4L17.8 17.4" stroke="#4e5b70" stroke-width=".9" fill="none"/>` },
+    grain:  { bg: '#d7a11a', fg: '#4a2f06', g: `<path d="M12 20V7" stroke="#4a2f06" stroke-width="1.4" stroke-linecap="round"/>
+              ${[[8.4, 0], [11.6, 1], [14.8, 0]].map(([y, s]) => `<ellipse cx="9.8" cy="${y}" rx="1.6" ry="2.6" transform="rotate(-35 9.8 ${y})"/>
+                <ellipse cx="14.2" cy="${y}" rx="1.6" ry="2.6" transform="rotate(35 14.2 ${y})"/>`).join('')}
+              <ellipse cx="12" cy="5.6" rx="1.5" ry="2.4"/>` },
+    veg:    { bg: '#ee7a18', fg: '#fff3e2', g: `<path d="M12 20.4L8.4 10.4Q12 8.6 15.6 10.4z"/>
+              <path d="M12 10L9.6 5.2M12 10V4.6M12 10L14.4 5.2" stroke="#2f7a2a" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+              <path d="M10.4 13.4h2.2M11 16.2h1.8" stroke="#ee7a18" stroke-width=".9"/>` },
+    food:   { bg: '#23857f', fg: '#ffe9bf', g: `<path d="M4.8 15.6Q4.6 9.2 12 8.8T19.2 15.6z"/><rect x="4.4" y="15.4" width="15.2" height="2.4" rx="1.2"/>
+              <path d="M8.6 12.4l1.2 1.4M11.6 11.6l1.2 1.4M14.6 12.4l1.2 1.4" stroke="#23857f" stroke-width="1"/>` },
+    sheep:  { bg: '#ece6d8', fg: '#ffffff', g: `<g stroke="#3b332d" stroke-width=".8"><circle cx="10" cy="11.4" r="3.2"/><circle cx="13.6" cy="10.6" r="3.4"/>
+              <circle cx="15.4" cy="13.4" r="2.8"/><circle cx="11.4" cy="14.2" r="3"/></g>
+              <ellipse cx="6.8" cy="11.8" rx="2.2" ry="2.6" fill="#2b2622"/><path d="M10 17v3M14.4 17v3" stroke="#2b2622" stroke-width="1.4"/>` },
+    boar:   { bg: '#2f2926', fg: '#e9a6a0', g: `<path d="M5.2 13.4Q5.4 8.4 12 8.4T18.8 12.6L20.4 13.2L19.8 15.8L18 15.6Q16.8 17.4 12 17.4T5.2 13.4z"/>
+              <path d="M8 8.8L7.4 6.2L10 8.2" /><path d="M8.6 17v2.6M14.8 17v2.6" stroke="#e9a6a0" stroke-width="1.5"/>
+              <circle cx="16.6" cy="11.8" r=".8" fill="#2f2926"/>` },
+    cattle: { bg: '#2f6a9a', fg: '#ffffff', g: `<path d="M7.4 9.6Q12 7.4 16.6 9.6L15.8 16.4Q12 19.6 8.2 16.4z"/>
+              <path d="M7.6 9.8Q4.6 9 4.4 5.8M16.4 9.8Q19.4 9 19.6 5.8" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round" fill="none"/>
+              <ellipse cx="12" cy="15.8" rx="3" ry="1.9" fill="#f2b8a8"/><circle cx="10" cy="11.8" r=".9" fill="#2f6a9a"/><circle cx="14" cy="11.8" r=".9" fill="#2f6a9a"/>` },
+  };
+
+  // The coin itself, in a 24 × 24 box.
+  function tokenMarkup(k) {
+    const t = TOKEN[k];
+    if (!t) return ICONS[k] || '';
+    return `<circle cx="12" cy="12" r="11.3" fill="${t.bg}" stroke="#1b130b" stroke-width="1"/>
+      <circle cx="12" cy="12" r="9.8" fill="none" stroke="#fff" stroke-width=".7" opacity=".28"/>
+      <g fill="${t.fg}">${t.g}</g>`;
+  }
+
+
   function icon(key, size, extraClass) {
-    const body = ICONS[key];
+    const body = TOKEN[key] ? tokenMarkup(key) : ICONS[key];
     if (!body) return '';
     const s = size || 18;
     return `<svg class="ic ${extraClass || ''}" viewBox="0 0 24 24" width="${s}" height="${s}" aria-hidden="true">${body}</svg>`;
@@ -757,7 +800,7 @@ const ART = (function () {
     return `<g transform="translate(${cx} ${cy})">
       <circle r="15" fill="var(--art-count)" stroke="${ink}" stroke-width="1.6"/>
       <circle r="12.5" fill="none" stroke="${ink}" stroke-width=".6" opacity=".35"/>
-      <g transform="translate(-10 -10.5) scale(${20 / 24})">${ICONS[k] || ''}</g>
+      <g transform="translate(-11 -11) scale(${22 / 24})">${tokenMarkup(k)}</g>
       <circle cx="10" cy="10" r="8" fill="${ink}"/>
       <text x="10" y="14" text-anchor="middle" font-size="11.5" font-weight="800" fill="var(--art-count)">${n}</text></g>`;
   }
@@ -853,5 +896,5 @@ const ART = (function () {
 
   return { ICONS, icon, spaceArt, sceneMarkup, scene, plate, token, board, slot, seal, meeple,
     grassTile, fieldTile, houseTile, stableArt, animalsArt, fenceArt, edgeHit, TW, TH,
-    cardFace, cardBack, cardArt, CARD_W, CARD_H, NAMES };
+    cardFace, cardBack, cardArt, CARD_W, CARD_H, NAMES, tokenMarkup };
 })();
