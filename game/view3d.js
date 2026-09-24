@@ -96,9 +96,13 @@ const View3D = (function () {
     return geoCache.get(key);
   }
 
-  const mat = (color, opts) => new T.MeshStandardMaterial(Object.assign({
-    color: color instanceof T.Color ? color : new T.Color(color), roughness: 0.85, metalness: 0,
-  }, opts || {}));
+  // Every component gets the finish the cards have: a satin base with a thin clear coat, so
+  // pieces, tiles and printed boards all catch the lamp and the room the same way.
+  const GLOSS = { roughness: 0.46, metalness: 0, clearcoat: 0.3, clearcoatRoughness: 0.36 };
+  const mat = (color, opts) => new T.MeshPhysicalMaterial(Object.assign({
+    color: color instanceof T.Color ? color : new T.Color(color),
+  }, GLOSS, opts || {}));
+  const printMat = (map, opts) => new T.MeshPhysicalMaterial(Object.assign({ map }, GLOSS, opts || {}));
 
   function box(w, h, d, color, x, y, z) {
     const m = new T.Mesh(geo(`b${w}_${h}_${d}`, () => new T.BoxGeometry(w, h, d)), mat(color));
@@ -127,7 +131,7 @@ const View3D = (function () {
 
   // Standing upright, feet on the board, so it casts a proper shadow.
   function meeple(colorHex, scale) {
-    const m = new T.Mesh(meepleGeometry(), mat(colorHex, { roughness: 0.5 }));
+    const m = new T.Mesh(meepleGeometry(), mat(colorHex, { roughness: 0.34, clearcoat: 0.5 }));
     const s = (scale || 1) * 0.4;
     m.scale.set(s, s, s);
     m.position.y = 0.62 * s;
@@ -193,7 +197,7 @@ const View3D = (function () {
     });
     const bodyGeo = geo('animalbody', () => new T.SphereGeometry(0.16, 12, 10));
     if (kind === 'sheep') {
-      const b = new T.Mesh(bodyGeo, mat(col('--art-sheep'), { roughness: 1 }));
+      const b = new T.Mesh(bodyGeo, mat(col('--art-sheep'), { roughness: 0.6 }));
       b.scale.set(1, 0.9, 1.25); b.position.y = 0.2; b.castShadow = true; g.add(b);
       const h = new T.Mesh(geo('head', () => new T.SphereGeometry(0.075, 10, 8)), mat(col('--art-sheep-face')));
       h.position.set(0, 0.25, 0.21); h.castShadow = true; g.add(h);
@@ -301,7 +305,7 @@ const View3D = (function () {
 
   function countPlate(kind, n, spread) {
     const lbl = new T.Mesh(geo('countplate', () => new T.PlaneGeometry(0.42, 0.23)),
-      new T.MeshBasicMaterial({ map: svgTexture('cnt:' + n, countSvg(n), 124, 68), transparent: true, depthWrite: false }));
+      printMat(svgTexture('cnt:' + n, countSvg(n), 124, 68), { transparent: true, depthWrite: false }));
     lbl.rotation.x = -Math.PI / 2;
     lbl.position.set(0.3 * spread, 0.34, 0.34 * spread);
     return lbl;
@@ -345,11 +349,11 @@ const View3D = (function () {
   // A card as a physical object: a thin slab with the printed face on top.
   function cardMesh(face, w, h, opts) {
     const o = opts || {};
-    const edge = mat(col('--art-plate'), { roughness: 0.6 });
+    const edge = mat(col('--art-plate'));
     const top = o.unlit
       ? new T.MeshBasicMaterial({ map: face, toneMapped: false })
-      : new T.MeshStandardMaterial({ map: face, roughness: 0.42, metalness: 0 });
-    const back = mat(col('--art-frame'), { roughness: 0.7 });
+      : printMat(face);
+    const back = mat(col('--art-frame'));
     const m = new T.Mesh(geo(`card${w}_${h}`, () => new T.BoxGeometry(w, 0.018, h)),
       [edge, edge, top, back, edge, edge]);
     m.castShadow = !o.unlit;
@@ -413,7 +417,7 @@ const View3D = (function () {
   function plateMesh(tex, w, h, x, z, y) {
     const m = new T.Mesh(geo(`plate${w.toFixed(3)}_${h.toFixed(3)}`, () => new T.BoxGeometry(w, 0.02, h)),
       [mat(col('--art-frame')), mat(col('--art-frame')),
-        new T.MeshStandardMaterial({ map: tex, roughness: 0.8 }),
+        printMat(tex),
         mat(col('--art-frame')), mat(col('--art-frame')), mat(col('--art-frame'))]);
     m.position.set(x, y == null ? BOARD_Y : y, z);
     m.receiveShadow = true;
@@ -550,7 +554,7 @@ const View3D = (function () {
       const inPasture = !!(reg && reg.enclosed);
 
       const top = new T.Mesh(geo('tiletop', () => new T.BoxGeometry(TILE * 0.99, 0.03, TILE * 0.99)),
-        new T.MeshStandardMaterial({ map: tileTexture(p, i, inPasture), roughness: 0.95 }));
+        printMat(tileTexture(p, i, inPasture), { roughness: 0.55, clearcoat: 0.15 }));
       top.position.set(x, BOARD_Y, z);
       top.receiveShadow = true;
       top.userData.pick = { type: 'tile', i, pi };
@@ -599,7 +603,7 @@ const View3D = (function () {
       const first = Math.min.apply(null, reg.tiles);
       const { x, z } = tilePos(first);
       const lbl = new T.Mesh(geo('caplbl', () => new T.PlaneGeometry(0.8, 0.44)),
-        new T.MeshBasicMaterial({ map: svgTexture('cap:' + reg.count + '/' + reg.capacity, capSvg(reg.count, reg.capacity), 124, 68), transparent: true, depthWrite: false }));
+        printMat(svgTexture('cap:' + reg.count + '/' + reg.capacity, capSvg(reg.count, reg.capacity), 124, 68), { transparent: true, depthWrite: false }));
       lbl.rotation.x = -Math.PI / 2;
       lbl.position.set(x, BOARD_Y + 0.09, z - 0.28);
       g.add(lbl);
@@ -683,7 +687,7 @@ const View3D = (function () {
       g.add(slot);
       // Each slot is printed with the goods it holds, like the recesses on a player mat.
       const icon = new T.Mesh(geo('slotIcon', () => new T.PlaneGeometry(0.34, 0.34)),
-        new T.MeshBasicMaterial({ transparent: true, depthWrite: false, opacity: n ? 0.9 : 0.45,
+        printMat(null, { transparent: true, depthWrite: false, opacity: n ? 0.9 : 0.45,
           map: svgTexture('slot:' + k, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="128" height="128">${ART.ICONS[k] || ''}</svg>`, 128, 128) }));
       icon.rotation.x = -Math.PI / 2;
       icon.position.set(x, 0.065, -0.24);
@@ -711,7 +715,7 @@ const View3D = (function () {
     const colour = pi === 0 ? '--p1' : '--p2';
     const sub = `${HOUSE_ZH[p.house]} ${roomCount(p)} 間 · 田 ${fieldCount(p)} · 家庭 ${p.people} 人`;
     const plate = new T.Mesh(geo('nameplate', () => new T.PlaneGeometry(1.9, 0.44)),
-      new T.MeshBasicMaterial({ map: svgTexture(`name:${pi}:${p.name}:${sub}`, nameSvg(p.name, sub, `var(${colour})`), 520, 120), transparent: true }));
+      printMat(svgTexture(`name:${pi}:${p.name}:${sub}`, nameSvg(p.name, sub, `var(${colour})`), 520, 120), { transparent: true }));
     plate.rotation.x = -Math.PI / 2;
     plate.position.set(LAYOUT.plate.x, 0.075, LAYOUT.plate.z);
     plate.userData.hover = { kind: 'seat', pi };
@@ -839,7 +843,7 @@ const View3D = (function () {
         slot.add(glow);
         slot.position.y += 0.05;         // playable cards sit a little proud of the fan
       }
-      m.userData.hand = { slot, baseY: slot.position.y };
+      m.userData.hand = { slot, baseY: slot.position.y, rotZ: slot.rotation.z };
       if (shown) hoverables.push(m);
       g.add(slot);
     });
@@ -1003,13 +1007,17 @@ const View3D = (function () {
   function setHover(obj) {
     if (hovered === obj) return;
     if (hovered && hovered.userData.hand) {
-      hovered.userData.hand.slot.position.y = hovered.userData.hand.baseY;
-      hovered.userData.hand.slot.scale.setScalar(1);
+      const h = hovered.userData.hand;
+      h.slot.position.y = h.baseY;
+      h.slot.rotation.z = h.rotZ;
+      h.slot.scale.setScalar(1);
     }
     hovered = obj;
     if (obj && obj.userData.hand) {
-      obj.userData.hand.slot.position.y = obj.userData.hand.baseY + 0.46;
-      obj.userData.hand.slot.scale.setScalar(1.3);
+      const h = obj.userData.hand;
+      h.slot.position.y = h.baseY + 0.3;
+      h.slot.rotation.z = 0;             // stand it upright; the big preview carries the text
+      h.slot.scale.setScalar(1.12);
     }
     canvas.style.cursor = obj && obj.userData.pick ? 'pointer' : 'default';
     if (hooks && hooks.onHover) hooks.onHover(obj ? obj.userData.hover : null);
@@ -1151,7 +1159,8 @@ const View3D = (function () {
     // The table: a thick wooden top, big enough that its edges fall into the dark.
     const wood = woodTexture();
     wood.repeat.set(5, 4);
-    const woodMat = new T.MeshStandardMaterial({ map: wood, roughness: 0.62, metalness: 0 });
+    const woodMat = new T.MeshPhysicalMaterial({ map: wood, roughness: 0.48, metalness: 0,
+      clearcoat: 0.55, clearcoatRoughness: 0.32 });              // a varnished top
     const table = new T.Mesh(new T.BoxGeometry(40, 0.8, 32), woodMat);
     table.position.set(0, -0.09 - 0.4, -3.6);
     table.receiveShadow = true;
@@ -1177,6 +1186,30 @@ const View3D = (function () {
     scene.background = bd;
     const fogCol = col('--art-table').clone().offsetHSL(0, 0, -0.3);
     scene.fog = new T.Fog(fogCol, 26, 58);
+  }
+
+  // What the glossy surfaces reflect. Three's RoomEnvironment is not in the vendor bundle,
+  // so this is the same idea by hand: bright panels in a dark box, prefiltered by PMREM.
+  function reflections() {
+    const env = new T.Scene();
+    const room = new T.Mesh(new T.BoxGeometry(30, 14, 30),
+      new T.MeshBasicMaterial({ color: new T.Color(0.07, 0.055, 0.04), side: T.BackSide }));
+    room.position.y = 5;
+    env.add(room);
+    const panel = (w, h, pos, rot, rgb, k) => {
+      const m = new T.Mesh(new T.PlaneGeometry(w, h),
+        new T.MeshBasicMaterial({ color: new T.Color(rgb[0], rgb[1], rgb[2]).multiplyScalar(k), side: T.DoubleSide }));
+      m.position.set(pos[0], pos[1], pos[2]);
+      m.rotation.set(rot[0], rot[1], rot[2]);
+      env.add(m);
+    };
+    panel(6, 4, [0, 11.8, 0], [Math.PI / 2, 0, 0], [1, 0.9, 0.74], 3.2);      // the lamp overhead
+    panel(6, 7, [-14.8, 5, -3], [0, Math.PI / 2, 0], [0.75, 0.85, 1], 2.4);   // a window to one side
+    panel(10, 3, [4, 6, 14.8], [0, Math.PI, 0], [1, 0.85, 0.7], 1.1);         // warm bounce behind you
+    const pmrem = new T.PMREMGenerator(renderer);
+    const tex = pmrem.fromScene(env, 0.035).texture;
+    pmrem.dispose();
+    return tex;
   }
 
   // ---------------------------------------------------------------- lifecycle
@@ -1207,8 +1240,11 @@ const View3D = (function () {
     root = new T.Group();
     scene.add(root);
 
+    scene.environment = reflections();
+    scene.environmentIntensity = 0.4;
+
     // A dim room, one warm lamp over the play area, and a key light for the shadows.
-    const hemi = new T.HemisphereLight(0xffffff, 0x6d5a3a, 0.55);
+    const hemi = new T.HemisphereLight(0xffffff, 0x6d5a3a, 0.3);
     scene.add(hemi);
     const fill = new T.DirectionalLight(0xdce8ff, 0.35);
     fill.position.set(-9, 7, 4);

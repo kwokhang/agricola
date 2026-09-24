@@ -515,19 +515,36 @@
   function showTip(info) {
     const el = $('tip');
     if (!el) return;
-    if (!info || !G) { el.hidden = true; el.innerHTML = ''; return; }
+    if (!info || !G) { el.hidden = true; el.innerHTML = ''; $('preview').hidden = true; return; }
 
+    // A card gets a big, upright copy in the middle of the screen: the fanned or foreshortened
+    // one on the table is too slanted to read.
+    const pv = $('preview');
+    pv.hidden = true;
     if (info.kind === 'card') {
+      el.hidden = true;
       const c = findCard(info.uid);
-      if (!c) { el.hidden = true; return; }
-      const cost = cardCost(G, G.players[G.current], c);
+      if (!c) return;
+      const p = G.players[G.current];
+      const cost = cardCost(G, p, c);
       const owner = c.taken != null ? G.players[c.taken] : null;
-      const band = c.type === 'occ' ? '職業' : c.type === 'min' ? '次要發展' : '主要發展';
-      el.innerHTML = `<h3>${esc(c.zh)}</h3><div class="en">${esc(band)} · ${esc(c.en)}</div>
-        <p>${esc(c.txz || '')}</p>
-        <div class="costs">${costHtml(cost)}${c.vp ? ` · ${c.vp} 分` : ''}
-          ${owner ? ` · <span class="muted">已被 ${esc(owner.name)} 取得</span>` : ''}</div>`;
-      el.hidden = false;
+      const inHand = G.players.some((q) => q.hand.occ.concat(q.hand.min).includes(c));
+      const band = c.type === 'occ' ? '職業 OCCUPATION'
+        : c.type === 'min' ? '次要發展 MINOR IMPROVEMENT' : '主要發展 MAJOR IMPROVEMENT';
+      const vp = c.vp
+        ? `<svg class="vpseal" viewBox="-16 -16 32 32" width="38" height="38" aria-hidden="true">${ART.seal(c.vp, 0, 0, 14)}</svg>` : '';
+      let status = '';
+      if (owner) status = `已被 ${esc(owner.name)} 取得`;
+      else if (c.played || G.players.some((q) => q.played.includes(c))) status = '已打出';
+      else if ((inHand || c.type === 'maj') && UI.view === G.current && !G.choice
+        && playableNow(G).includes(c.type)) status = canPay(p, cost) ? '✓ 可以打出' : '資源唔夠';
+      pv.innerHTML = `<div class="card ${c.type}">
+        <div class="band">${esc(band)}</div>${vp}
+        <div class="hd"><span class="nm">${esc(c.zh)}</span><span class="ennm">${esc(c.en)}</span></div>
+        <div class="tx">${esc(c.txz || '')}</div>
+        <div class="ft"><span class="costs">${costHtml(cost)}${c.trav ? '<span class="muted"> · 旅行卡</span>' : ''}</span>
+          <span class="st">${status}</span></div></div>`;
+      pv.hidden = false;
       return;
     }
 

@@ -213,6 +213,25 @@
   .tip p { font-size: 13px; margin: 7px 0 0; line-height: 1.6; }
   .tip .costs { display: inline-flex; align-items: center; gap: 5px; flex-wrap: wrap; margin-top: 8px; }
 
+  /* ---------- a card you point at, upright and large in the middle ---------- */
+  .preview {
+    position: fixed; z-index: 6; left: 50%; top: 40%; width: 360px;
+    transform: translate(-50%, -50%); pointer-events: none;
+    animation: pvIn .14s ease-out;
+  }
+  .preview .card {
+    min-height: 300px; padding: 30px 18px 14px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, .55), 0 0 0 1px rgba(255, 255, 255, .06);
+  }
+  .preview .card .band { height: 20px; font-size: 10.5px; }
+  .preview .card .nm { font-size: 23px; }
+  .preview .card .ennm { font-size: 13px; }
+  .preview .card .tx { color: var(--ink); font-size: 16px; line-height: 1.7; margin-top: 12px; }
+  .preview .card .ft { margin-top: 14px; }
+  .preview .card .st { font-size: 13px; font-weight: 700; color: var(--accent); white-space: nowrap; }
+  .preview .vpseal { top: 26px; right: 12px; }
+  @keyframes pvIn { from { opacity: 0; transform: translate(-50%, -46%) scale(.96); } }
+
   /* ---------- this table wants a landscape desktop ---------- */
   .gate {
     position: fixed; inset: 0; z-index: 90; display: grid; place-items: center;
@@ -379,6 +398,7 @@
 </aside>
 
 <div class="tip glass" id="tip" hidden></div>
+<div class="preview" id="preview" hidden></div>
 
 <!-- Only shown when WebGL is unavailable: the old flat boards. -->
 <main id="flat" hidden>
