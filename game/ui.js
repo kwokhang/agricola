@@ -10,7 +10,8 @@
   const ic = (k, s) => ART.icon(k, s || 17);
   const costHtml = (cost) => {
     if (!cost || !Object.keys(cost).length) return '<span class="free">免費</span>';
-    return Object.keys(cost).map((k) => `<span class="cst">${ic(k, 16)}<b>${cost[k]}</b></span>`).join('');
+    return Object.keys(cost).map((k) =>
+      `<span class="cst" title="${ART.NAMES[k]}">${ic(k, 16)}<b>${cost[k]}</b><small>${ART.NAMES[k]}</small></span>`).join('');
   };
   // Costs spelled out in words, for the notes printed on the board.
   const costWords = (c) => (!c || !Object.keys(c).length ? '免費'
@@ -484,14 +485,44 @@
       `<button data-free="${esc(a.id)}" ${a.ok && mine ? '' : 'disabled'}>${esc(a.label)}</button>`).join('');
   }
 
+  // ------------------------------------------------------------ action bar placement
+  // Mirrors view3d's rule for when the hand is up, so the bar can sit just above it.
+  function handUp() {
+    if (!has3d) return false;
+    if (UI.handPinned) return true;
+    return !G.choice && !G.over && UI.view === G.current
+      && ['playOcc', 'playMinor', 'playImprovement', 'playAny'].includes(currentStep(G));
+  }
+
+  let lastPromptKey = '';
+  function placeActionBar() {
+    const bar = $('actionbar');
+    document.body.classList.toggle('hand-up', handUp());
+    bar.hidden = !$('prompt').innerHTML.trim() && !$('free').innerHTML.trim();
+    // A new instruction flashes the bar once, so a change of step is never missed.
+    const key = $('prompt').textContent.replace(/\s+/g, ' ').slice(0, 80);
+    if (key !== lastPromptKey) {
+      lastPromptKey = key;
+      bar.classList.remove('flash');
+      void bar.offsetWidth;
+      bar.classList.add('flash');
+    }
+  }
+
   // ------------------------------------------------------------ dock: resources
   const chip = (k, n, cls) =>
-    `<span class="chip ${n ? '' : 'zero'} ${cls || ''}">${ic(k, 21)}${n}</span>`;
+    `<span class="chip ${n ? '' : 'zero'} ${cls || ''}" title="${ART.NAMES[k]} ${n}">
+      ${ic(k, 20)}<span class="cl">${ART.NAMES[k]}</span><b>${n}</b></span>`;
 
+  // Grouped by what the goods are for: building, eating, breeding.
   function chipsFor(p) {
-    return `<span class="chips">${RES.map((k) => chip(k, p.supply[k])).join('')}
-      <span class="sep"></span>${ANIM.map((k) => chip(k, animalTotal(p, k))).join('')}
-      <span class="sep"></span>${chip('begging', p.begging, 'beg')}</span>`;
+    const row = (title, cells) => `<span class="rg">${title}</span>${cells}`;
+    const fill = (n) => '<span></span>'.repeat(n);
+    return `<span class="chips">
+      ${row('建材', ['wood', 'clay', 'reed', 'stone'].map((k) => chip(k, p.supply[k])).join(''))}
+      ${row('糧食', ['food', 'grain', 'veg'].map((k) => chip(k, p.supply[k])).join('')
+        + chip('begging', p.begging, 'beg'))}
+      ${row('動物', ANIM.map((k) => chip(k, animalTotal(p, k))).join('') + fill(1))}</span>`;
   }
 
   function renderRes() {
@@ -652,6 +683,7 @@
     renderBoard(); renderFarm(); renderCards();
     renderPrompt(); renderFree(); renderRes(); renderModal(); renderDrawer(); renderRail();
     if (has3d) { showTip(null); View3D.sync(G, UI); }
+    placeActionBar();
     save();
   }
 

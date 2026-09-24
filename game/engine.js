@@ -302,9 +302,10 @@ function gain(G, p, g, why) {
   return got;
 }
 
+// Spelled out ("3 木材、2 蘆葦") rather than emoji, which never matched the drawn icons.
 function costText(cost) {
   if (!cost || !Object.keys(cost).length) return '免費';
-  return Object.keys(cost).map((k) => `${ICON[k] || ''}${cost[k]}`).join(' ');
+  return Object.keys(cost).map((k) => `${cost[k]} ${LABEL[k] || k}`).join('、');
 }
 
 // Cost after every card modifier the player has in play.

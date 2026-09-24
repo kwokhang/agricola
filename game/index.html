@@ -208,8 +208,9 @@
 
   /* ---------- left column: what to do now, and what you own ---------- */
   .dock {
-    position: fixed; z-index: 3; left: 12px; top: 136px; width: 316px;
-    max-height: calc(100vh - 152px); overflow-y: auto; padding: 11px 13px;
+    position: fixed; z-index: 3; left: 12px; bottom: 18px; width: 368px;
+    max-height: 46vh; overflow-y: auto; padding: 11px 13px;
+    transition: bottom .28s ease;
     display: flex; flex-direction: column; gap: 9px;
   }
   .prompt:empty, .freebar:empty { display: none; }
@@ -409,6 +410,57 @@
   .modal { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; background: rgba(20, 14, 6, .5); }
   .modal .panel { max-width: min(460px, 92vw); background: var(--panel); border: 2px solid var(--accent); padding: 14px 16px; }
 
+  /* ---------- resources: icon, name and count in a labelled grid ---------- */
+  .chips {
+    display: grid; grid-template-columns: 26px repeat(4, 1fr); gap: 5px 3px;
+    align-items: center; width: 100%;
+  }
+  .chips .rg { font-size: 11px; color: var(--muted); letter-spacing: .05em; }
+  .chip {
+    display: flex; align-items: center; gap: 3px; min-width: 0;
+    background: color-mix(in srgb, var(--bg) 80%, transparent);
+    border: 1px solid var(--line); border-radius: 8px; padding: 2px 5px 2px 2px; line-height: 1.3;
+  }
+  .chip svg { flex: none; width: 20px; height: 20px; }   /* flex would squash the icon to a dot */
+  .chip .cl { font-size: 11.5px; color: var(--muted); white-space: nowrap; }
+  .chip b { margin-left: auto; font-size: 15px; font-weight: 800; }
+  .chip.zero { opacity: .45; }
+  .chip.zero b { font-weight: 600; }
+  .chip.beg { border-color: var(--maj-frame); }
+  .chip.beg:not(.zero) { background: color-mix(in srgb, var(--maj-frame) 22%, transparent); }
+  .resbar { flex-direction: column; align-items: stretch; }
+  .resbar .rtoggle { margin-left: 0; align-self: flex-end; }
+  .allres .prow { flex-direction: column; align-items: stretch; gap: 4px; }
+  .cst { gap: 2px; margin-right: 5px; }
+  .cst svg { flex: none; }
+  .cst small { font-size: 11px; color: var(--muted); margin-left: 1px; }
+
+  /* ---------- the action bar: the current prompt and its buttons, bottom centre ---------- */
+  .actionbar {
+    position: fixed; z-index: 4; left: 50%; bottom: 18px; transform: translateX(-50%);
+    width: min(720px, calc(100vw - 800px)); min-width: 300px;
+    padding: 10px 14px 12px; display: flex; flex-direction: column; gap: 9px;
+    border: 1.5px solid var(--accent);
+    box-shadow: 0 14px 40px rgba(0, 0, 0, .5), 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent);
+    transition: bottom .28s ease;
+  }
+  body.hand-up .actionbar, body.hand-up .dock { bottom: calc(33vh + 8px); }
+  .actionbar .panel {
+    border-left: none; border-radius: 9px; padding: 2px 4px; background: transparent;
+  }
+  .actionbar .panel + .panel { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+  .actionbar .panel h3 { font-size: 18px; margin-bottom: 4px; color: var(--accent); }
+  .actionbar .panel p, .actionbar .panel .muted { font-size: 14px; }
+  .actionbar .steps { font-size: 13px; }
+  .actionbar .row { gap: 8px; }
+  .actionbar .row button { padding: 7px 16px; font-size: 14.5px; }
+  .actionbar .row button.sel { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); outline: none; }
+  .actionbar .freebar { border-top: 1px dashed var(--line); padding-top: 8px; }
+  .actionbar.flash { animation: abFlash .7s ease-out; }
+  @keyframes abFlash {
+    0% { box-shadow: 0 14px 40px rgba(0,0,0,.5), 0 0 0 14px color-mix(in srgb, var(--accent) 45%, transparent); }
+  }
+
   .gfxdefs { position: absolute; }
 </style>
 </head>
@@ -432,10 +484,14 @@
 </div>
 
 <div class="dock glass">
-  <div class="prompt" id="prompt"></div>
-  <div class="freebar" id="free"></div>
   <div class="resbar" id="resbar"></div>
   <div class="allres" id="allres" hidden></div>
+</div>
+
+<!-- What to do now, front and centre above the table's near edge. -->
+<div class="actionbar glass" id="actionbar">
+  <div class="prompt" id="prompt"></div>
+  <div class="freebar" id="free"></div>
 </div>
 
 <aside class="rail glass">

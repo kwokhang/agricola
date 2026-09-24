@@ -15,10 +15,12 @@ const ART = (function () {
       <ellipse cx="18" cy="8.1" rx="2.4" ry="3.1" fill="var(--art-wood-lt)"/>
       <ellipse cx="18" cy="8.1" rx=".9" ry="1.2" fill="none" opacity=".6"/></g>`,
 
-    clay: `<g stroke="${ink}" stroke-width="1.1">
-      <ellipse cx="7.8" cy="16.4" rx="5.4" ry="3.6" fill="var(--art-clay)"/>
-      <ellipse cx="16.2" cy="16.8" rx="4.6" ry="3.2" fill="var(--art-clay)"/>
-      <ellipse cx="12" cy="10.6" rx="5.2" ry="3.5" fill="var(--art-clay-lt)"/></g>`,
+    // Clay as a stack of fired bricks, so it never reads as a pile of stones.
+    clay: `<g stroke="${ink}" stroke-width="1.1" stroke-linejoin="round">
+      <rect x="2.4" y="15" width="9.4" height="5.4" rx="1" fill="var(--art-clay)"/>
+      <rect x="12.2" y="15" width="9.4" height="5.4" rx="1" fill="var(--art-clay)"/>
+      <rect x="7.3" y="9.2" width="9.4" height="5.4" rx="1" fill="var(--art-clay-lt)"/>
+      <path d="M4.6 17.7h5M14.4 17.7h5M9.5 11.9h5" stroke-width=".8" opacity=".45"/></g>`,
 
     reed: `<g fill="none" stroke="var(--art-reed-dk)" stroke-width="1.5" stroke-linecap="round">
         <path d="M7.5 21c-.4-6 .3-9.6 1.6-12.6"/><path d="M12.4 21c0-6.6.3-10.4 1-13.6"/><path d="M17 21c.3-5.4-.2-8.6-1.2-11.2"/></g>
@@ -65,8 +67,10 @@ const ART = (function () {
       <path d="M16.6 9.6c-.8-1.4-.4-2.6.8-2.8M20.4 9.6c.8-1.4.6-2.6-.6-2.9" fill="none"/>
       <circle cx="19.4" cy="12" r=".8" fill="${ink}" stroke="none"/></g>`,
 
-    begging: `<path d="M5 10h14l-1.6 9.4a2 2 0 0 1-2 1.6H8.6a2 2 0 0 1-2-1.6z" fill="var(--art-clay)" stroke="${ink}" stroke-width="1.2" stroke-linejoin="round"/>
-      <path d="M4 10c1.6-3.4 4.4-5 8-5s6.4 1.6 8 5" fill="none" stroke="${ink}" stroke-width="1.2"/>`,
+    // The begging card: a card marked −3, which is what it costs at the end.
+    begging: `<rect x="5" y="2.6" width="14" height="18.8" rx="2" fill="var(--art-plate)" stroke="${ink}" stroke-width="1.2" transform="rotate(-8 12 12)"/>
+      <text x="12" y="16" text-anchor="middle" font-size="9.5" font-weight="800" fill="var(--maj-frame)"
+        font-family="-apple-system,sans-serif" transform="rotate(-8 12 12)">−3</text>`,
 
     person: `<path d="M12 2.6c1.8 0 3 1.4 3 3 0 1-.4 1.9-1.1 2.5l4.9 3.2c1 .7 1.3 2 .7 3-.6 1-1.9 1.3-2.9.7l-2.2-1.4v3.8l2.5 3.2c.7.9.5 2.1-.4 2.8-.9.6-2.1.4-2.7-.4L12 20.6l-1.8 2.4c-.6.8-1.8 1-2.7.4-.9-.7-1.1-1.9-.4-2.8l2.5-3.2v-3.8l-2.2 1.4c-1 .6-2.3.3-2.9-.7-.6-1-.3-2.3.7-3l4.9-3.2A3.2 3.2 0 0 1 9 5.6c0-1.6 1.3-3 3-3z" fill="currentColor" stroke="${ink}" stroke-width="1"/>`,
 
@@ -361,18 +365,23 @@ const ART = (function () {
   }
 
   // Cost spelled as icon + number chips, laid out left to right.
+  const NAMES = { food: '食物', wood: '木材', clay: '黏土', reed: '蘆葦', stone: '石頭',
+    grain: '穀物', veg: '蔬菜', sheep: '綿羊', boar: '野豬', cattle: '牛', begging: '乞討' };
+
   function costRow(cost, x, y) {
     const keys = Object.keys(cost || {});
     if (!keys.length) {
       return `<text x="${x}" y="${y + 17}" font-size="16" fill="var(--art-ink)" opacity=".75">免費</text>`;
     }
+    // Icon, count, then the name, so a cost never has to be decoded from the picture alone.
     let s = '', cx = x;
     for (const k of keys) {
       s += `<g transform="translate(${cx} ${y})">
-        <rect width="52" height="26" rx="13" fill="var(--art-token)" stroke="${ink}" stroke-width="1.4"/>
+        <rect width="80" height="26" rx="13" fill="var(--art-token)" stroke="${ink}" stroke-width="1.4"/>
         <g transform="translate(4 3) scale(${20 / 24})">${ICONS[k] || ''}</g>
-        <text x="38" y="19" text-anchor="middle" font-size="16" font-weight="700" fill="var(--art-ink)">${cost[k]}</text></g>`;
-      cx += 58;
+        <text x="27" y="19" font-size="16" font-weight="800" fill="var(--art-ink)">${cost[k]}</text>
+        <text x="${cost[k] > 9 ? 47 : 40}" y="18.5" font-size="12.5" fill="var(--art-ink)">${NAMES[k] || ''}</text></g>`;
+      cx += 86;
     }
     return s;
   }
@@ -430,5 +439,5 @@ const ART = (function () {
 
   return { ICONS, icon, spaceArt, sceneMarkup, scene, plate, token, board, slot, seal, meeple,
     grassTile, fieldTile, houseTile, stableArt, animalsArt, fenceArt, edgeHit, TW, TH,
-    cardFace, cardBack, CARD_W, CARD_H };
+    cardFace, cardBack, CARD_W, CARD_H, NAMES };
 })();

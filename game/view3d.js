@@ -686,15 +686,18 @@ const View3D = (function () {
       const slot = box(0.48, 0.02, 0.9, col('--art-boardface'), x, 0.05, 0);
       g.add(slot);
       // Each slot is printed with the goods it holds, like the recesses on a player mat.
-      const icon = new T.Mesh(geo('slotIcon', () => new T.PlaneGeometry(0.34, 0.34)),
-        printMat(null, { transparent: true, depthWrite: false, opacity: n ? 0.9 : 0.45,
-          map: svgTexture('slot:' + k, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="128" height="128">${ART.ICONS[k] || ''}</svg>`, 128, 128) }));
+      const icon = new T.Mesh(geo('slotIcon', () => new T.PlaneGeometry(0.44, 0.44)),
+        printMat(null, { transparent: true, depthWrite: false, opacity: n ? 0.95 : 0.55,
+          map: svgTexture('slot:' + k, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="160" height="160">
+            <g transform="translate(6 0) scale(.84)">${ART.ICONS[k] || ''}</g>
+            <text x="16" y="29.5" text-anchor="middle" font-size="8" font-weight="700" fill="var(--art-ink)"
+              font-family="-apple-system,'PingFang TC',sans-serif">${ART.NAMES[k]}</text></svg>`, 160, 160) }));
       icon.rotation.x = -Math.PI / 2;
-      icon.position.set(x, 0.065, -0.24);
+      icon.position.set(x, 0.065, -0.2);
       g.add(icon);
       if (!n) return;
-      const pile = goodsPile(k, n, { spread: 0.34, max: 3, alwaysCount: true });
-      pile.position.set(x, 0.06, 0.14);
+      const pile = goodsPile(k, n, { spread: 0.3, max: 3, alwaysCount: true });
+      pile.position.set(x, 0.06, 0.24);
       pile.scale.setScalar(0.62);
       g.add(pile);
     });
@@ -867,8 +870,9 @@ const View3D = (function () {
   // The HUD covers these fractions of the screen, in NDC units (the full screen is 2 wide):
   // the dock on the left, the log rail on the right, the bars on top, the hand along the bottom.
   // The bottom margin only matters while the hand is up.
-  const SAFE = { l: 0.20, r: 0.17, t: 0.2, b: 0.08 };
-  const SAFE_HAND_B = 0.4;
+  // The bottom keeps room for the action bar, and more for the bar plus the hand.
+  const SAFE = { l: 0.20, r: 0.17, t: 0.2, b: 0.3 };
+  const SAFE_HAND_B = 0.62;
   let safeB = SAFE.b;
 
   const FOCUS = {
