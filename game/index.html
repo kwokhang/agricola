@@ -15,7 +15,7 @@
     --grass: #cfdca9; --grass-in: #a9c47a; --soil: #c9a878; --wall: #b99b6d;
     --fence: #7a5a2e; --vp-bg: #8a6d3b;
     --shadow: 0 2px 10px rgba(60, 45, 20, .2);
-    --p1: #c2632f; --p2: #3f6f9c;
+    --p1: #d4572a; --p2: #2f73c2;
     --art-ink: #4a3a24; --art-board: #e6dcc0; --art-edge: rgba(74,58,36,.4);
     --art-sky: #dfe9c9;
     --art-grass: #a7c273; --art-grass-dk: #7e9c4d; --art-pasture: #b9d281;
@@ -45,7 +45,7 @@
       --grass: #3f5228; --grass-in: #55703a; --soil: #5b442a; --wall: #6a5436;
       --fence: #c9a86a; --vp-bg: #6f5628;
       --shadow: 0 2px 10px rgba(0, 0, 0, .55);
-      --p1: #e08a54; --p2: #6ea3cf;
+      --p1: #f0834a; --p2: #4f9be8;
       --art-ink: #23190e; --art-board: #3a3120; --art-edge: rgba(20,14,6,.55);
       --art-sky: #445033;
       --art-grass: #6d8a45; --art-grass-dk: #52693a; --art-pasture: #7ea052;
@@ -75,7 +75,7 @@
     --grass: #3f5228; --grass-in: #55703a; --soil: #5b442a; --wall: #6a5436;
     --fence: #c9a86a; --vp-bg: #6f5628;
     --shadow: 0 2px 10px rgba(0, 0, 0, .55);
-    --p1: #e08a54; --p2: #6ea3cf;
+    --p1: #f0834a; --p2: #4f9be8;
     --art-ink: #23190e; --art-board: #3a3120; --art-edge: rgba(20,14,6,.55);
     --art-sky: #445033;
     --art-grass: #6d8a45; --art-grass-dk: #52693a; --art-pasture: #7ea052;
@@ -435,16 +435,93 @@
   .cst svg { flex: none; }
   .cst small { font-size: 11px; color: var(--muted); margin-left: 1px; }
 
+  /* ---------- right column: resources over the log ---------- */
+  .side {
+    position: fixed; z-index: 3; right: 12px; top: 136px; width: 304px;
+    max-height: calc(100vh - 152px); display: flex; flex-direction: column; gap: 10px;
+  }
+  .side .dock, .side .rail {
+    position: static; width: auto; max-height: none; top: auto; bottom: auto; right: auto; left: auto;
+  }
+  .side .dock { padding: 10px 12px; flex: none; }
+  .side .rail { padding: 0; flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+  .railhead {
+    all: unset; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 9px 12px;
+    font-size: 11px; letter-spacing: .16em; color: var(--muted);
+  }
+  .railhead:hover { color: var(--ink); }
+  .railhead .n { margin-left: auto; letter-spacing: 0; font-size: 11.5px; }
+  .railhead .last { letter-spacing: 0; font-size: 12px; color: var(--ink); opacity: .8;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
+  .side .rail .log { overflow-y: auto; padding: 0 12px 10px; max-height: 42vh; }
+  .tip { right: auto; left: 12px; top: 136px; }
+
+  /* resources: icon, then name over count, four to a row */
+  .chips { display: grid; grid-template-columns: 26px repeat(4, 1fr); gap: 5px 4px; align-items: center; width: 100%; }
+  .chips .rg { font-size: 11px; color: var(--muted); }
+  .chip {
+    display: flex; align-items: center; gap: 4px; min-width: 0; padding: 3px 5px 3px 3px;
+    background: color-mix(in srgb, var(--bg) 94%, transparent); border: 1px solid var(--line); border-radius: 8px;
+  }
+  .chip svg { flex: none; width: 24px; height: 24px; }
+  .chip .cv { display: flex; flex-direction: column; line-height: 1.1; min-width: 0; }
+  .chip .cl { font-size: 10.5px; color: var(--muted); white-space: nowrap; }
+  .chip b { margin: 0; font-size: 16px; font-weight: 800; color: var(--ink); }
+  .chip.zero { opacity: 1; }
+  .chip.zero svg { opacity: .5; }
+  .chip.zero b { color: var(--muted); font-weight: 600; }
+  .chip.beg:not(.zero) { background: color-mix(in srgb, var(--maj-frame) 22%, var(--bg)); border-color: var(--maj-frame); }
+  .resbar .who { font-size: 13.5px; }
+  .allres { margin-top: 8px; }
+  .allres .prow { border-top: 1px dashed var(--line); padding-top: 8px; }
+
+  /* ---------- players, top left: who they are, who is up, how they are doing ---------- */
+  .bar1 .fams { gap: 8px; }
+  .pcard {
+    display: flex; align-items: center; gap: 8px; padding: 4px 12px 4px 4px; border-radius: 12px;
+    background: color-mix(in srgb, var(--bg) 80%, transparent); border: 1px solid var(--line);
+    position: relative; cursor: pointer;
+  }
+  .pcard .av {
+    width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center;
+    background: var(--pc); box-shadow: inset 0 -3px 0 rgba(0,0,0,.2), 0 0 0 2px var(--panel);
+  }
+  .pcard .av svg { color: #fff !important; }
+  .pcard .nm { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 5px; }
+  .pcard .sub { font-size: 11.5px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .pcard .men { margin: 0; }
+  .pcard .tag {
+    font-size: 10.5px; font-weight: 800; padding: 1px 7px; border-radius: 999px;
+    background: var(--accent); color: var(--accent-ink);
+  }
+  .pcard.now { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, var(--bg));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent); }
+  .pcard .sp { display: inline-flex; }
+
+  /* ---------- whose turn: the whole screen is framed in that player's colour ---------- */
+  .turnframe {
+    position: fixed; inset: 0; z-index: 8; pointer-events: none;
+    border: 5px solid var(--turn, transparent);
+    box-shadow: inset 0 0 60px color-mix(in srgb, var(--turn, transparent) 40%, transparent);
+    transition: border-color .35s, box-shadow .35s;
+  }
+  .turnframe span {
+    position: absolute; left: 50%; bottom: 0; transform: translateX(-50%);
+    padding: 3px 16px 4px; border-radius: 10px 10px 0 0; font-size: 12.5px; font-weight: 800;
+    background: var(--turn, transparent); color: #fff; letter-spacing: .04em;
+  }
+  .turnframe span:empty { display: none; }
+
   /* ---------- the action bar: the current prompt and its buttons, bottom centre ---------- */
   .actionbar {
     position: fixed; z-index: 4; left: 50%; bottom: 18px; transform: translateX(-50%);
-    width: min(720px, calc(100vw - 800px)); min-width: 300px;
+    width: min(720px, calc(100vw - 680px)); min-width: 320px;
     padding: 10px 14px 12px; display: flex; flex-direction: column; gap: 9px;
     border: 1.5px solid var(--accent);
     box-shadow: 0 14px 40px rgba(0, 0, 0, .5), 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent);
     transition: bottom .28s ease;
   }
-  body.hand-up .actionbar, body.hand-up .dock { bottom: calc(33vh + 8px); }
+  body.hand-up .actionbar { bottom: calc(33vh + 8px); }
   .actionbar .panel {
     border-left: none; border-radius: 9px; padding: 2px 4px; background: transparent;
   }
@@ -475,6 +552,7 @@
 
 <div class="stage" id="stage"></div>
 <div class="vig"></div>
+<div class="turnframe" id="turnframe"><span id="turnTag"></span></div>
 
 <div class="bar1 glass" id="status"></div>
 
@@ -483,10 +561,6 @@
   <div class="whobox" id="playerTabs"></div>
 </div>
 
-<div class="dock glass">
-  <div class="resbar" id="resbar"></div>
-  <div class="allres" id="allres" hidden></div>
-</div>
 
 <!-- What to do now, front and centre above the table's near edge. -->
 <div class="actionbar glass" id="actionbar">
@@ -494,10 +568,17 @@
   <div class="freebar" id="free"></div>
 </div>
 
-<aside class="rail glass">
-  <h2>紀錄 · LOG</h2>
-  <div class="log" id="railLog"></div>
-</aside>
+<!-- Right-hand column: what you own, then the log (folded away until opened). -->
+<div class="side">
+  <div class="dock glass">
+    <div class="resbar" id="resbar"></div>
+    <div class="allres" id="allres" hidden></div>
+  </div>
+  <aside class="rail glass" id="rail">
+    <button class="railhead" data-act="log" id="railHead"></button>
+    <div class="log" id="railLog" hidden></div>
+  </aside>
+</div>
 
 <div class="tip glass" id="tip" hidden></div>
 <div class="preview" id="preview" hidden></div>

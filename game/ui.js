@@ -19,7 +19,7 @@
 
   let G = null;
   const UI = {
-    main: 'table', view: 0, lastCurrent: 0, autoKey: '', handPinned: false,
+    main: 'table', view: 0, lastCurrent: 0, autoKey: '', handPinned: false, logOpen: false,
     buildKind: 'room', sowKind: 'grain', cardTab: 'occ', drawerTab: 'log', allres: false,
   };
 
@@ -52,9 +52,15 @@
     const families = G.players.map((p, i) => {
       const active = (G.feeding ? G.feeding.i === i : G.current === i) && !G.over;
       const men = Array.from({ length: p.people }, (_, k) =>
-        `<span class="mp ${k < p.workersLeft ? '' : 'used'}">${ART.meeple(PCOLOR[i], 15)}</span>`).join('');
-      return `<span class="pill fam ${active ? 'now' : ''}" style="--pc:${PCOLOR[i]}">${active ? '▶ ' : ''}${esc(p.name)}${i === G.startPlayer ? ART.icon('start', 15) : ''}
-        <span class="men">${men}</span></span>`;
+        `<span class="mp ${k < p.workersLeft ? '' : 'used'}">${ART.meeple(PCOLOR[i], 14)}</span>`).join('');
+      const pts = score(G, p).total;
+      return `<div class="pcard ${active ? 'now' : ''}" style="--pc:${PCOLOR[i]}" data-view="${i}" title="睇 ${esc(p.name)} 嘅農場">
+        <span class="av">${ART.meeple('#fff', 20)}</span>
+        <span class="bd">
+          <span class="nm">${esc(p.name)}${i === G.startPlayer ? `<span class="sp" title="起始玩家">${ART.icon('start', 14)}</span>` : ''}
+            ${active ? '<span class="tag">輪到</span>' : ''}</span>
+          <span class="sub"><span class="men">${men}</span>${HOUSE_ZH[p.house]} ${roomCount(p)} 間 · <b>${pts}</b> 分</span>
+        </span></div>`;
     }).join('');
 
     // 14 segments; harvest rounds stand taller so the rhythm of the game is visible.
@@ -512,7 +518,7 @@
   // ------------------------------------------------------------ dock: resources
   const chip = (k, n, cls) =>
     `<span class="chip ${n ? '' : 'zero'} ${cls || ''}" title="${ART.NAMES[k]} ${n}">
-      ${ic(k, 20)}<span class="cl">${ART.NAMES[k]}</span><b>${n}</b></span>`;
+      ${ic(k, 24)}<span class="cv"><span class="cl">${ART.NAMES[k]}</span><b>${n}</b></span></span>`;
 
   // Grouped by what the goods are for: building, eating, breeding.
   function chipsFor(p) {
@@ -532,19 +538,24 @@
     $('resbar').innerHTML =
       `<span class="who">${ART.meeple(PCOLOR[UI.view], 16)} ${esc(p.name)}<span class="men">${men}</span></span>
        ${chipsFor(p)}
-       ${G.n > 1 ? `<button class="rtoggle" data-act="allres">${UI.allres ? '▼ 收埋' : '▲ 全部玩家'}</button>` : ''}`;
+       ${G.n > 1 ? `<button class="rtoggle" data-act="allres">${UI.allres ? '▲ 收埋' : '▼ 其他玩家'}</button>` : ''}`;
 
     const box = $('allres');
     box.hidden = !(UI.allres && G.n > 1);
     if (box.hidden) { box.innerHTML = ''; return; }
-    box.innerHTML = G.players.map((q, i) =>
-      `<div class="prow"><span class="who">${ART.meeple(PCOLOR[i], 16)} ${esc(q.name)}</span>${chipsFor(q)}</div>`).join('');
+    box.innerHTML = G.players.map((q, i) => (i === UI.view ? '' :
+      `<div class="prow"><span class="who">${ART.meeple(PCOLOR[i], 16)} ${esc(q.name)}</span>${chipsFor(q)}</div>`)).join('');
   }
 
   // ------------------------------------------------------------ right rail: log
   function renderRail() {
     const el = $('railLog');
     if (!el) return;
+    const last = G.log[G.log.length - 1] || '';
+    $('railHead').innerHTML = `${UI.logOpen ? '▾' : '▸'} 紀錄 · LOG
+      ${UI.logOpen ? '' : `<span class="last">${esc(last)}</span>`}<span class="n">${G.log.length}</span>`;
+    el.hidden = !UI.logOpen;
+    if (!UI.logOpen) return;
     const lines = G.log.slice(-90).map(esc).join('<br>');
     const stuck = el.scrollTop + el.clientHeight >= el.scrollHeight - 24;
     el.innerHTML = lines;
@@ -679,6 +690,10 @@
     if (want && key !== UI.autoKey) UI.main = want;
     UI.autoKey = key;
 
+    // Frame the screen in the colour of whoever has to act.
+    const who = G.over ? -1 : G.feeding ? G.feeding.i : G.current;
+    document.body.style.setProperty('--turn', who < 0 ? 'transparent' : PCOLOR[who]);
+    $('turnTag').textContent = who < 0 ? '' : `${G.players[who].name} 嘅回合`;
     renderStatus(); renderMainTabs();
     renderBoard(); renderFarm(); renderCards();
     renderPrompt(); renderFree(); renderRes(); renderModal(); renderDrawer(); renderRail();
@@ -747,6 +762,7 @@
     switch (t.dataset.act) {
       case 'allres': UI.allres = !UI.allres; break;
       case 'hand': UI.handPinned = !UI.handPinned; break;
+      case 'log': UI.logOpen = !UI.logOpen; renderRail(); save(); return;
       case 'buildKind': UI.buildKind = v; break;
       case 'sowKind': UI.sowKind = v; break;
       case 'sowBean': sowBeanfield(G); break;

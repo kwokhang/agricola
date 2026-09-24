@@ -14,22 +14,20 @@ const View3D = (function () {
   const BOARD_Y = 0.06;            // top surface of a board
   const CARD_W = 1.0, CARD_H = 1.4;
 
-  // Where each component sits on the table, packed the way people actually play: the action
-  // board in the middle, your farm tucked right under its left half and the major
-  // improvements under its right half, your supply and played cards in front of those.
-  // The other seat is the same arrangement turned round on the far side.
+  // Where each component sits on the table. Everything faces the one camera, so nothing needs
+  // turning round: the action board across the top, the major improvements stacked at its
+  // right hand, and the two farms side by side underneath it, each with its name, family,
+  // supply tray and played cards in a column below.
   const LAYOUT = {
-    board: { x: 0, z: -3.6 },                                   // spans z -6.2 … -1.0
-    majors: { x: 3.0, z: 1.05 },                                // world; beside your farm
-    seat: [{ x: 0, z: 1.0, rot: 0 }, { x: 0, z: -8.2, rot: Math.PI }],
-    farm: { x: -3.0, z: 0 },                                    // seat-local
-    plate: { x: -4.4, z: 1.98 },                                // seat-local
-    supply: { x: -3.0, z: 2.95 },                               // seat-local
-    // Seat 0 lays played cards in front of the majors; seat 1 has no majors beside it,
-    // so its cards take that spot instead.
-    played: [{ x: 0.9, z: 3.2 }, { x: 0.9, z: -0.35 }],        // seat-local, first card
+    board: { x: 0, z: -3.6 },                                   // spans x ±5.7, z -6.2 … -1.0
+    majors: { x: 7.55, z: -3.6 },                               // world; 3 × 4 beside the board
+    seat: (pi, n) => ({ x: n === 1 ? 0 : (pi === 0 ? -2.88 : 2.88), z: 0.95, rot: 0 }),
+    farm: { x: 0, z: 0 },                                       // seat-local
+    plate: { x: -1.5, z: 1.98 },                                // seat-local
+    supply: { x: 0, z: 2.95 },                                  // seat-local
+    played: { x: -2.12, z: 4.3 },                               // seat-local, first card
   };
-  const MAJ_W = 0.95, MAJ_H = 1.33;
+  const MAJ_W = 0.86, MAJ_H = 1.2;
 
   let renderer, scene, camera, raycaster, host, canvas;
   let root, tableGroup, handGroup, pickables = [], hoverables = [];
@@ -139,48 +137,246 @@ const View3D = (function () {
     return m;
   }
 
-  function houseMesh(kind) {
+  // ---------------------------------------------------------------- farm materials
+  // Painted surfaces for the farmyard: every tile gets light from the upper left, a darker
+  // rim so neighbouring tiles read as separate pieces, and its own scatter of detail.
+  function seeded(seed) {
+    let s = (seed * 2654435761) >>> 0;
+    return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);
+  }
+
+  const TILE_LIGHT = `<defs>
+    <linearGradient id="lt" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset=".55" stop-color="#fff" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000" stop-opacity=".14"/></linearGradient>
+    <radialGradient id="vg" cx=".5" cy=".5" r=".72">
+      <stop offset=".62" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".26"/></radialGradient></defs>`;
+  const TILE_FINISH = `<rect width="100" height="100" fill="url(#lt)"/><rect width="100" height="100" fill="url(#vg)"/>`;
+
+  function grassSvg(seed, rich) {
+    const r = seeded(seed + (rich ? 101 : 0));
+    const base = rich ? 'var(--art-pasture)' : 'var(--art-grass)';
+    let s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="256" height="256">${TILE_LIGHT}
+      <rect width="100" height="100" fill="${base}"/>`;
+    for (let i = 0; i < 7; i++) {             // soft patches of darker and lighter growth
+      s += `<ellipse cx="${r() * 100}" cy="${r() * 100}" rx="${10 + r() * 16}" ry="${6 + r() * 10}"
+        fill="${r() < 0.5 ? 'var(--art-grass-dk)' : '#fff'}" opacity="${0.06 + r() * 0.08}"/>`;
+    }
+    const shades = ['var(--art-grass-dk)', 'var(--art-grass-dk)', 'var(--art-reed-dk)', '#fff'];
+    for (let i = 0; i < 70; i++) {            // tufts
+      const x = r() * 100, y = r() * 100, h = 2.4 + r() * 2.6;
+      s += `<path d="M${x} ${y}l-1.4 -${h}M${x} ${y}l.1 -${h * 1.15}M${x} ${y}l1.5 -${h * .9}" stroke="${shades[i % 4]}"
+        stroke-width=".7" stroke-linecap="round" opacity="${i % 4 === 3 ? .35 : .75}"/>`;
+    }
+    const flowers = rich ? 9 : 4;
+    for (let i = 0; i < flowers; i++) {
+      const x = 8 + r() * 84, y = 8 + r() * 84;
+      const petal = r() < 0.5 ? '#fff' : 'var(--art-grain)';
+      s += `<g transform="translate(${x} ${y})">${[0, 72, 144, 216, 288].map((a) =>
+        `<circle cx="${(Math.cos(a * Math.PI / 180) * 1.3).toFixed(2)}" cy="${(Math.sin(a * Math.PI / 180) * 1.3).toFixed(2)}" r="1" fill="${petal}"/>`).join('')}
+        <circle r=".8" fill="${petal === '#fff' ? 'var(--art-grain)' : 'var(--art-veg)'}"/></g>`;
+    }
+    for (let i = 0; i < 3; i++) {             // pebbles
+      s += `<ellipse cx="${r() * 100}" cy="${r() * 100}" rx="1.4" ry="1" fill="var(--art-stone-lt)" opacity=".8"/>`;
+    }
+    return s + TILE_FINISH + '</svg>';
+  }
+
+  // A ploughed field: ridges running across, each lit on top and shaded underneath.
+  function fieldSvg(seed, sown) {
+    const r = seeded(seed + 7);
+    let s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="256" height="256">${TILE_LIGHT}
+      <rect width="100" height="100" fill="var(--art-soil)"/>`;
+    for (let i = 0; i < 6; i++) {
+      const y = 6 + i * 17.5;
+      const w = (k) => (Math.sin(k * 0.09 + i) * 1.2).toFixed(2);
+      s += `<path d="M0 ${y + 6 + +w(0)}${[25, 50, 75, 100].map((x) => ` L${x} ${y + 6 + +w(x)}`).join('')} V${y + 11} H0z" fill="#000" opacity=".2"/>
+        <path d="M0 ${y + +w(0)}${[25, 50, 75, 100].map((x) => ` L${x} ${y + +w(x)}`).join('')} V${y + 6} H0z" fill="#fff" opacity=".16"/>
+        <path d="M0 ${y + 11}H100" stroke="var(--art-soil-dk)" stroke-width="1.6" opacity=".7"/>`;
+      if (sown) {
+        for (let k = 0; k < 9; k++) {
+          const x = 5 + k * 11 + r() * 3;
+          s += `<path d="M${x} ${y + 4}l-1.2 -2.6M${x} ${y + 4}l1.2 -2.6" stroke="var(--art-reed)" stroke-width=".9" stroke-linecap="round"/>`;
+        }
+      }
+    }
+    for (let i = 0; i < 26; i++) {
+      s += `<ellipse cx="${r() * 100}" cy="${r() * 100}" rx="${0.8 + r() * 1.2}" ry="${0.6 + r() * 0.8}" fill="var(--art-soil-dk)" opacity=".8"/>`;
+    }
+    return s + TILE_FINISH + '</svg>';
+  }
+
+  // Under a room: a trodden yard with stepping stones up to the door.
+  function yardSvg(seed) {
+    const r = seeded(seed + 31);
+    let s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="256" height="256">${TILE_LIGHT}
+      <rect width="100" height="100" fill="var(--art-grass)"/>
+      <ellipse cx="50" cy="56" rx="44" ry="38" fill="var(--art-soil)" opacity=".55"/>`;
+    [[50, 84], [46, 94], [54, 74]].forEach(([x, y]) => {
+      s += `<ellipse cx="${x}" cy="${y}" rx="5" ry="3.2" fill="var(--art-stone-lt)" stroke="var(--art-ink)" stroke-width=".4" opacity=".9"/>`;
+    });
+    for (let i = 0; i < 26; i++) {
+      const x = r() * 100, y = r() * 100;
+      if (Math.hypot(x - 50, (y - 56) * 1.15) < 40) continue;
+      s += `<path d="M${x} ${y}l-1.3 -3M${x} ${y}l0 -3.4M${x} ${y}l1.3 -2.8" stroke="var(--art-grass-dk)" stroke-width=".7" stroke-linecap="round" opacity=".7"/>`;
+    }
+    return s + TILE_FINISH + '</svg>';
+  }
+
+  // Wall and roof finishes, repeated across the house faces.
+  const WALL_SVG = {
+    wood: () => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="128" height="128">
+      <rect width="64" height="64" fill="var(--art-wood)"/>
+      ${[0, 16, 32, 48].map((y) => `<rect y="${y}" width="64" height="16" fill="${y % 32 ? '#000' : '#fff'}" opacity=".06"/>
+        <path d="M0 ${y + 15}H64" stroke="var(--art-wood-dk)" stroke-width="2"/>
+        <path d="M0 ${y + 2}H64" stroke="#fff" stroke-width="1" opacity=".25"/>
+        <ellipse cx="${(y * 7) % 60 + 4}" cy="${y + 8}" rx="3" ry="1.4" fill="none" stroke="var(--art-wood-dk)" stroke-width=".8" opacity=".5"/>`).join('')}</svg>`,
+    clay: () => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="128" height="128">
+      <rect width="64" height="64" fill="var(--art-clay-lt)"/>
+      ${[[4, 6], [30, 18], [46, 40], [12, 44], [52, 8]].map(([x, y]) =>
+        `<g opacity=".75"><rect x="${x}" y="${y}" width="10" height="5" fill="var(--art-clay)" stroke="var(--art-ink)" stroke-width=".4"/>
+         <rect x="${x + 5}" y="${y + 5}" width="10" height="5" fill="var(--art-clay)" stroke="var(--art-ink)" stroke-width=".4"/></g>`).join('')}
+      ${Array.from({ length: 40 }, (_, i) => `<circle cx="${(i * 37) % 64}" cy="${(i * 23) % 64}" r=".7" fill="#000" opacity=".12"/>`).join('')}</svg>`,
+    stone: () => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="128" height="128">
+      <rect width="64" height="64" fill="var(--art-ink)" opacity=".55"/>
+      ${[0, 1, 2, 3].map((row) => [0, 1, 2].map((c) => {
+        const x = c * 22 - (row % 2) * 11 + 1, y = row * 16 + 1;
+        return `<rect x="${x}" y="${y}" width="20" height="14" rx="3" fill="var(--art-stone)"/>
+          <rect x="${x + 1}" y="${y + 1}" width="18" height="4" rx="2" fill="#fff" opacity=".22"/>`;
+      }).join('')).join('')}</svg>`,
+  };
+  const ROOF_SVG = {
+    // Thatch on the wooden hut, clay tiles, then slate on the stone house.
+    wood: () => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="128" height="128">
+      <rect width="64" height="64" fill="var(--art-grain)"/><rect width="64" height="64" fill="var(--art-wood-dk)" opacity=".35"/>
+      ${Array.from({ length: 48 }, (_, i) => `<path d="M${(i * 11) % 64} ${(i * 17) % 64}l${2 - (i % 3)} 9"
+        stroke="${i % 3 ? 'var(--art-wood-dk)' : '#fff'}" stroke-width=".9" opacity="${i % 3 ? .45 : .3}"/>`).join('')}
+      ${[16, 32, 48].map((y) => `<path d="M0 ${y}H64" stroke="var(--art-wood-dk)" stroke-width="1.6" opacity=".5"/>`).join('')}</svg>`,
+    clay: () => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="128" height="128">
+      <rect width="64" height="64" fill="var(--art-roof)"/>
+      ${[0, 16, 32, 48].map((y, row) => Array.from({ length: 5 }, (_, i) => {
+        const x = i * 16 - (row % 2) * 8;
+        return `<path d="M${x} ${y}v12a8 4 0 0 0 16 0V${y}" fill="var(--art-roof)" stroke="#000" stroke-width=".8" stroke-opacity=".35"/>
+          <path d="M${x + 3} ${y + 2}v8" stroke="#fff" stroke-width="1.4" opacity=".22"/>`;
+      }).join('')).join('')}</svg>`,
+    stone: () => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="128" height="128">
+      <rect width="64" height="64" fill="var(--art-stone)"/><rect width="64" height="64" fill="var(--art-ink)" opacity=".45"/>
+      ${[0, 1, 2, 3, 4, 5, 6, 7].map((row) => Array.from({ length: 5 }, (_, i) => {
+        const x = i * 14 - (row % 2) * 7, y = row * 8;
+        return `<rect x="${x + .5}" y="${y + .5}" width="13" height="7.5" rx="1.2" fill="#fff" opacity="${0.05 + ((i + row) % 3) * 0.04}"/>`;
+      }).join('')).join('')}</svg>`,
+  };
+
+  function finishTex(kind, table, key) {
+    const tex = svgTexture(`${key}:${kind}`, (table[kind] || table.wood)(), 128, 128);
+    tex.wrapS = tex.wrapT = T.RepeatWrapping;
+    return tex;
+  }
+
+  // A gabled building: a pentagon profile extruded along x, a two-slab roof that overhangs
+  // it, and a front (+z) that faces whoever is sitting at this farm.
+  function gabled(o) {
     const g = new T.Group();
-    const wall = { wood: '--art-wood', clay: '--art-clay', stone: '--art-stone' }[kind] || '--art-wood';
-    g.add(box(0.74, 0.42, 0.66, col(wall), 0, 0.21, 0));
-    const roof = new T.Mesh(geo('roof', () => new T.ConeGeometry(0.62, 0.34, 4)), mat(col('--art-roof')));
-    roof.position.y = 0.59; roof.rotation.y = Math.PI / 4; roof.castShadow = true;
-    g.add(roof);
-    g.add(box(0.18, 0.26, 0.04, col('--art-stable-door'), 0, 0.13, 0.34));
-    g.add(box(0.14, 0.12, 0.03, col('--art-window'), -0.24, 0.3, 0.34));
-    g.add(box(0.14, 0.12, 0.03, col('--art-window'), 0.24, 0.3, 0.34));
+    const { W, D, Hw, Hr } = o;
+    const k = `gab${W}_${D}_${Hw}_${Hr}`;
+    const body = geo(k, () => {
+      const s = new T.Shape();
+      s.moveTo(D / 2, 0); s.lineTo(-D / 2, 0); s.lineTo(-D / 2, Hw); s.lineTo(0, Hw + Hr); s.lineTo(D / 2, Hw);
+      s.closePath();
+      const e = new T.ExtrudeGeometry(s, { depth: W, bevelEnabled: false });
+      e.rotateY(Math.PI / 2);
+      e.translate(-W / 2, 0, 0);
+      return e;
+    });
+    const wallTex = o.wallTex;
+    const wallMat = mat('#ffffff', { map: wallTex });
+    wallTex.repeat.set(1 / 0.26, 1 / 0.26);   // extrude UVs are in world units
+    const walls = new T.Mesh(body, wallMat);
+    walls.castShadow = true; walls.receiveShadow = true;
+    g.add(walls);
+
+    const pitch = Math.atan2(Hr, D / 2);
+    const slope = Math.hypot(D / 2, Hr) + o.over;
+    const roofTex = o.roofTex;
+    roofTex.repeat.set(2.2, 1.2);
+    const roofMat = mat('#ffffff', { map: roofTex, roughness: 0.6 });
+    [-1, 1].forEach((side) => {
+      const slab = new T.Mesh(geo(`rf${W}_${slope.toFixed(3)}`, () => new T.BoxGeometry(W + o.over * 2, 0.035, slope)), roofMat);
+      slab.rotation.x = side * pitch;
+      slab.position.set(0, Hw + Hr / 2 + 0.02, side * (D / 4 + o.over * 0.35) * 1);
+      // the slab tilts about its own centre, so push it out along its own slope
+      slab.position.z = side * (Math.cos(pitch) * slope / 2 - o.over * 0.5);
+      slab.position.y = Hw + Hr - Math.sin(pitch) * slope / 2 + 0.03;
+      slab.castShadow = true; slab.receiveShadow = true;
+      g.add(slab);
+    });
+    // ridge cap
+    const ridge = new T.Mesh(geo(`ridge${W}`, () => new T.CylinderGeometry(0.022, 0.022, W + o.over * 2, 6)), roofMat);
+    ridge.rotation.z = Math.PI / 2;
+    ridge.position.y = Hw + Hr + 0.045;
+    g.add(ridge);
+    return g;
+  }
+
+  function houseMesh(kind) {
+    const k = kind === 'clay' || kind === 'stone' ? kind : 'wood';
+    const W = 0.72, D = 0.5, Hw = 0.3, Hr = 0.32;
+    const g = gabled({ W, D, Hw, Hr, over: 0.06, wallTex: finishTex(k, WALL_SVG, 'wall'), roofTex: finishTex(k, ROOF_SVG, 'roof') });
+    const front = D / 2 + 0.006;
+    g.add(box(0.14, 0.2, 0.02, col('--art-stable-door'), 0.02, 0.1, front));
+    const glow = { color: col('--art-grain'), emissive: col('--art-grain'), emissiveIntensity: 0.55 };
+    [-0.22, 0.24].forEach((x) => {
+      const w = new T.Mesh(geo('win', () => new T.BoxGeometry(0.11, 0.09, 0.02)), mat(glow.color, glow));
+      w.position.set(x, 0.18, front);
+      g.add(w);
+      g.add(box(0.13, 0.015, 0.03, col('--art-wood-dk'), x, 0.13, front + 0.004));   // sill
+    });
+    g.add(box(0.2, 0.03, 0.06, col('--art-stone-lt'), 0.02, 0.015, front + 0.03));    // doorstep
+    const chim = box(0.08, 0.2, 0.08, col(k === 'wood' ? '--art-clay' : '--art-stone'), -0.2, Hw + Hr - 0.02, -0.08);
+    g.add(chim);
     return g;
   }
 
   function stableMesh() {
-    const g = new T.Group();
-    g.add(box(0.42, 0.24, 0.38, col('--art-wood-dk'), 0, 0.12, 0));
-    const roof = new T.Mesh(geo('sroof', () => new T.ConeGeometry(0.36, 0.2, 4)), mat(col('--art-roof')));
-    roof.position.y = 0.33; roof.rotation.y = Math.PI / 4; roof.castShadow = true;
-    g.add(roof);
+    const W = 0.44, D = 0.34, Hw = 0.18, Hr = 0.15;
+    const g = gabled({ W, D, Hw, Hr, over: 0.04, wallTex: finishTex('wood', WALL_SVG, 'wall'), roofTex: finishTex('wood', ROOF_SVG, 'roof') });
+    const front = D / 2 + 0.006;
+    g.add(box(0.16, 0.15, 0.02, col('--art-stable-door'), 0, 0.075, front));
+    [-1, 1].forEach((s) => {                  // the X brace on a barn door
+      const b = box(0.2, 0.018, 0.012, col('--art-wood-lt'), 0, 0.075, front + 0.012);
+      b.rotation.z = s * 0.72;
+      g.add(b);
+    });
     return g;
   }
 
   function cropMesh(kind) {
     const g = new T.Group();
     if (kind === 'grain') {
-      for (let i = 0; i < 3; i++) {
-        const stalk = new T.Mesh(geo('stalk', () => new T.CylinderGeometry(0.012, 0.016, 0.26, 5)), mat(col('--art-reed-dk')));
-        stalk.position.set((i - 1) * 0.09, 0.13, 0);
+      // A clump of five stalks, leaning out a little, each topped with a plump ear.
+      [[-0.05, 0, -0.18], [0.05, 0.01, 0.16], [0, -0.05, 0.04], [-0.02, 0.05, -0.06], [0.07, -0.04, 0.24]].forEach(([dx, dz, lean]) => {
+        const stalk = new T.Mesh(geo('stalk', () => new T.CylinderGeometry(0.01, 0.014, 0.26, 5)), mat(col('--art-reed-dk')));
+        stalk.position.set(dx, 0.13, dz); stalk.rotation.z = lean;
         g.add(stalk);
-        const ear = new T.Mesh(geo('ear', () => new T.SphereGeometry(0.05, 8, 6)), mat(col('--art-grain')));
-        ear.scale.set(0.7, 1.5, 0.7);
-        ear.position.set((i - 1) * 0.09, 0.29, 0);
+        const ear = new T.Mesh(geo('ear', () => new T.SphereGeometry(0.045, 8, 6)), mat(col('--art-grain'), { roughness: 0.35 }));
+        ear.scale.set(0.7, 1.7, 0.7);
+        ear.position.set(dx - Math.sin(lean) * 0.27, 0.28, dz);
+        ear.rotation.z = lean;
         ear.castShadow = true;
         g.add(ear);
-      }
+      });
     } else {
-      const root = new T.Mesh(geo('carrot', () => new T.ConeGeometry(0.075, 0.24, 8)), mat(col('--art-veg')));
-      root.position.y = 0.12; root.rotation.x = Math.PI; root.castShadow = true;
-      g.add(root);
-      const top = new T.Mesh(geo('carrottop', () => new T.SphereGeometry(0.09, 8, 6)), mat(col('--art-reed')));
-      top.scale.set(1, 0.6, 1); top.position.y = 0.27;
-      g.add(top);
+      // A pumpkin: a squashed, ribbed sphere with a stalk and a leaf.
+      const body = new T.Mesh(geo('pumpkin', () => new T.SphereGeometry(0.1, 10, 8)),
+        mat(col('--art-veg'), { flatShading: true, roughness: 0.4 }));
+      body.scale.set(1, 0.68, 1); body.position.y = 0.068; body.castShadow = true;
+      g.add(body);
+      const stalk = new T.Mesh(geo('pstalk', () => new T.CylinderGeometry(0.012, 0.018, 0.05, 5)), mat(col('--art-wood-dk')));
+      stalk.position.y = 0.15; stalk.rotation.z = 0.3;
+      g.add(stalk);
+      const leaf = new T.Mesh(geo('pleaf', () => new T.SphereGeometry(0.05, 6, 4)), mat(col('--art-reed')));
+      leaf.scale.set(1.3, 0.25, 0.8); leaf.position.set(0.07, 0.13, 0.02); leaf.rotation.z = -0.4;
+      g.add(leaf);
     }
     return g;
   }
@@ -525,11 +721,10 @@ const View3D = (function () {
   // ---------------------------------------------------------------- farmyard
   function tileTexture(p, i, inPasture) {
     const t = p.farm[i];
-    let key, svg;
-    if (t.kind === 'field') { key = 'field'; svg = ART.fieldTile(i, null); }
-    else if (t.kind === 'room') { key = 'grass' + (i % 4); svg = ART.grassTile(i, false); }
-    else { key = (inPasture ? 'past' : 'grass') + (i % 4); svg = ART.grassTile(i, inPasture); }
-    return svgTexture('tile' + key, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${ART.TW} ${ART.TH}" width="128" height="128" preserveAspectRatio="none">${svg}</svg>`, 128, 128);
+    const v = i % 4;                                         // four variants of each surface
+    if (t.kind === 'field') return svgTexture(`f3:${v}:${!!t.crop}`, fieldSvg(v, !!t.crop), 256, 256);
+    if (t.kind === 'room') return svgTexture(`y3:${v}`, yardSvg(v), 256, 256);
+    return svgTexture(`g3:${v}:${inPasture}`, grassSvg(v, inPasture), 256, 256);
   }
 
   function tilePos(i) {
@@ -543,9 +738,25 @@ const View3D = (function () {
     const regs = regions(p);
     const g = new T.Group();
 
-    const slab = box(5 * TILE + 0.34, 0.12, 3 * TILE + 0.34, col('--art-frame'), 0, 0, 0);
-    slab.receiveShadow = true;
+    // A wooden tray: a base, a dark bed that shows as grooves between tiles, a raised rim.
+    const BW = 5 * TILE + 0.34, BD = 3 * TILE + 0.34;
+    const trayWood = frameWood();
+    const slab = new T.Mesh(geo(`tray${BW}`, () => new T.BoxGeometry(BW, 0.12, BD)), mat('#ffffff', { map: trayWood }));
+    slab.castShadow = true; slab.receiveShadow = true;
     g.add(slab);
+    const bed = box(5 * TILE + 0.02, 0.01, 3 * TILE + 0.02, col('--art-soil-dk'), 0, 0.062, 0);
+    g.add(bed);
+    const rimMat = mat('#ffffff', { map: trayWood });
+    [[BW, 0.16, 0, -(BD / 2 - 0.08)], [BW, 0.16, 0, BD / 2 - 0.08], [0.16, BD - 0.32, -(BW / 2 - 0.08), 0], [0.16, BD - 0.32, BW / 2 - 0.08, 0]]
+      .forEach(([w, d, x, z]) => {
+        const rim = new T.Mesh(geo(`rim${w.toFixed(2)}_${d.toFixed(2)}`, () => new T.BoxGeometry(w, 0.07, d)), rimMat);
+        rim.position.set(x, 0.095, z);
+        rim.castShadow = true; rim.receiveShadow = true;
+        g.add(rim);
+        // a painted stripe along the rim in the owner's colour
+        const stripe = box(w - 0.04, 0.012, d - 0.04, col(pi === 0 ? '--p1' : '--p2'), x, 0.135, z);
+        g.add(stripe);
+      });
 
     for (let i = 0; i < 15; i++) {
       const { x, z } = tilePos(i);
@@ -553,7 +764,7 @@ const View3D = (function () {
       const reg = regionOf(p, i, regs);
       const inPasture = !!(reg && reg.enclosed);
 
-      const top = new T.Mesh(geo('tiletop', () => new T.BoxGeometry(TILE * 0.99, 0.03, TILE * 0.99)),
+      const top = new T.Mesh(geo('tiletop', () => new T.BoxGeometry(TILE * 0.955, 0.03, TILE * 0.955)),
         printMat(tileTexture(p, i, inPasture), { roughness: 0.55, clearcoat: 0.15 }));
       top.position.set(x, BOARD_Y, z);
       top.receiveShadow = true;
@@ -605,7 +816,8 @@ const View3D = (function () {
       const lbl = new T.Mesh(geo('caplbl', () => new T.PlaneGeometry(0.8, 0.44)),
         printMat(svgTexture('cap:' + reg.count + '/' + reg.capacity, capSvg(reg.count, reg.capacity), 124, 68), { transparent: true, depthWrite: false }));
       lbl.rotation.x = -Math.PI / 2;
-      lbl.position.set(x, BOARD_Y + 0.09, z - 0.28);
+      lbl.position.set(x - 0.26, BOARD_Y + 0.4, z - 0.34);      // a tag above the corner, clear of the animals
+      lbl.scale.setScalar(0.8);
       g.add(lbl);
     }
 
@@ -745,9 +957,9 @@ const View3D = (function () {
 
     // Cards already in front of this player, five to a row.
     const playedGroup = new T.Group();
-    const at = LAYOUT.played[pi];
+    const at = LAYOUT.played;
     p.played.forEach((c, i) => {
-      const cx = at.x + (i % 5) * (MAJ_W + 0.11);
+      const cx = at.x + (i % 5) * (MAJ_W + 0.2);
       const cz = at.z + Math.floor(i / 5) * (MAJ_H + 0.12);
       const m = cardMesh(cardTexture(c, { cost: {} }), MAJ_W, MAJ_H);
       m.position.set(cx, BOARD_Y - 0.02, cz);
@@ -758,8 +970,9 @@ const View3D = (function () {
     });
     g.add(playedGroup);
 
-    g.position.set(LAYOUT.seat[pi].x, 0, LAYOUT.seat[pi].z);
-    g.rotation.y = LAYOUT.seat[pi].rot;
+    const seat = LAYOUT.seat(pi, G.n);
+    g.position.set(seat.x, 0, seat.z);
+    g.rotation.y = seat.rot;
     g.userData.parts = { farm, played: playedGroup };
     return g;
   }
@@ -773,10 +986,10 @@ const View3D = (function () {
     G.majors.forEach((c, i) => {
       const owner = c.taken != null ? G.players[c.taken] : null;
       const cost = cardCost(G, p, c);
-      // A 5 × 2 grid, centred on the majors spot.
+      // Three across, four down, level with the action board.
       const m = cardMesh(cardTexture(c, { cost, taken: owner ? owner.name : '' }), MAJ_W, MAJ_H);
-      const cx = ((i % 5) - 2) * (MAJ_W + 0.11);
-      const cz = (Math.floor(i / 5) - 0.5) * (MAJ_H + 0.12);
+      const cx = ((i % 3) - 1) * (MAJ_W + 0.1);
+      const cz = (Math.floor(i / 3) - 1.5) * (MAJ_H + 0.1);
       m.position.set(cx, BOARD_Y - 0.02, cz);
       m.userData.hover = { kind: 'card', uid: c.uid };
       g.add(m);
@@ -871,17 +1084,17 @@ const View3D = (function () {
   // the dock on the left, the log rail on the right, the bars on top, the hand along the bottom.
   // The bottom margin only matters while the hand is up.
   // The bottom keeps room for the action bar, and more for the bar plus the hand.
-  const SAFE = { l: 0.20, r: 0.17, t: 0.2, b: 0.3 };
+  // Left: only the camera tabs, up in the top band. Right: the resources and log column.
+  const SAFE = { l: 0.06, r: 0.42, t: 0.3, b: 0.3 };
   const SAFE_HAND_B = 0.62;
   let safeB = SAFE.b;
 
   const FOCUS = {
     // pol is the angle from straight down: ~0.6 reads as leaning over the table.
-    table: () => ({ az: 0, pol: 0.62, pad: 1.02, boxes: ['board', 'seat0', 'majors'] }),
-    board: () => ({ az: 0, pol: 0.5, pad: 1.0, boxes: ['board'] }),
-    farm: (UI) => ({ az: UI.view === 1 ? Math.PI : 0, pol: 0.56, pad: 1.04, boxes: ['farm' + UI.view] }),
-    cards: (UI) => ({ az: UI.view === 1 ? Math.PI : 0, pol: 0.52, pad: 1.03,
-      boxes: UI.view === 1 ? ['played1'] : ['majors', 'played0'] }),
+    table: () => ({ az: 0, pol: 0.62, pad: 1.02, boxes: ['board', 'majors', 'seat0', 'seat1'] }),
+    board: () => ({ az: 0, pol: 0.5, pad: 1.0, boxes: ['board', 'majors'] }),
+    farm: (UI) => ({ az: 0, pol: 0.56, pad: 1.04, boxes: ['farm' + UI.view] }),
+    cards: (UI) => ({ az: 0, pol: 0.52, pad: 1.03, boxes: ['majors', 'played' + UI.view] }),
     majors: () => ({ az: 0, pol: 0.52, pad: 1.03, boxes: ['majors'] }),
   };
 
@@ -1047,11 +1260,22 @@ const View3D = (function () {
 
   function shade(c, dl) { return c.clone().offsetHSL(0, 0, dl).getStyle(); }
 
-  function woodTexture() {
+  let frameWoodTex = null, frameWoodTheme = '';
+  function frameWood() {
+    if (frameWoodTex && frameWoodTheme === theme) return frameWoodTex;
+    if (frameWoodTex) frameWoodTex.dispose();
+    frameWoodTex = woodTexture('--art-wood', 512);
+    frameWoodTex.repeat.set(1, 1);
+    frameWoodTheme = theme;
+    return frameWoodTex;
+  }
+
+  function woodTexture(baseVar, size) {
     const cv = document.createElement('canvas');
-    cv.width = cv.height = 1024;
+    cv.width = cv.height = size || 1024;
     const x = cv.getContext('2d');
-    const base = col('--art-table');
+    x.scale(cv.width / 1024, cv.height / 1024);
+    const base = col(baseVar || '--art-table');
     const r = rng(7);
     const plank = 128;
     for (let row = 0; row < 1024 / plank; row++) {
@@ -1171,7 +1395,7 @@ const View3D = (function () {
     envGroup.add(table);
 
     // The play mat under both seats and the action board.
-    const mw = 14.2, mh = 18.4;
+    const mw = 18.6, mh = 15.4;
     const mat = new T.Mesh(new T.BoxGeometry(mw, 0.03, mh), [
       new T.MeshStandardMaterial({ color: col('--art-mat'), roughness: 1 }),
       new T.MeshStandardMaterial({ color: col('--art-mat'), roughness: 1 }),
@@ -1180,7 +1404,7 @@ const View3D = (function () {
       new T.MeshStandardMaterial({ color: col('--art-mat'), roughness: 1 }),
       new T.MeshStandardMaterial({ color: col('--art-mat'), roughness: 1 }),
     ]);
-    mat.position.set(0, -0.075, -3.6);
+    mat.position.set(1.0, -0.075, -0.4);
     mat.receiveShadow = true;
     envGroup.add(mat);
 
@@ -1254,8 +1478,8 @@ const View3D = (function () {
     fill.position.set(-9, 7, 4);
     scene.add(fill);
     const lamp = new T.SpotLight(0xffe7c2, 2.6, 0, 0.62, 0.75, 0);
-    lamp.position.set(0, 22, -2.6);
-    lamp.target.position.set(0, 0, -3.6);
+    lamp.position.set(1, 22, 1);
+    lamp.target.position.set(1, 0, -0.8);
     scene.add(lamp, lamp.target);
     const sun = new T.DirectionalLight(0xfff1d6, 1.5);
     sun.position.set(6, 15, 8);
