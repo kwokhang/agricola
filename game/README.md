@@ -11,6 +11,7 @@
 | `art.js` | 全部圖畫：物資圖示、農場板、行動格插圖 |
 | `view3d.js` | Three.js 檯面：行動板、兩個座位嘅農場、卡、物資全部係 3D，射線點擊接返同一套規則 |
 | `ui.js` | 畫面同點擊處理，狀態存喺 `localStorage` |
+| `favicon.svg` | 分頁圖示：夕陽下綠田上嘅農舍 |
 | `vendor/three.min.js` | three.js r186，用 esbuild 打包成 IIFE（全域 `THREE`） |
 
 ## 版面

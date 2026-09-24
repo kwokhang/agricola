@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- 農家樂: a farmhouse on a green field, under a warm sky -->
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f6c96b"/><stop offset="1" stop-color="#f0a95a"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#sky)"/>
+  <path d="M0 44 Q20 36 40 42 T64 40 V50 A14 14 0 0 1 50 64 H14 A14 14 0 0 1 0 50z" fill="#4f7a37"/>
+  <path d="M0 50 Q22 44 42 50 T64 48 V50 A14 14 0 0 1 50 64 H14 A14 14 0 0 1 0 50z" fill="#3e6a2c"/>
+  <rect x="17" y="28" width="30" height="20" fill="#f3e5c1" stroke="#2a1d10" stroke-width="2.5" stroke-linejoin="round"/>
+  <path d="M11 30 L32 11 L53 30 z" fill="#c4532c" stroke="#2a1d10" stroke-width="2.5" stroke-linejoin="round"/>
+  <rect x="28" y="36" width="8" height="12" fill="#6b4a2c" stroke="#2a1d10" stroke-width="2"/>
+  <rect x="20.5" y="32" width="5" height="5" fill="#ffd66b" stroke="#2a1d10" stroke-width="1.6"/>
+  <rect x="38.5" y="32" width="5" height="5" fill="#ffd66b" stroke="#2a1d10" stroke-width="1.6"/>
+</svg>

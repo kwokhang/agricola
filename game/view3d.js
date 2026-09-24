@@ -670,14 +670,15 @@ const View3D = (function () {
 
   // Harvest is a marker between rounds, not a place to stand: a small ribbon with notched
   // ends, printed flat, so it never reads as another action space.
-  const HARV_W = 124, HARV_H = 46;
+  const HARV_W = 156, HARV_H = 52;
   const harvestSvg = (after) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${HARV_W} ${HARV_H}"
-    width="${HARV_W * 2}" height="${HARV_H * 2}" font-family="-apple-system,'PingFang TC',sans-serif">
-    <path d="M2 6H122L114 23L122 40H2L10 23z" fill="#b8892a" stroke="#6b4a1e" stroke-width="1.6" stroke-linejoin="round"/>
-    <path d="M10 10H114" stroke="#fff" stroke-width="1.2" opacity=".35"/>
-    <g transform="translate(14 11) scale(1)">${ART.ICONS.grain}</g>
-    <text x="72" y="21" text-anchor="middle" font-size="13" font-weight="800" fill="#fff8e6" letter-spacing="1">收成 HARVEST</text>
-    <text x="72" y="35" text-anchor="middle" font-size="11" font-weight="600" fill="#fff8e6" opacity=".9">第 ${after} 回合之後</text></svg>`;
+    width="${HARV_W * 2}" height="${HARV_H * 2}" font-family="-apple-system,'PingFang TC','Noto Sans TC',sans-serif">
+    <path d="M2 5H154L144 26L154 47H2L12 26z" fill="#b8892a" stroke="#6b4a1e" stroke-width="1.6" stroke-linejoin="round"/>
+    <path d="M13 9.5H143" stroke="#fff" stroke-width="1.2" opacity=".35"/>
+    <g transform="translate(16 14)">${ART.ICONS.grain}</g>
+    <text x="88" y="24" text-anchor="middle" font-size="14" font-weight="800" fill="#fff8e6">收成
+      <tspan font-size="10" font-weight="700" dx="3" opacity=".85">HARVEST</tspan></text>
+    <text x="88" y="39" text-anchor="middle" font-size="11.5" font-weight="600" fill="#fff8e6" opacity=".92">第 ${after} 回合之後</text></svg>`;
 
   // A flat printed plate lying on the board face.
   function plateMesh(tex, w, h, x, z, y) {
@@ -779,17 +780,17 @@ const View3D = (function () {
           g.add(bar);
         });
         const ax = cx + w * 0.18, az = cz - d * 0.2;     // the picture half, clear of the name plate
-        const base = new T.Mesh(geo('occBase', () => new T.CylinderGeometry(0.3, 0.32, 0.04, 28)), mat(col('--art-count'), { roughness: 0.35 }));
+        const base = new T.Mesh(geo('occBase', () => new T.CylinderGeometry(0.22, 0.24, 0.04, 28)), mat(col('--art-count'), { roughness: 0.35 }));
         base.position.set(ax, BOARD_Y + 0.055, az);
         base.castShadow = true;
         g.add(base);
         // Seen from above, a standing meeple is just its edge, so it lies on its back on the
         // disc, head towards the far side: the whole silhouette faces the camera.
-        const m = meeple(pc, 0.9);
+        const m = meeple(pc, 0.66);
         m.material.emissive = pc.clone();
         m.material.emissiveIntensity = 0.15;
         m.rotation.x = -Math.PI / 2;
-        m.position.set(ax, BOARD_Y + 0.13, az);
+        m.position.set(ax, BOARD_Y + 0.115, az);
         g.add(m);
       }
     };
@@ -818,7 +819,7 @@ const View3D = (function () {
       if (c > 0) {
         const after = rounds[rounds.length - 1];
         const done = G.round > after || (G.round === after && G.phase !== 'work');
-        const tex = svgTexture(`harv2:${after}`, harvestSvg(after), HARV_W * 2, HARV_H * 2);
+        const tex = svgTexture(`harv3:${after}`, harvestSvg(after), HARV_W * 2, HARV_H * 2);
         const rib = new T.Mesh(geo('harvRibbon', () => new T.PlaneGeometry(HARV_W * PS, HARV_H * PS)),
           new T.MeshStandardMaterial({ map: tex, transparent: true, roughness: 0.5, opacity: done ? 0.4 : 1 }));
         rib.rotation.x = -Math.PI / 2;
