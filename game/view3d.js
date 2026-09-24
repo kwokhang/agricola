@@ -411,7 +411,7 @@ const View3D = (function () {
     <rect width="${w}" height="${h}" rx="9" fill="var(--rnd-tint)" stroke="var(--art-ink)" stroke-width="2.4"/>
     <g transform="translate(${w / 2 - 54} ${h / 2 - 28}) scale(1.3)">${ART.ICONS.grain}</g>
     <text x="${w / 2 + 14}" y="${h / 2 - 4}" text-anchor="middle" font-size="19" font-weight="700" fill="var(--rnd-ink)">Harvest</text>
-    <text x="${w / 2}" y="${h / 2 + 24}" text-anchor="middle" font-size="13" fill="var(--art-ink)" opacity=".8">第 ${after} 回合後收成</text></svg>`;
+    <text x="${w / 2}" y="${h / 2 + 26}" text-anchor="middle" font-size="15" font-weight="600" fill="var(--rnd-ink)">第 ${after} 回合後收成</text></svg>`;
 
   // A flat printed plate lying on the board face.
   function plateMesh(tex, w, h, x, z, y) {
@@ -867,7 +867,7 @@ const View3D = (function () {
   // The HUD covers these fractions of the screen, in NDC units (the full screen is 2 wide):
   // the dock on the left, the log rail on the right, the bars on top, the hand along the bottom.
   // The bottom margin only matters while the hand is up.
-  const SAFE = { l: 0.20, r: 0.17, t: 0.16, b: 0.08 };
+  const SAFE = { l: 0.20, r: 0.17, t: 0.2, b: 0.08 };
   const SAFE_HAND_B = 0.4;
   let safeB = SAFE.b;
 

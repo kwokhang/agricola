@@ -43,22 +43,39 @@
   }
 
   // ------------------------------------------------------------ bar 1: game status
+  // Three zones: the families on the left, the round front and centre, the menu on the right.
   function renderStatus() {
     const phase = G.over ? '遊戲結束' : G.feeding ? '收成 · 餵食' : G.phase === 'work' ? '工作階段' : G.phase;
-    const bits = [
-      `<span class="pill">回合 <b>${G.round}</b> / 14</span>`,
-      `<span class="pill">${esc(phase)}</span>`,
-    ];
-    if (HARVEST_ROUNDS.includes(G.round) && !G.over) bits.push(`<span class="pill harvest">${ic('grain', 15)} 本回合有收成</span>`);
-    G.players.forEach((p, i) => {
+    const harvestNow = HARVEST_ROUNDS.includes(G.round) && !G.over;
+
+    const families = G.players.map((p, i) => {
       const active = (G.feeding ? G.feeding.i === i : G.current === i) && !G.over;
       const men = Array.from({ length: p.people }, (_, k) =>
         `<span class="mp ${k < p.workersLeft ? '' : 'used'}">${ART.meeple(PCOLOR[i], 15)}</span>`).join('');
-      bits.push(`<span class="pill ${active ? 'now' : ''}">${esc(p.name)}${i === G.startPlayer ? ART.icon('start', 15) : ''}
-        <span class="men">${men}</span></span>`);
-    });
-    bits.push('<button id="menuBtn" class="menubtn">☰ 選單</button>');
-    $('status').innerHTML = bits.join('');
+      return `<span class="pill fam ${active ? 'now' : ''}" style="--pc:${PCOLOR[i]}">${active ? '▶ ' : ''}${esc(p.name)}${i === G.startPlayer ? ART.icon('start', 15) : ''}
+        <span class="men">${men}</span></span>`;
+    }).join('');
+
+    // 14 segments; harvest rounds stand taller so the rhythm of the game is visible.
+    const track = Array.from({ length: 14 }, (_, k) => {
+      const r = k + 1;
+      const cls = [r < G.round || G.over ? 'done' : r === G.round ? 'cur' : '',
+        HARVEST_ROUNDS.includes(r) ? 'hv' : ''].join(' ');
+      return `<i class="${cls}" title="第 ${r} 回合${HARVEST_ROUNDS.includes(r) ? '（收成）' : ''}"></i>`;
+    }).join('');
+
+    $('status').innerHTML = `
+      <div class="fams">${families}</div>
+      <div class="round">
+        <div class="rtop">
+          <span class="rk">ROUND<br>回合</span>
+          <b class="rn">${G.round}</b><span class="rt">/ 14</span>
+          <span class="ph">${esc(phase)}</span>
+          ${harvestNow ? `<span class="hvb">${ic('grain', 15)} 本回合收成</span>` : ''}
+        </div>
+        <div class="track">${track}</div>
+      </div>
+      <div class="menu"><button id="menuBtn" class="menubtn">☰ 選單</button></div>`;
     $('menuBtn').addEventListener('click', () => openDrawer($('drawer').hidden));
   }
 
