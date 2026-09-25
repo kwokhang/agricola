@@ -2,8 +2,8 @@
 """Pack the card and action-space artwork in ../resource/ into game/cardimages.js.
 
 The game runs from file://, where an SVG texture cannot load an external PNG and a
-file:// image would taint the WebGL canvas, so each picture is shrunk to a 512 px JPEG
-and embedded as a data URI. A file is matched to a card by its English name with
+file:// image would taint the WebGL canvas, so each picture is shrunk to 900 px, encoded
+as AVIF and embedded as a data URI. A file is matched to a card by its English name with
 spaces and punctuation removed: "animaltamer.png" -> "Animal Tamer".
 
 Run from anywhere:  python3 game/tools/build_card_images.py
@@ -16,7 +16,7 @@ ROOT = os.path.normpath(os.path.join(HERE, '..', '..'))
 SRC = os.path.join(ROOT, 'resource')
 OUT = os.path.join(ROOT, 'game', 'cardimages.js')
 KINDS = ['occupation', 'minor', 'minorimprovement', 'major', 'majorimprovement']
-SIZE, QUALITY = 512, 80
+SIZE, QUALITY = 900, 62          # AVIF: about a third the size of a JPEG at this quality
 
 def key(s):
     return re.sub(r'[^a-z0-9]', '', s.lower())
@@ -81,11 +81,11 @@ def encode(path):
             subprocess.run(['sips', '-c', str(fh - t - b_), str(fw - l - r), '--cropOffset', str(t), str(l),
                             path, '--out', src], check=True, capture_output=True)
             print(f'    trimmed border {found} from {os.path.basename(path)}')
-        out = os.path.join(tmp, 'x.jpg')
-        subprocess.run(['sips', '-Z', str(SIZE), '-s', 'format', 'jpeg',
+        out = os.path.join(tmp, 'x.avif')
+        subprocess.run(['sips', '-Z', str(SIZE), '-s', 'format', 'avif',
                         '-s', 'formatOptions', str(QUALITY), src, '--out', out],
                        check=True, capture_output=True)
-        return 'data:image/jpeg;base64,' + base64.b64encode(open(out, 'rb').read()).decode()
+        return 'data:image/avif;base64,' + base64.b64encode(open(out, 'rb').read()).decode()
 
 def main():
     names = card_names()

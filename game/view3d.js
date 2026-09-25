@@ -698,7 +698,7 @@ const View3D = (function () {
   function cardTexture(c, opts) {
     const o = opts || {};
     const sig = [costText(o.cost), o.taken || '', o.note || ''].join('|');
-    return svgTexture(cardKey(c, sig), ART.cardFace(c, o), 320, 448);
+    return svgTexture(cardKey(c, sig), ART.cardFace(c, o), 540, 756);   // 1.8× the card's own size
   }
 
   function backTexture(kind) {
@@ -804,11 +804,13 @@ const View3D = (function () {
 
   // Harvest is a marker between rounds, not a place to stand: a small ribbon with notched
   // ends, printed flat, so it never reads as another action space.
-  const harvestSealSvg = () => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="160" height="160"
+  // A tab hanging from the bottom edge of the round it follows: "harvest after this round".
+  const HTAB_W = 112, HTAB_H = 30;
+  const harvestSealSvg = () => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${HTAB_W} ${HTAB_H}" width="${HTAB_W * 3}" height="${HTAB_H * 3}"
     font-family="-apple-system,'PingFang TC',sans-serif">
-    <circle cx="20" cy="20" r="18.5" fill="#26402b" stroke="#b8912f" stroke-width="2"/>
-    <g transform="translate(10.5 4) scale(.8)">${ART.ICONS.grain}</g>
-    <text x="20" y="33" text-anchor="middle" font-size="8.5" font-weight="900" fill="#fff8e6">收成</text></svg>`;
+    <path d="M1 1H${HTAB_W - 1}V${HTAB_H - 8}L${HTAB_W / 2} ${HTAB_H - 1}L1 ${HTAB_H - 8}z" fill="#26402b" stroke="#b8912f" stroke-width="1.6" stroke-linejoin="round"/>
+    <g transform="translate(6 3) scale(.72)">${ART.ICONS.grain}</g>
+    <text x="${HTAB_W / 2 + 9}" y="16" text-anchor="middle" font-size="11.5" font-weight="900" fill="#fff8e6">此回合後收成</text></svg>`;
   const HARV_W = 156, HARV_H = 52;
   const harvestSvg = (after) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${HARV_W} ${HARV_H}"
     width="${HARV_W * 2}" height="${HARV_H * 2}" font-family="-apple-system,'PingFang TC','Noto Sans TC',sans-serif">
@@ -944,10 +946,11 @@ const View3D = (function () {
       if (HARVEST_ROUNDS.includes(n)) {
         // a harvest seal on the round's top-right corner: "harvest after this round"
         const done = G.round > n || (G.round === n && G.phase !== 'work');
-        const seal = new T.Mesh(geo('harvSeal', () => new T.CircleGeometry(0.2, 32)),
-          new T.MeshBasicMaterial({ map: svgTexture('hseal', harvestSealSvg(), 160, 160), transparent: true, opacity: done ? 0.45 : 1 }));
+        const seal = new T.Mesh(geo('harvTab', () => new T.PlaneGeometry(HTAB_W * PS, HTAB_H * PS)),
+          new T.MeshBasicMaterial({ map: svgTexture('htab', harvestSealSvg(), HTAB_W * 3, HTAB_H * 3), transparent: true, opacity: done ? 0.45 : 1 }));
         seal.rotation.x = -Math.PI / 2;
-        seal.position.set(bx(cellX(c) + BG.w) - 0.16, BOARD_Y + 0.06, bz(cellY(r)) + 0.16);
+        // hanging from the cell's bottom edge, over the gap and the top of the next cell's picture
+        seal.position.set(bx(cellX(c) + BG.w / 2), BOARD_Y + 0.06, bz(cellY(r) + BG.h + HTAB_H / 2 - 5));
         g.add(seal);
       }
     });
