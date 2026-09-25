@@ -839,7 +839,10 @@ const ART = (function () {
     const src = typeof CARD_IMAGES !== 'undefined' && CARD_IMAGES[c.en];
     if (!src) return '';
     const size = w * 1.08;
-    return `<image href="${src}" x="${(x + (w - size) / 2).toFixed(1)}" y="${(y - size * 0.1).toFixed(1)}"
+    // occupations are portraits (keep the head); improvements are objects (keep the middle)
+    const focus = c.type === 'occ' ? 0.41 : 0.6;
+    const top = y + h / 2 - size * focus;
+    return `<image href="${src}" x="${(x + (w - size) / 2).toFixed(1)}" y="${Math.min(y, top).toFixed(1)}"
       width="${size.toFixed(1)}" height="${size.toFixed(1)}" preserveAspectRatio="xMidYMid slice"/>`;
   }
 

@@ -837,7 +837,7 @@
     renderStatus(); renderMainTabs();
     renderBoard(); renderFarm(); renderCards();
     renderPrompt(); renderFree(); renderRes(); renderModal(); renderDrawer(); renderRail(); renderFinal();
-    document.body.classList.toggle('side-strip', has3d && (UI.main === 'board' || UI.main === 'table'));
+    document.body.classList.toggle('side-strip', has3d && ['board', 'table', 'majors'].includes(UI.main));
     if (has3d) { showTip(null); View3D.sync(G, UI); }
     placeActionBar();
     save();

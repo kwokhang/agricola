@@ -15,7 +15,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.normpath(os.path.join(HERE, '..', '..'))
 SRC = os.path.join(ROOT, 'resource')
 OUT = os.path.join(ROOT, 'game', 'cardimages.js')
-KINDS = ['occupation', 'minor', 'major']
+KINDS = ['occupation', 'minor', 'minorimprovement', 'major', 'majorimprovement']
 SIZE, QUALITY = 512, 80
 
 def key(s):
@@ -23,7 +23,12 @@ def key(s):
 
 def card_names():
     text = open(os.path.join(ROOT, 'data.js'), encoding='utf-8').read()
-    return {key(m): m for m in re.findall(r"en:'((?:[^'\\]|\\.)*)'", text)}
+    names = {}
+    for _q, m in re.findall(r"""en:(['"])((?:(?!\1)[^\\]|\\.)*)\1""", text):
+        en = m.replace("\\'", "'").replace('\\"', '"')
+        names[key(en)] = en
+        names.setdefault(key(re.sub(r"'s\b", '', en)), en)   # basketmakerworkshop -> Basketmaker's Workshop
+    return names
 
 def main():
     names = card_names()

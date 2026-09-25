@@ -20,7 +20,7 @@ const View3D = (function () {
   // supply tray and played cards in a column below.
   const LAYOUT = {
     board: { x: 0, z: -3.6 },                                   // spans x ±5.7, z -6.2 … -1.0
-    majors: { x: 7.55, z: -3.6 },                               // world; 3 × 4 beside the board
+    majors: { x: 8.5, z: -3.6 },                                // world; 4 rows by kind beside the board
     seat: (pi, n) => ({ x: n === 1 ? 0 : (pi === 0 ? -2.88 : 2.88), z: 0.95, rot: 0 }),
     farm: { x: 0, z: 0 },                                       // seat-local
     plate: { x: -1.5, z: 1.98 },                                // seat-local
@@ -1227,18 +1227,39 @@ const View3D = (function () {
       font-family="-apple-system,'PingFang TC',sans-serif" letter-spacing="6">打出嘅卡 · PLAYED</text></svg>`;
 
   // ---------------------------------------------------------------- majors on the table
+  const MAJOR_ROWS = [
+    { zh: '煮食', cards: ['Fireplace', 'Cooking Hearth'] },
+    { zh: '烤麵包', cards: ['Clay Oven', 'Stone Oven'] },
+    { zh: '工坊', cards: ['Joinery', 'Pottery', "Basketmaker's Workshop"] },
+    { zh: '水井', cards: ['Well'] },
+  ];
   function buildMajors(G, UI) {
     const g = new T.Group();
     const p = G.players[G.current];
     const kinds = playableNow(G);
     const mine = UI.view === G.current && !G.choice;
-    G.majors.forEach((c, i) => {
+    // One row per kind, identical cards side by side, a printed label on the felt at the left.
+    const rowOf = {};
+    MAJOR_ROWS.forEach((r, ri) => r.cards.forEach((en) => { rowOf[en] = ri; }));
+    const used = MAJOR_ROWS.map(() => 0);
+    const colW = MAJ_W + 0.1, rowH = MAJ_H + 0.12;
+    const x0 = -1.5 * colW, z0 = -1.5 * rowH;
+    MAJOR_ROWS.forEach((r, ri) => {
+      const lbl = new T.Mesh(geo('majLabel', () => new T.PlaneGeometry(0.9, 0.34)),
+        new T.MeshBasicMaterial({ map: svgTexture('majrow:' + r.zh, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 90 34" width="270" height="102">
+          <text x="86" y="23" text-anchor="end" font-size="17" font-weight="800" fill="#efe8d8" fill-opacity=".55"
+            font-family="-apple-system,'PingFang TC',sans-serif" letter-spacing="1">${r.zh}</text></svg>`, 270, 102), transparent: true, depthWrite: false }));
+      lbl.rotation.x = -Math.PI / 2;
+      lbl.position.set(x0 - MAJ_W / 2 - 0.5, 0.002, z0 + ri * rowH);
+      g.add(lbl);
+    });
+    G.majors.forEach((c) => {
       const owner = c.taken != null ? G.players[c.taken] : null;
       const cost = cardCost(G, p, c);
-      // Three across, four down, level with the action board.
+      const ri = rowOf[c.en] != null ? rowOf[c.en] : MAJOR_ROWS.length - 1;
       const m = cardMesh(cardTexture(c, { cost, taken: owner ? owner.name : '' }), MAJ_W, MAJ_H);
-      const cx = ((i % 3) - 1) * (MAJ_W + 0.1);
-      const cz = (Math.floor(i / 3) - 1.5) * (MAJ_H + 0.1);
+      const cx = x0 + (used[ri]++) * colW;
+      const cz = z0 + ri * rowH;
       m.position.set(cx, BOARD_Y - 0.02, cz);
       m.userData.hover = { kind: 'card', uid: c.uid };
       g.add(m);
@@ -1349,7 +1370,7 @@ const View3D = (function () {
     board: () => ({ az: 0, pol: 0.34, pad: 0.95, boxes: ['board'], safe: { l: 0.015, r: 0.15, t: 0.2, b: 0.12 } }),
     farm: (UI) => ({ az: 0, pol: 0.56, pad: 1.04, boxes: ['farm' + UI.view] }),
     cards: (UI) => ({ az: 0, pol: 0.5, pad: 1.02, boxes: ['played' + UI.view] }),
-    majors: () => ({ az: 0, pol: 0.42, pad: 1.0, boxes: ['majors'] }),
+    majors: () => ({ az: 0, pol: 0.42, pad: 1.0, boxes: ['majors'], safe: { l: 0.04, r: 0.15, t: 0.34, b: 0.3 } }),
   };
 
   const focusBoxes = {};
