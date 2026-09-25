@@ -865,14 +865,24 @@ const ART = (function () {
   }
 
   // Wrap at the largest type size that still fits the box.
+  // text may be several paragraphs: each starts on a new line, with half a line between them.
+  // Returns lines plus each line's offset from the first baseline (ys).
   function fitRules(text, w, h) {
+    const paras = (Array.isArray(text) ? text : [text]).filter(Boolean);
+    const lay = (size, lh, max) => {
+      const lines = [], ys = [];
+      let y = 0;
+      paras.forEach((t, pi) => {
+        if (pi) y += lh * 0.5;
+        wrap(t, (w - 4) / size, max).forEach((ln) => { lines.push(ln); ys.push(y); y += lh; });
+      });
+      return { size, lh, lines, ys, height: y };
+    };
     for (const [size, lh] of [[15.5, 21], [14.5, 19.5], [13.5, 18], [12.5, 16.5], [11.5, 15]]) {
-      const per = (w - 4) / size;
-      const lines = wrap(text, per, 99);
-      if (lines.length * lh <= h) return { size, lh, lines };
+      const f = lay(size, lh, 99);
+      if (f.height <= h) return f;
     }
-    const size = 11.5, lh = 15;
-    return { size, lh, lines: wrap(text, (w - 4) / size, Math.floor(h / lh)) };
+    return lay(11.5, 15, Math.max(1, Math.floor(h / 15) - paras.length + 1));
   }
 
   // ---------------------------------------------------------------- the type tag
@@ -1085,10 +1095,10 @@ const ART = (function () {
     const box = { x: IN, y: FACE.rules[0], w: W - IN * 2, h: FACE.rules[1] };
     s += `<rect x="${box.x}" y="${box.y}" width="${box.w}" height="${box.h}" rx="8" fill="var(--art-plate)" stroke="${ink}" stroke-width="1.1"/>`;
     const req = typeof CARD_REQ !== 'undefined' && CARD_REQ[c.en];
-    const fit = fitRules((req ? `【條件】${req.zh}。` : '') + (c.txz || c.tx || ''), box.w - 20, box.h - 14);
-    const top = box.y + 8 + (box.h - 14 - fit.lines.length * fit.lh) / 2 + fit.size * 0.95;
+    const fit = fitRules([req ? `【條件】${req.zh}。` : '', c.txz || c.tx || ''], box.w - 20, box.h - 14);
+    const top = box.y + 8 + (box.h - 14 - fit.height) / 2 + fit.size * 0.95;
     fit.lines.forEach((ln, i) => {
-      s += `<text x="${box.x + 10}" y="${(top + i * fit.lh).toFixed(1)}" font-size="${fit.size}" fill="var(--art-ink)">${ln}</text>`;
+      s += `<text x="${box.x + 10}" y="${(top + fit.ys[i]).toFixed(1)}" font-size="${fit.size}" fill="var(--art-ink)">${ln}</text>`;
     });
 
     // footer

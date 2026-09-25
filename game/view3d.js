@@ -1836,27 +1836,30 @@ const View3D = (function () {
       }
       x.closePath();
     };
-    // Kept quiet on purpose: a deep, even moss green so the boards and farms read clearly
-    // on top of it. Detail (tufts, flowers) only in the fringe, away from the play area.
-    x.fillStyle = '#44592f'; shape(P * 0.1, 0.012); x.fill();       // darker fringe
-    x.fillStyle = '#5b7340'; shape(P * 0.45, 0.01); x.fill();       // the meadow
-    for (let i = 0; i < 40; i++) {                                  // faint patches
-      x.fillStyle = r() < 0.5 ? '#5f7843' : '#576f3d';
-      x.beginPath(); x.ellipse(P + r() * (W - 2 * P), P + r() * (H - 2 * P), 30 + r() * 60, 14 + r() * 28, r() * 3, 0, Math.PI * 2); x.fill();
+    // A village green rather than a flower meadow: a deep, even grass kept quiet so the
+    // boards read clearly, with broad mown strips, a few worn earth patches and dry tufts.
+    x.fillStyle = '#44592f'; shape(P * 0.1, 0.012); x.fill();       // longer grass at the edge
+    x.fillStyle = '#5b7340'; shape(P * 0.45, 0.01); x.fill();       // the green
+    x.save(); shape(P * 0.45, 0.01); x.clip();
+    const band = Math.max(W, H) / 18;                               // mown strips
+    x.fillStyle = 'rgba(120,150,80,.10)';
+    for (let k = 0; k * band < W; k += 2) x.fillRect(k * band, 0, band, H);
+    for (let i = 0; i < 9; i++) {                                   // worn earth, near the edge
+      const ex = r() < 0.5 ? P * (0.5 + r() * 0.5) : W - P * (0.5 + r() * 0.5);
+      const ey = P + r() * (H - 2 * P);
+      const [ax, ay] = r() < 0.5 ? [ex, ey] : [P + r() * (W - 2 * P), r() < 0.5 ? P * (0.5 + r() * 0.5) : H - P * (0.5 + r() * 0.5)];
+      x.fillStyle = 'rgba(122,98,62,.55)';
+      x.beginPath(); x.ellipse(ax, ay, 26 + r() * 40, 12 + r() * 16, r() * 3, 0, Math.PI * 2); x.fill();
+      x.fillStyle = 'rgba(122,98,62,.3)';
+      x.beginPath(); x.ellipse(ax + 8, ay - 4, 40 + r() * 40, 18 + r() * 18, r() * 3, 0, Math.PI * 2); x.fill();
     }
-    const inFringe = (px, py) => px < P * 1.1 || py < P * 1.1 || px > W - P * 1.1 || py > H - P * 1.1;
-    for (let i = 0; i < 160; i++) {                                 // tufts, low contrast
+    x.restore();
+    for (let i = 0; i < 180; i++) {                                 // tufts: mostly green, some dry
       const tx = P * 0.6 + r() * (W - P * 1.2), ty = P * 0.6 + r() * (H - P * 1.2);
-      x.strokeStyle = r() < 0.75 ? '#4a6233' : '#68824a'; x.lineWidth = 2; x.lineCap = 'round';
+      const q = r();
+      x.strokeStyle = q < 0.65 ? '#4a6233' : q < 0.85 ? '#66804a' : '#9c9057'; x.lineWidth = 2; x.lineCap = 'round';
       x.beginPath(); x.moveTo(tx, ty); x.lineTo(tx - 3, ty - 7); x.moveTo(tx, ty); x.lineTo(tx + 1, ty - 8);
       x.moveTo(tx, ty); x.lineTo(tx + 4, ty - 6); x.stroke();
-    }
-    for (let i = 0, k = 0; i < 400 && k < 26; i++) {                // a few flowers, fringe only
-      const fx = P * 0.5 + r() * (W - P), fy = P * 0.5 + r() * (H - P);
-      if (!inFringe(fx, fy)) continue;
-      x.fillStyle = ['#e9e0c8', '#d9b857', '#cf97a6'][k++ % 3];
-      for (let j = 0; j < 5; j++) { const a = j * 1.2566; x.beginPath(); x.arc(fx + Math.cos(a) * 3, fy + Math.sin(a) * 3, 2.2, 0, Math.PI * 2); x.fill(); }
-      x.fillStyle = '#b8792b'; x.beginPath(); x.arc(fx, fy, 1.6, 0, Math.PI * 2); x.fill();
     }
     const tex = new T.CanvasTexture(cv);
     tex.colorSpace = T.SRGBColorSpace;
