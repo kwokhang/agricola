@@ -507,7 +507,7 @@ const View3D = (function () {
       const crest = blob('bcrest', 0.05, new T.Color(0x201b18), 0, 0.26, -0.02, 0.5, 0.5, 2.6);   // bristly ridge
       crest.castShadow = false;
     } else {
-      const hide = col('--art-boar').clone().lerp(new T.Color(0xa0643a), 0.7);   // warm brown
+      const hide = new T.Color(ART.tokenColor('cattle'));             // same brown as its coin
       const white = col('--art-cattle'), horn = col('--art-plate'), muzzle = new T.Color(0xd9a38f);
       [[-0.08, -0.13], [0.08, -0.13], [-0.08, 0.12], [0.08, 0.12]].forEach(([x, z]) => leg(x, z, 0.15, 0.025, hide));
       const body = new T.Mesh(geo('cbody', () => new T.BoxGeometry(0.22, 0.15, 0.36, 2, 2, 2)), mat(hide));
@@ -541,6 +541,8 @@ const View3D = (function () {
   }
 
   // A single unit of goods, as the wooden bit it would be in the box.
+  // One colour per good, shared with its HUD coin, so a piece and its icon always match.
+  const goodsColor = (kind) => new T.Color(ART.tokenColor(kind));
   function goodsMesh(kind) {
     if (kind === 'sheep' || kind === 'boar' || kind === 'cattle') {
       const a = animalMesh(kind);
@@ -549,15 +551,15 @@ const View3D = (function () {
     }
     const g = new T.Group();
     if (kind === 'wood') {
-      const log = new T.Mesh(geo('log', () => new T.CylinderGeometry(0.07, 0.07, 0.3, 8)), mat(col('--art-wood')));
+      const log = new T.Mesh(geo('log', () => new T.CylinderGeometry(0.07, 0.07, 0.3, 8)), mat(goodsColor(kind)));
       log.rotation.z = Math.PI / 2; log.position.y = 0.07; log.castShadow = true;
       g.add(log);
     } else if (kind === 'clay') {
-      g.add(box(0.26, 0.12, 0.15, col('--art-clay'), 0, 0.06, 0));
+      g.add(box(0.26, 0.12, 0.15, goodsColor(kind), 0, 0.06, 0));
     } else if (kind === 'reed') {
       // A cream bundle lying down, tied in the middle — the colour of the real reed pieces,
       // so it never vanishes against green art.
-      const stalkMat = mat(col('--art-count'), { roughness: 0.5 });
+      const stalkMat = mat(goodsColor('reed'));
       for (let i = 0; i < 5; i++) {
         const r = new T.Mesh(geo('reedstalk', () => new T.CylinderGeometry(0.026, 0.026, 0.32, 6)), stalkMat);
         r.rotation.z = Math.PI / 2;
@@ -570,19 +572,19 @@ const View3D = (function () {
       tie.position.y = 0.05;
       g.add(tie);
     } else if (kind === 'stone') {
-      const s = new T.Mesh(geo('rock', () => new T.IcosahedronGeometry(0.11, 0)), mat(col('--art-stone'), { flatShading: true }));
+      const s = new T.Mesh(geo('rock', () => new T.IcosahedronGeometry(0.11, 0)), mat(goodsColor(kind), { flatShading: true }));
       s.position.y = 0.09; s.rotation.set(0.5, 0.8, 0.2); s.castShadow = true;
       g.add(s);
     } else if (kind === 'grain') {
-      const d = new T.Mesh(geo('disc', () => new T.CylinderGeometry(0.11, 0.11, 0.06, 12)), mat(col('--art-grain')));
+      const d = new T.Mesh(geo('disc', () => new T.CylinderGeometry(0.11, 0.11, 0.06, 12)), mat(goodsColor(kind)));
       d.position.y = 0.03; d.castShadow = true;
       g.add(d);
     } else if (kind === 'veg') {
-      const v = new T.Mesh(geo('vegcone', () => new T.ConeGeometry(0.09, 0.22, 8)), mat(col('--art-veg')));
+      const v = new T.Mesh(geo('vegcone', () => new T.ConeGeometry(0.09, 0.22, 8)), mat(goodsColor(kind)));
       v.position.y = 0.11; v.rotation.x = Math.PI; v.castShadow = true;
       g.add(v);
     } else {                                     // food
-      const d = new T.Mesh(geo('fooddisc', () => new T.CylinderGeometry(0.1, 0.1, 0.07, 14)), mat(col('--art-food')));
+      const d = new T.Mesh(geo('fooddisc', () => new T.CylinderGeometry(0.1, 0.1, 0.07, 14)), mat(goodsColor(kind)));
       d.position.y = 0.035; d.castShadow = true;
       g.add(d);
     }

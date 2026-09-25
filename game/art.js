@@ -125,9 +125,9 @@ const ART = (function () {
     boar:   { bg: '#36302b', fg: '#dda09a', g: `<path d="M5.2 13.4Q5.4 8.4 12 8.4T18.8 12.6L20.4 13.2L19.8 15.8L18 15.6Q16.8 17.4 12 17.4T5.2 13.4z"/>
               <path d="M8 8.8L7.4 6.2L10 8.2" /><path d="M8.6 17v2.6M14.8 17v2.6" stroke="#dda09a" stroke-width="1.5"/>
               <circle cx="16.6" cy="11.8" r=".8" fill="#36302b"/>` },
-    cattle: { bg: '#2f5f86', fg: '#ffffff', g: `<path d="M7.4 9.6Q12 7.4 16.6 9.6L15.8 16.4Q12 19.6 8.2 16.4z"/>
+    cattle: { bg: '#6b3f28', fg: '#fff3e6', g: `<path d="M7.4 9.6Q12 7.4 16.6 9.6L15.8 16.4Q12 19.6 8.2 16.4z"/>
               <path d="M7.6 9.8Q4.6 9 4.4 5.8M16.4 9.8Q19.4 9 19.6 5.8" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round" fill="none"/>
-              <ellipse cx="12" cy="15.8" rx="3" ry="1.9" fill="#f2b8a8"/><circle cx="10" cy="11.8" r=".9" fill="#2f5f86"/><circle cx="14" cy="11.8" r=".9" fill="#2f5f86"/>` },
+              <ellipse cx="12" cy="15.8" rx="3" ry="1.9" fill="#f2b8a8"/><circle cx="10" cy="11.8" r=".9" fill="#6b3f28"/><circle cx="14" cy="11.8" r=".9" fill="#6b3f28"/>` },
   };
 
   const tokenColor = (k) => (TOKEN[k] ? TOKEN[k].bg : '#6a583a');
