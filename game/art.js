@@ -928,8 +928,7 @@ const ART = (function () {
 
     // rules in a smoked-glass panel
     const box = { x: 16, y: 268, w: W - 32, h: 112 };
-    s += `<path d="M24 ${box.y - 4}H${W - 24}" stroke="url(#rule)" stroke-width="1.2"/>
-      <path d="M${W / 2} ${box.y - 8.5}l4.5 4.5-4.5 4.5-4.5-4.5z" fill="#d8b25a"/>`;
+    s += `<path d="M24 ${box.y - 4}H${W - 24}" stroke="url(#rule)" stroke-width="1.2"/>`;
     const fit = fitRules(c.txz || c.tx || '', box.w - 22, box.h - 16);
     const top = box.y + 8 + (box.h - 16 - fit.lines.length * fit.lh) / 2 + fit.size * 0.95;
     fit.lines.forEach((ln, i) => {
