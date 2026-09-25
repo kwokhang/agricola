@@ -198,7 +198,7 @@ const CARD_FX = {
   'Plow Driver': {
     free(x, c) {
       if (!x.acting || x.p.house !== 'stone' || x.G.pending) return;
-      offer(x, c, 'plowdriver', '犁田工：1 食物犁 1 塊田',
+      offer(x, c, 'plowdriver', '犁田手：1 食物犁 1 塊田',
         x.p.supply.food >= 1 && !usedThisRound(x.G, x.p, 'plowdriver'));
     },
     doFree(x) {
@@ -227,7 +227,7 @@ const CARD_FX = {
 
   'Priest': {
     onPlay(x) {
-      if (x.p.house === 'clay' && roomCount(x.p) === 2) gain(x.G, x.p, { clay: 3, reed: 2, stone: 2 }, '牧師：');
+      if (x.p.house === 'clay' && roomCount(x.p) === 2) gain(x.G, x.p, { clay: 3, reed: 2, stone: 2 }, '神父：');
     },
   },
 
@@ -239,14 +239,14 @@ const CARD_FX = {
   'Paper Maker': {
     free(x, c) {
       if (x.acting && currentStep(x.G) === 'playOcc' && !usedThisRound(x.G, x.p, 'papermaker')) {
-        offer(x, c, 'papermaker', `造紙師：1 木材 → ${x.p.occPlayed} 食物`, x.p.supply.wood >= 1 && x.p.occPlayed > 0);
+        offer(x, c, 'papermaker', `造紙匠：1 木材 → ${x.p.occPlayed} 食物`, x.p.supply.wood >= 1 && x.p.occPlayed > 0);
       }
     },
     doFree(x) {
       if (x.p.supply.wood < 1) return false;
       x.p.supply.wood--;
       markUsed(x.G, x.p, 'papermaker');
-      gain(x.G, x.p, { food: x.p.occPlayed }, '造紙師：');
+      gain(x.G, x.p, { food: x.p.occPlayed }, '造紙匠：');
     },
   },
 
@@ -259,10 +259,10 @@ const CARD_FX = {
   },
 
   'Groom': {
-    onPlay(x) { gain(x.G, x.p, { wood: 1 }, '馬伕：'); },
+    onPlay(x) { gain(x.G, x.p, { wood: 1 }, '馬廄僮僕：'); },
     free(x, c) {
       if (!x.acting || x.p.house !== 'stone' || x.G.pending) return;
-      offer(x, c, 'groom', '馬伕：1 木材建 1 個馬廄',
+      offer(x, c, 'groom', '馬廄僮僕：1 木材建 1 個馬廄',
         x.p.supply.wood >= 1 && stableCount(x.p) < 4 && !usedThisRound(x.G, x.p, 'groom'));
     },
     doFree(x) {
@@ -340,13 +340,13 @@ const CARD_FX = {
     free(x, c) {
       if (!x.acting) return;
       const ok = roomCount(x.p) >= 3 && x.p.people === 2 && !usedThisRound(x.G, x.p, 'childless');
-      offer(x, c, 'childless:grain', '無兒無女：1 食物 + 1 穀物', ok);
-      offer(x, c, 'childless:veg', '無兒無女：1 食物 + 1 蔬菜', ok);
+      offer(x, c, 'childless:grain', '無子嗣者：1 食物 + 1 穀物', ok);
+      offer(x, c, 'childless:veg', '無子嗣者：1 食物 + 1 蔬菜', ok);
     },
     doFree(x) {
       const kind = x.id.split(':')[1];
       markUsed(x.G, x.p, 'childless');
-      gain(x.G, x.p, { food: 1, [kind]: 1 }, '無兒無女：');
+      gain(x.G, x.p, { food: 1, [kind]: 1 }, '無子嗣者：');
     },
   },
 
@@ -464,8 +464,8 @@ const CARD_FX = {
     onPlay(x) {
       const left = 14 - x.G.round;
       x.p.bonusVp += left;
-      gain(x.G, x.p, { food: left * 2 }, '大國：');
-      logEvent(x.G, `${x.p.name} 大國：+${left} 獎勵分`);
+      gain(x.G, x.p, { food: left * 2 }, '遼闊鄉間：');
+      logEvent(x.G, `${x.p.name} 遼闊鄉間：+${left} 獎勵分`);
     },
   },
 
@@ -482,7 +482,7 @@ const CARD_FX = {
   },
 
   'Clay Pipe': {
-    onReturnHome(x) { if (x.p.gainedBuild >= 7) gain(x.G, x.p, { food: 2 }, '黏土煙斗：'); },
+    onReturnHome(x) { if (x.p.gainedBuild >= 7) gain(x.G, x.p, { food: 2 }, '陶菸斗：'); },
   },
 
   'Lumber Mill': {
@@ -498,7 +498,7 @@ const CARD_FX = {
   },
 
   'Corn Scoop': {
-    onSpaceUsed(x) { if (x.spaceId === 'grain_seeds') gain(x.G, x.p, { grain: 1 }, '穀鏟：'); },
+    onSpaceUsed(x) { if (x.spaceId === 'grain_seeds') gain(x.G, x.p, { grain: 1 }, '穀勺：'); },
   },
 
   'Rammed Clay': {
@@ -532,8 +532,8 @@ const CARD_FX = {
   'Milk Jug': {
     onAnySpaceUsed(x) {
       if (x.spaceId !== 'cattle_market') return;
-      gain(x.G, x.p, { food: 3 }, '奶壺：');
-      for (const q of x.G.players) if (q !== x.p) gain(x.G, q, { food: 1 }, '（奶壺）獲得');
+      gain(x.G, x.p, { food: 3 }, '牛奶壺：');
+      for (const q of x.G.players) if (q !== x.p) gain(x.G, q, { food: 1 }, '（牛奶壺）獲得');
     },
   },
 
@@ -552,11 +552,11 @@ const CARD_FX = {
   },
 
   'Scullery': {
-    onRoundStart(x) { if (x.p.house === 'wood') gain(x.G, x.p, { food: 1 }, '洗碗間：'); },
+    onRoundStart(x) { if (x.p.house === 'wood') gain(x.G, x.p, { food: 1 }, '洗滌室：'); },
   },
 
   'Mining Hammer': {
-    onPlay(x) { gain(x.G, x.p, { food: 1 }, '採礦錘：'); },
+    onPlay(x) { gain(x.G, x.p, { food: 1 }, '礦錘：'); },
     onRenovate(x) { if (stableCount(x.p) < 4) addStep(x.G, 'freestable'); },
   },
 
@@ -640,12 +640,12 @@ const CARD_FX = {
       const grain = x.p.farm.some((t) => t.kind === 'field' && t.crop && t.crop.kind === 'grain');
       const veg = x.p.farm.some((t) => t.kind === 'field' && t.crop && t.crop.kind === 'veg');
       const bare = x.p.farm.some((t) => t.kind === 'field' && !t.crop);
-      if (grain && veg && bare) gain(x.G, x.p, { food: 3 }, '三圃輪作：');
+      if (grain && veg && bare) gain(x.G, x.p, { food: 3 }, '三田輪作：');
     },
   },
 
   'Market Stall': {
-    onPlay(x) { gain(x.G, x.p, { veg: 1 }, '市集攤位：'); },
+    onPlay(x) { gain(x.G, x.p, { veg: 1 }, '市場攤位：'); },
   },
 
   'Beanfield': {
@@ -768,7 +768,7 @@ const CARD_CHOICE = {
     const p = G.players[ch.pi];
     if (id !== 'yes' || p.supply.food < 1) return;
     p.supply.food--;
-    gain(G, p, { stone: roomCount(p) }, '屋頂壓載工：');
+    gain(G, p, { stone: roomCount(p) }, '屋頂壓石工：');
   },
   lasso(G, ch, id) {
     if (id !== 'yes') return;

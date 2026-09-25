@@ -784,13 +784,21 @@ const ART = (function () {
 
   const wide = (ch) => (ch.charCodeAt(0) > 0x2e7f ? 1 : 0.55);
 
+  const NO_START = '，。、；：？！）」』】》…,.;:!?)';
+  const NO_END = '（「『【《(';
   function wrap(text, perLine, maxLines) {
     const lines = [];
     let cur = '', w = 0;
     for (const ch of String(text || '')) {
       if (ch === '\n') { lines.push(cur); cur = ''; w = 0; continue; }
       const cw = wide(ch);
-      if (w + cw > perLine) { lines.push(cur); cur = ''; w = 0; }
+      // Line-breaking rules: closing punctuation hangs at the end of the line instead of
+      // starting the next one, and an opening bracket moves down with the word it opens.
+      if (w + cw > perLine && !NO_START.includes(ch)) {
+        let carry = '';
+        while (cur && NO_END.includes(cur[cur.length - 1])) { carry = cur[cur.length - 1] + carry; cur = cur.slice(0, -1); }
+        lines.push(cur); cur = carry; w = [...carry].reduce((a, c) => a + wide(c), 0);
+      }
       cur += ch; w += cw;
     }
     if (cur) lines.push(cur);
