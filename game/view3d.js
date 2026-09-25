@@ -19,8 +19,8 @@ const View3D = (function () {
   // right hand, and the two farms side by side underneath it, each with its name, family,
   // supply tray and played cards in a column below.
   const LAYOUT = {
-    board: { x: -2.9, z: -3.8 },                                // 4 × 6 spaces, left half
-    majors: { x: 3.7, z: -3.8 },                                // world; 4 rows by kind beside the board
+    board: { x: 0, z: -2.45 },                                  // 8 × 3 spaces, across the top
+    majors: { x: 8.5, z: -2.45 },                                // world; 4 rows by kind beside the board
     seat: (pi, n) => ({ x: n === 1 ? 0 : (pi === 0 ? -2.88 : 2.88), z: 0.95, rot: 0 }),
     farm: { x: 0, z: 0 },                                       // seat-local
     plate: { x: -1.5, z: 1.98 },                                // seat-local
@@ -743,17 +743,18 @@ const View3D = (function () {
   // Every action space is the same 3:2 cell, the shape of the artwork. The small board is
   // one column of six; the big board is seven columns, six rows tall so both boards match.
   const CELL_W = 186, CELL_H = 124;
-  const SM = { w: CELL_W, h: CELL_H, gap: 8, pad: 14, rows: 6 };
-  const BG = { w: CELL_W, h: CELL_H, gap: 8, pad: 14, rows: 6, cols: 3 };
+  // Wide, to match a landscape screen: the small board 2 × 3, the big board 6 × 3.
+  const SM = { w: CELL_W, h: CELL_H, gap: 8, pad: 14, rows: 3, cols: 2 };
+  const BG = { w: CELL_W, h: CELL_H, gap: 8, pad: 14, rows: 3, cols: 6 };
   const BOARD_GAP = 18;
-  const SM_W = SM.pad * 2 + SM.w;
+  const SM_W = SM.pad * 2 + SM.cols * SM.w + (SM.cols - 1) * SM.gap;
   const SM_H = SM.pad * 2 + SM.rows * SM.h + (SM.rows - 1) * SM.gap;
   const BG_W = BG.pad * 2 + BG.cols * BG.w + (BG.cols - 1) * BG.gap;
   const BG_H = BG.pad * 2 + BG.rows * BG.h + (BG.rows - 1) * BG.gap;
   const PX_W = SM_W + BOARD_GAP + BG_W, PX_H = Math.max(SM_H, BG_H);
   const PS = 0.00708;                              // pixels → world units (a cell is ~1.3 wide)
   // The big board, packed: the four accumulation spaces then rounds 1–14, filled top to
-  // bottom, column by column — 18 spaces in 3 × 6, no gaps. Harvests are a seal on the
+  // bottom, column by column — 18 spaces in 6 × 3, no gaps. Harvests are a seal on the
   // round they follow.
   const BIG_ORDER = BOARD_LAYOUT.accum.map((id) => ({ id })).concat(
     Array.from({ length: 14 }, (_, k) => ({ round: k + 1 })));
@@ -923,7 +924,8 @@ const View3D = (function () {
     };
 
     BOARD_LAYOUT.small.forEach((id, i) => {
-      addSpace(spaceDef(id), SM.pad, SM.pad + i * (SM.h + SM.gap), SM.w, SM.h);
+      const c = Math.floor(i / SM.rows), r = i % SM.rows;
+      addSpace(spaceDef(id), SM.pad + c * (SM.w + SM.gap), SM.pad + r * (SM.h + SM.gap), SM.w, SM.h);
     });
 
     const ox = SM_W + BOARD_GAP;
@@ -1448,7 +1450,7 @@ const View3D = (function () {
       safe: { l: 0.12, r: 0.12, t: 0.26, b: 0.3 } }),
     // The board is wide, so its view gets tighter margins: the top-left only has the camera
     // tabs, and the action bar sits over the empty middle of the board's lower edge.
-    board: () => ({ az: 0, pol: 0.3, pad: 0.98, boxes: ['board'], safe: { l: 0.05, r: 0.1, t: 0.3, b: 0.1 } }),
+    board: () => ({ az: 0, pol: 0.3, pad: 1.03, boxes: ['board'], safe: { l: 0.05, r: 0.1, t: 0.3, b: 0.1 } }),
     farm: (UI) => ({ az: 0, pol: 0.56, pad: 1.04, boxes: ['farm' + UI.view] }),
     cards: (UI) => ({ az: 0, pol: 0.5, pad: 1.02, boxes: ['played' + UI.view] }),
     majors: () => ({ az: 0, pol: 0.42, pad: 1.0, boxes: ['majors'], safe: { l: 0.04, r: 0.15, t: 0.34, b: 0.3 } }),
