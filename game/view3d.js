@@ -589,6 +589,40 @@ const View3D = (function () {
     return ink(g);
   }
 
+  // Goods waiting on a space: the actual wooden pieces (the same cel-shaded bits as on the
+  // farm) sitting in a small parchment tray, with the count inked on the tray like a note
+  // written on the board. `rim` is a player's colour for goods a card has parked.
+  const TRAY_W = 1.0, TRAY_D = 0.6;
+  const TRAY_SPOTS = [[-0.24, 0.0], [-0.06, -0.12], [-0.08, 0.13], [-0.27, -0.14]];
+  function trayFace(n, rim) {
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 60" width="300" height="180"
+      font-family="'Hiragino Mincho ProN','Songti TC',serif">
+      <rect x="1.5" y="1.5" width="97" height="57" rx="9" fill="#efe3c3" stroke="${rim}" stroke-width="3"/>
+      <rect x="5" y="5" width="90" height="50" rx="6" fill="none" stroke="#5a4526" stroke-width=".8" opacity=".45"/>
+      <path d="M62 10V50" stroke="#5a4526" stroke-width=".8" opacity=".35"/>
+      <text x="80" y="41" text-anchor="middle" font-size="${n > 9 ? 26 : 30}" font-weight="700" fill="#2a1d10">${n}</text></svg>`;
+  }
+  function goodsTray(kind, n, rim) {
+    const g = new T.Group();
+    const rimHex = rim ? '#' + rim.getHexString() : '#8a6a3c';
+    const tex = svgTexture(`tray:${n}:${rimHex}`, trayFace(n, rimHex), 300, 180);
+    const edge = mat(col('--art-wood-dk'));
+    const plate = new T.Mesh(geo('goodsTray', () => new T.BoxGeometry(TRAY_W, 0.04, TRAY_D)),
+      [edge, edge, printMat(tex, { roughness: 0.7 }), edge, edge, edge]);
+    plate.position.y = 0.02;
+    plate.receiveShadow = true;
+    g.add(plate);
+    const shown = Math.min(n, TRAY_SPOTS.length);
+    for (let i = 0; i < shown; i++) {
+      const m = goodsMesh(kind);
+      m.position.set(TRAY_SPOTS[i][0], 0.04, TRAY_SPOTS[i][1]);
+      m.rotation.y = i * 1.3 + 0.4;
+      m.scale.multiplyScalar(ANIM.includes(kind) ? 0.8 : 0.82);
+      g.add(m);
+    }
+    return g;
+  }
+
   // Goods piled in a loose cluster, with a count plate once there are more than a few.
   const PILE = [[0, 0], [0.24, 0.1], [-0.22, 0.14], [0.1, -0.2], [-0.12, -0.18], [0.3, -0.08],
     [-0.32, -0.02], [0.02, 0.26], [0.22, 0.3], [-0.24, 0.32]];
@@ -809,9 +843,10 @@ const View3D = (function () {
   const HTAB_W = 112, HTAB_H = 30;
   const harvestSealSvg = () => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${HTAB_W} ${HTAB_H}" width="${HTAB_W * 3}" height="${HTAB_H * 3}"
     font-family="-apple-system,'PingFang TC',sans-serif">
-    <path d="M1 1H${HTAB_W - 1}V${HTAB_H - 8}L${HTAB_W / 2} ${HTAB_H - 1}L1 ${HTAB_H - 8}z" fill="#26402b" stroke="#b8912f" stroke-width="1.6" stroke-linejoin="round"/>
+    <path d="M1 1H${HTAB_W - 1}V${HTAB_H - 8}L${HTAB_W / 2} ${HTAB_H - 1}L1 ${HTAB_H - 8}z" fill="#efe3c3" stroke="#5a4526" stroke-width="1.4" stroke-linejoin="round"/>
     <g transform="translate(6 3) scale(.72)">${ART.ICONS.grain}</g>
-    <text x="${HTAB_W / 2 + 9}" y="16" text-anchor="middle" font-size="11.5" font-weight="900" fill="#fff8e6">此回合後收成</text></svg>`;
+    <text x="${HTAB_W / 2 + 9}" y="16" text-anchor="middle" font-size="11.5" font-weight="800" fill="#3a2a14"
+      font-family="'Hiragino Mincho ProN','Songti TC',serif">此回合後收成</text></svg>`;
   const HARV_W = 156, HARV_H = 52;
   const harvestSvg = (after) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${HARV_W} ${HARV_H}"
     width="${HARV_W * 2}" height="${HARV_H * 2}" font-family="-apple-system,'PingFang TC','Noto Sans TC',sans-serif">
@@ -893,9 +928,9 @@ const View3D = (function () {
       // Goods that have accumulated, piled in the free corner of the space.
       const kinds = Object.keys(sp.goods).filter((k) => sp.goods[k] > 0);
       kinds.forEach((k, i) => {
-        const pile = goodsPile(k, sp.goods[k], { spread: 0.52, max: 5, alwaysCount: true, base: true });
-        pile.position.set(cx - w / 2 + 0.22 + i * 0.44, BOARD_Y + 0.04, cz - d / 2 + 0.2);
-        pile.scale.setScalar(0.56);
+        const pile = goodsTray(k, sp.goods[k]);
+        pile.position.set(cx - w / 2 + 0.3, BOARD_Y + 0.03, cz - d / 2 + 0.2 + i * 0.36);
+        pile.scale.setScalar(0.52);
         g.add(pile);
       });
 
@@ -918,6 +953,7 @@ const View3D = (function () {
         });
         const ax = cx + w * 0.18, az = cz - d * 0.2;     // the picture half, clear of the name plate
         const tok = workerToken(pc, true);
+        tok.scale.setScalar(0.8);
         tok.position.set(ax, BOARD_Y + 0.035, az);
         g.add(tok);
       }
@@ -949,7 +985,7 @@ const View3D = (function () {
         // a harvest seal on the round's top-right corner: "harvest after this round"
         const done = G.round > n || (G.round === n && G.phase !== 'work');
         const seal = new T.Mesh(geo('harvTab', () => new T.PlaneGeometry(HTAB_W * PS, HTAB_H * PS)),
-          new T.MeshBasicMaterial({ map: svgTexture('htab', harvestSealSvg(), HTAB_W * 3, HTAB_H * 3), transparent: true, opacity: done ? 0.45 : 1 }));
+          new T.MeshBasicMaterial({ map: svgTexture('htab2', harvestSealSvg(), HTAB_W * 3, HTAB_H * 3), transparent: true, opacity: done ? 0.45 : 1 }));
         seal.rotation.x = -Math.PI / 2;
         // hanging from the cell's bottom edge, over the gap and the top of the next cell's picture
         seal.position.set(bx(cellX(c) + BG.w / 2), BOARD_Y + 0.06, bz(cellY(r) + BG.h + HTAB_H / 2 - 5));
@@ -977,12 +1013,11 @@ const View3D = (function () {
         kinds.forEach((k, j) => {
           const piece = k === 'field'
             ? box(0.3, 0.05, 0.3, col('--art-soil'), 0, 0.05, 0)
-            : goodsPile(k, parked[n][k], { spread: 0.34, max: 3, alwaysCount: parked[n][k] > 1,
-              base: col(pi === 0 ? '--p1' : '--p2') });
+            : goodsTray(k, parked[n][k], col(pi === 0 ? '--p1' : '--p2'));
           const holder = new T.Group();
           holder.add(piece);
-          holder.position.set(cx + (j - (kinds.length - 1) / 2) * 0.3, BOARD_Y + 0.04, cz);
-          holder.scale.setScalar(0.62);
+          holder.position.set(cx + (j - (kinds.length - 1) / 2) * 0.3, BOARD_Y + 0.03, cz + j * 0.02);
+          holder.scale.setScalar(0.46);
           g.add(holder);
         });
       });
