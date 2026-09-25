@@ -525,6 +525,16 @@
     0% { box-shadow: 0 14px 40px rgba(0,0,0,.5), 0 0 0 14px color-mix(in srgb, var(--accent) 45%, transparent); }
   }
 
+  /* fence counter while building fences */
+  .fencebar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 2px 0 6px; }
+  .fencebar .fb-n { font-size: 14px; } .fencebar .fb-n b { font-size: 20px; color: var(--accent); font-family: var(--font-display); }
+  .fencebar .fb-track { display: flex; gap: 2px; }
+  .fencebar .fb-track i { width: 9px; height: 16px; border-radius: 2px; background: color-mix(in srgb, var(--muted) 22%, transparent); }
+  .fencebar .fb-track i.old { background: var(--art-fence); }
+  .fencebar .fb-track i.new { background: var(--accent); }
+  .fencebar .fb-track i.can { background: transparent; box-shadow: inset 0 0 0 1.5px var(--accent); }
+  .fencebar .fb-can { font-size: 13.5px; } .fencebar .fb-can b { color: var(--accent); font-size: 16px; }
+  .fencebar small { color: var(--muted); margin-left: 3px; }
   .gfxdefs { position: absolute; }
 </style>
 </head>

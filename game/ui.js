@@ -447,7 +447,18 @@
         const d = G.pending.data;
         const n = (d.placed || []).length;
         const freeLeft = Math.max(0, a.free - (d.free || 0));
-        body = `<p>喺「農場」撳格與格之間起柵欄，每條 ${costHtml({ wood: 1 })}${a.clayOk ? '（冇木可以用黏土）' : ''}${freeLeft ? `，仲有 ${freeLeft} 條免費` : ''}。今次新起嘅可以再撳一次取消。</p>`
+        // How many fences: the 15-piece supply, and what you can pay for right now.
+        const built = fenceCount(p), left = Math.max(0, 15 - built);
+        const payable = freeLeft + p.supply.wood + (a.clayOk ? p.supply.clay : 0);
+        const canBuild = Math.min(left, payable);
+        const limit = left <= payable ? '柵欄用晒' : `受${a.clayOk ? '木材／黏土' : '木材'}限制`;
+        body = `<div class="fencebar">
+            <span class="fb-n"><b>${built}</b> / 15 條柵欄</span>
+            <span class="fb-track">${Array.from({ length: 15 }, (_, k) =>
+              `<i class="${k < built - n ? 'old' : k < built ? 'new' : k < built + canBuild ? 'can' : ''}"></i>`).join('')}</span>
+            <span class="fb-can">仲可以起 <b>${canBuild}</b> 條<small>（${limit}）</small></span>
+          </div>
+          <p>喺「農場」撳格與格之間起柵欄，每條 ${costHtml({ wood: 1 })}${a.clayOk ? '（冇木可以用黏土）' : ''}${freeLeft ? `，仲有 ${freeLeft} 條免費` : ''}。今次新起嘅可以再撳一次取消。</p>`
           + (ok ? '' : '<p class="muted">⚠️ 有柵欄未圍成牧場，唔可以完成。移走佢哋先。</p>')
           + `<div class="row">${btn('confirmFences', '完成', !ok)}${btn('undoFences', `取消今次全部（${n}）`, !n)}</div>`;
       } else if (st === 'sow') {
