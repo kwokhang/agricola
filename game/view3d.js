@@ -128,6 +128,34 @@ const View3D = (function () {
     });
   }
 
+  // The one shape a worker has, at home and out on the board: a cream disc with the
+  // meeple lying on its back on it, so from above the whole silhouette shows. At home a
+  // worker who has gone out leaves its disc behind, empty and faded.
+  function workerToken(pc, present) {
+    const g = new T.Group();
+    const base = new T.Mesh(geo('wkBase', () => new T.CylinderGeometry(0.22, 0.24, 0.04, 28)),
+      mat(col('--art-count'), { roughness: 0.35, transparent: !present, opacity: present ? 1 : 0.35 }));
+    base.position.y = 0.02;
+    base.castShadow = present;
+    base.receiveShadow = true;
+    g.add(base);
+    if (!present) {
+      const ring = new T.Mesh(geo('wkRing', () => new T.RingGeometry(0.15, 0.18, 28)),
+        new T.MeshBasicMaterial({ color: pc, transparent: true, opacity: 0.55, depthWrite: false }));
+      ring.rotation.x = -Math.PI / 2;
+      ring.position.y = 0.042;
+      g.add(ring);
+      return g;
+    }
+    const m = meeple(pc, 0.66);
+    m.material.emissive = pc.clone();
+    m.material.emissiveIntensity = 0.15;
+    m.rotation.x = -Math.PI / 2;
+    m.position.y = 0.08;
+    g.add(m);
+    return g;
+  }
+
   // Standing upright, feet on the board, so it casts a proper shadow.
   function meeple(colorHex, scale) {
     const m = new T.Mesh(meepleGeometry(), mat(colorHex, { roughness: 0.34, clearcoat: 0.5 }));
@@ -780,18 +808,9 @@ const View3D = (function () {
           g.add(bar);
         });
         const ax = cx + w * 0.18, az = cz - d * 0.2;     // the picture half, clear of the name plate
-        const base = new T.Mesh(geo('occBase', () => new T.CylinderGeometry(0.22, 0.24, 0.04, 28)), mat(col('--art-count'), { roughness: 0.35 }));
-        base.position.set(ax, BOARD_Y + 0.055, az);
-        base.castShadow = true;
-        g.add(base);
-        // Seen from above, a standing meeple is just its edge, so it lies on its back on the
-        // disc, head towards the far side: the whole silhouette faces the camera.
-        const m = meeple(pc, 0.66);
-        m.material.emissive = pc.clone();
-        m.material.emissiveIntensity = 0.15;
-        m.rotation.x = -Math.PI / 2;
-        m.position.set(ax, BOARD_Y + 0.115, az);
-        g.add(m);
+        const tok = workerToken(pc, true);
+        tok.position.set(ax, BOARD_Y + 0.035, az);
+        g.add(tok);
       }
     };
 
@@ -1060,34 +1079,36 @@ const View3D = (function () {
     <text x="18" y="49" font-size="14" fill="var(--art-ink)" opacity=".7">${sub}</text></svg>`;
 
   // The supply tray: every kind of goods this player owns, as real pieces in a row.
+  // The supply mat: one printed card, the same look as the HUD — a cream mat, and for each
+  // good its coin, a big count and its name. Empty goods are printed faintly, not hidden,
+  // so the row always reads in the same order.
+  function supplySvg(p) {
+    const kinds = RES.concat(ANIM);
+    const W = 660, H = 116, cw = W / kinds.length;
+    let s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W * 2}" height="${H * 2}"
+      font-family="-apple-system,'PingFang TC','Noto Sans TC',sans-serif">
+      <rect x="1" y="1" width="${W - 2}" height="${H - 2}" rx="12" fill="var(--art-plate)" stroke="var(--art-ink)" stroke-width="2"/>`;
+    kinds.forEach((k, i) => {
+      const n = ANIM.includes(k) ? animalTotal(p, k) : p.supply[k];
+      const x = i * cw;
+      if (i) s += `<path d="M${x} 12V${H - 12}" stroke="var(--art-ink)" stroke-width="1" opacity=".18"/>`;
+      if (i === RES.length) s += `<path d="M${x} 8V${H - 8}" stroke="var(--art-ink)" stroke-width="2.4" opacity=".35"/>`;
+      s += `<g opacity="${n ? 1 : 0.32}">
+        <g transform="translate(${x + cw / 2 - 17} 10) scale(${34 / 24})">${ART.tokenMarkup(k)}</g>
+        <text x="${x + cw / 2}" y="78" text-anchor="middle" font-size="30" font-weight="800" fill="var(--art-ink)">${n}</text>
+        <text x="${x + cw / 2}" y="101" text-anchor="middle" font-size="15" font-weight="600" fill="var(--art-ink)" opacity=".75">${ART.NAMES[k]}</text></g>`;
+    });
+    return s + '</svg>';
+  }
+
   function buildSupply(G, pi) {
     const p = G.players[pi];
     const g = new T.Group();
-    const kinds = RES.concat(ANIM);
-    const tray = box(5.4, 0.08, 1.1, col('--art-slot'), 0, 0, 0);
-    tray.receiveShadow = true;
-    g.add(tray);
-    kinds.forEach((k, i) => {
-      const n = ANIM.includes(k) ? animalTotal(p, k) : p.supply[k];
-      const x = -2.45 + i * 0.545;
-      const slot = box(0.48, 0.02, 0.9, col('--art-boardface'), x, 0.05, 0);
-      g.add(slot);
-      // Each slot is printed with the goods it holds, like the recesses on a player mat.
-      const icon = new T.Mesh(geo('slotIcon', () => new T.PlaneGeometry(0.44, 0.44)),
-        printMat(null, { transparent: true, depthWrite: false, opacity: n ? 0.95 : 0.55,
-          map: svgTexture('slot2:' + k, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="160" height="160">
-            <g transform="translate(6.5 .5) scale(.8)">${ART.tokenMarkup(k)}</g>
-            <text x="16" y="29.5" text-anchor="middle" font-size="8" font-weight="700" fill="var(--art-ink)"
-              font-family="-apple-system,'PingFang TC',sans-serif">${ART.NAMES[k]}</text></svg>`, 160, 160) }));
-      icon.rotation.x = -Math.PI / 2;
-      icon.position.set(x, 0.065, -0.2);
-      g.add(icon);
-      if (!n) return;
-      const pile = goodsPile(k, n, { spread: 0.3, max: 3, alwaysCount: true });
-      pile.position.set(x, 0.06, 0.24);
-      pile.scale.setScalar(0.62);
-      g.add(pile);
-    });
+    const key = RES.map((k) => p.supply[k]).concat(ANIM.map((k) => animalTotal(p, k))).join(',');
+    const tex = svgTexture(`supply:${pi}:${key}`, supplySvg(p), 1320, 232);
+    const mat3 = plateMesh(tex, 5.4, 0.95, 0, 0, 0.04);
+    mat3.castShadow = true;
+    g.add(mat3);
     return g;
   }
 
@@ -1117,10 +1138,9 @@ const View3D = (function () {
     hoverables.push(plate);
 
     for (let i = 0; i < p.people; i++) {
-      const m = meeple(col(colour), i < p.workersLeft ? 1 : 0.85);
-      m.position.set(LAYOUT.plate.x + 1.35 + i * 0.42, 0.06, LAYOUT.plate.z);
-      if (i >= p.workersLeft) { m.rotation.z = Math.PI / 2; m.position.y = 0.12; }
-      g.add(m);
+      const tok = workerToken(col(colour), i < p.workersLeft);
+      tok.position.set(LAYOUT.plate.x + 1.4 + i * 0.52, 0.0, LAYOUT.plate.z);
+      g.add(tok);
     }
     if (acting) {
       g.add(outline(5.6, 3.6, 0.09, col(colour).getHex(), 0.07).translateX(LAYOUT.farm.x).translateZ(LAYOUT.farm.z));

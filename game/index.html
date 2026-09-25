@@ -160,16 +160,6 @@
   .freebar .lb { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
   .resbar { display: flex; align-items: center; gap: 6px 10px; flex-wrap: wrap; border-top: 1px solid var(--line); padding-top: 9px; }
   .resbar .who { font-weight: 700; font-size: 13px; display: flex; align-items: center; gap: 5px; }
-  .chips { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
-  .chip {
-    display: inline-flex; align-items: center; gap: 3px;
-    background: color-mix(in srgb, var(--bg) 80%, transparent);
-    border: 1px solid var(--line); border-radius: 8px;
-    padding: 2px 9px 2px 5px; font-size: 15px; font-weight: 700; line-height: 1.35;
-  }
-  .chip.zero { opacity: .42; font-weight: 600; }
-  .chip.beg { border-color: var(--maj-frame); }
-  .chips .sep { width: 1px; height: 20px; background: var(--line); margin: 0 3px; }
   .resbar .rtoggle { margin-left: auto; }
   .allres { display: flex; flex-direction: column; gap: 7px; }
   .allres .prow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -309,15 +299,6 @@
     padding: 8px 14px; border-top: 1px solid var(--line); margin-top: 9px;
   }
   .resbar .who { font-weight: 700; font-size: 13px; display: flex; align-items: center; gap: 5px; }
-  .chips { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
-  .chip {
-    display: inline-flex; align-items: center; gap: 3px;
-    background: var(--bg); border: 1px solid var(--line); border-radius: 8px;
-    padding: 2px 9px 2px 5px; font-size: 15px; font-weight: 700; line-height: 1.35;
-  }
-  .chip.zero { opacity: .42; font-weight: 600; }
-  .chip.beg { border-color: var(--maj-frame); }
-  .chips .sep { width: 1px; height: 20px; background: var(--line); margin: 0 3px; }
   .resbar .rtoggle { margin-left: auto; }
   .allres { padding: 0 14px 10px; display: flex; flex-direction: column; gap: 7px; }
   .allres .prow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -343,23 +324,6 @@
   .modal .panel { max-width: min(460px, 92vw); background: var(--panel); border: 2px solid var(--accent); padding: 14px 16px; }
 
   /* ---------- resources: icon, name and count in a labelled grid ---------- */
-  .chips {
-    display: grid; grid-template-columns: 26px repeat(4, 1fr); gap: 5px 3px;
-    align-items: center; width: 100%;
-  }
-  .chips .rg { font-size: 11px; color: var(--muted); letter-spacing: .05em; }
-  .chip {
-    display: flex; align-items: center; gap: 3px; min-width: 0;
-    background: color-mix(in srgb, var(--bg) 80%, transparent);
-    border: 1px solid var(--line); border-radius: 8px; padding: 2px 5px 2px 2px; line-height: 1.3;
-  }
-  .chip svg { flex: none; width: 20px; height: 20px; }   /* flex would squash the icon to a dot */
-  .chip .cl { font-size: 11.5px; color: var(--muted); white-space: nowrap; }
-  .chip b { margin-left: auto; font-size: 15px; font-weight: 800; }
-  .chip.zero { opacity: .45; }
-  .chip.zero b { font-weight: 600; }
-  .chip.beg { border-color: var(--maj-frame); }
-  .chip.beg:not(.zero) { background: color-mix(in srgb, var(--maj-frame) 22%, transparent); }
   .resbar { flex-direction: column; align-items: stretch; }
   .resbar .rtoggle { margin-left: 0; align-self: flex-end; }
   .allres .prow { flex-direction: column; align-items: stretch; gap: 4px; }
@@ -388,19 +352,19 @@
   .side .rail .log { overflow-y: auto; padding: 0 12px 10px; max-height: 42vh; }
   .tip { right: auto; left: 12px; top: 136px; }
 
-  /* resources: icon, then name over count, four to a row */
-  .chips { display: grid; grid-template-columns: 26px repeat(4, 1fr); gap: 5px 4px; align-items: center; width: 100%; }
-  .chips .rg { font-size: 11px; color: var(--muted); }
+  /* resources: coin on top, count, then the name — stacked, so nothing has to squeeze */
+  .chips { display: grid; grid-template-columns: 28px repeat(4, minmax(0, 1fr)); gap: 5px 4px; align-items: stretch; width: 100%; }
+  .chips .rg { font-size: 11px; color: var(--muted); align-self: center; }
+  .chip.beg { border-color: var(--maj-frame); }
   .chip {
-    display: flex; align-items: center; gap: 4px; min-width: 0; padding: 3px 5px 3px 3px;
+    display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 0; padding: 4px 2px 3px;
     background: color-mix(in srgb, var(--bg) 94%, transparent); border: 1px solid var(--line); border-radius: 8px;
   }
   .chip svg { flex: none; width: 24px; height: 24px; }
-  .chip .cv { display: flex; flex-direction: column; line-height: 1.1; min-width: 0; }
-  .chip .cl { font-size: 10.5px; color: var(--muted); white-space: nowrap; }
-  .chip b { margin: 0; font-size: 16px; font-weight: 800; color: var(--ink); }
-  .chip.zero { opacity: 1; }
-  .chip.zero svg { opacity: .5; }
+  .chip .cv { display: flex; flex-direction: column; align-items: center; line-height: 1.1; min-width: 0; }
+  .chip b { order: 1; margin: 0; font-size: 16px; font-weight: 800; color: var(--ink); }
+  .chip .cl { order: 2; font-size: 10.5px; color: var(--muted); white-space: nowrap; }
+  .chip.zero svg { opacity: .45; }
   .chip.zero b { color: var(--muted); font-weight: 600; }
   .chip.beg:not(.zero) { background: color-mix(in srgb, var(--maj-frame) 22%, var(--bg)); border-color: var(--maj-frame); }
   .resbar .who { font-size: 13.5px; }
@@ -456,6 +420,7 @@
   body.side-strip .side:not(:hover) .chips { grid-template-columns: 1fr; gap: 3px; }
   body.side-strip .side:not(:hover) .dock { padding: 8px 6px; }
   body.side-strip .side:not(:hover) .resbar .who { justify-content: center; font-size: 0; }
+  body.side-strip .side:not(:hover) .resbar .who .men { display: none; }
   body.side-strip .side:not(:hover) .chip { justify-content: space-between; }
 
   /* ---------- final scores ---------- */
