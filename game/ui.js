@@ -810,15 +810,51 @@
       <tr class="tot"><td>${ART.vpIcon(15)} 總分</td>${sheets.map((x) => `<td>${x.s.total}</td>`).join('')}</tr></table>`;
   }
 
+  // The printed scoring chart: each category, how many you need for each score, with the
+  // column each player is in right now marked.
+  function rulesTable(sheets) {
+    const cats = [['field', '田'], ['pasture', '牧場'], ['grain', '穀物'], ['veg', '蔬菜'],
+      ['sheep', '綿羊'], ['boar', '野豬'], ['cattle', '牛']];
+    const range = (key, pts) => {
+      const t = SCORE_TABLE[key].slice().sort((a, b) => a[0] - b[0]);   // [[n, pts]] ascending
+      if (pts === -1) return t[0][0] > 1 ? `0–${t[0][0] - 1}` : '0';
+      const i = t.findIndex((x) => x[1] === pts);
+      const lo = t[i][0], hi = i + 1 < t.length ? t[i + 1][0] - 1 : null;
+      return hi == null ? `${lo}+` : lo === hi ? `${lo}` : `${lo}–${hi}`;
+    };
+    const rowFor = ([key, zh]) => {
+      const have = sheets.map((x) => { const r = x.s.rows.find((q) => q.key === key); return r ? r.pts : null; });
+      return `<tr><td>${zh}</td>${[-1, 1, 2, 3, 4].map((pts) => {
+        const who = sheets.filter((x, k) => have[k] === pts).map((x) => `<i style="background:${PCOLOR[x.i]}"></i>`).join('');
+        return `<td class="rc ${who ? 'on' : ''}">${range(key, pts)}${who ? `<span class="dots">${who}</span>` : ''}</td>`;
+      }).join('')}</tr>`;
+    };
+    return `<table class="rules"><tr><th>項目</th><th>−1 分</th><th>1 分</th><th>2 分</th><th>3 分</th><th>4 分</th></tr>
+      ${cats.map(rowFor).join('')}</table>
+      <table class="rules other">
+        <tr><td>未用農場格</td><td>每格 −1 分</td></tr>
+        <tr><td>圍起嘅馬廄</td><td>每個 +1 分（在牧場內）</td></tr>
+        <tr><td>房間</td><td>木屋 0 分／黏土屋每間 +1／石屋每間 +2</td></tr>
+        <tr><td>家庭成員</td><td>每人 +3 分</td></tr>
+        <tr><td>乞討標記</td><td>每個 −3 分</td></tr>
+        <tr><td>發展卡</td><td>卡上印嘅分數，加卡片獎勵分</td></tr>
+      </table>
+      <p class="muted" style="font-size:12px;margin-top:6px">格內數字為所需數量；有色點嘅格係該玩家目前所在分數。穀物、蔬菜包括田上未收成嘅作物。</p>`;
+  }
+
   function renderScoreSheet() {
     const box = $('scoresheet');
     box.hidden = !UI.scoreOpen;
     if (box.hidden) return;
     const sheets = G.players.map((p, i) => ({ p, i, s: score(G, p) }));
     box.innerHTML = `<div class="sheet">
-      <h2>目前計分</h2><div class="sub">第 ${G.round} 回合 · 以現時農場計算（遊戲結束才正式結算）</div>
-      ${scoreTable(sheets, true)}
-      <p class="muted" style="font-size:12px;margin-top:8px">每格：左邊灰字為數量，右邊為分數；「再 N → +M」表示再多 N 可多得 M 分。</p>
+      <h2>計分</h2><div class="sub">第 ${G.round} 回合 · 以現時農場計算（遊戲結束才正式結算）</div>
+      <div class="sstabs">
+        <button data-act="scoreTab" data-v="now" class="${UI.scoreTab !== 'rules' ? 'sel' : ''}">目前分數</button>
+        <button data-act="scoreTab" data-v="rules" class="${UI.scoreTab === 'rules' ? 'sel' : ''}">計分規則</button>
+      </div>
+      ${UI.scoreTab === 'rules' ? rulesTable(sheets) : scoreTable(sheets, true)}
+      ${UI.scoreTab === 'rules' ? '' : '<p class="muted" style="font-size:12px;margin-top:8px">每格：左邊灰字為數量，右邊為分數；「再 N → +M」表示再多 N 可多得 M 分。</p>'}
       <div class="row">${btn('closeScore', '關閉')}</div></div>`;
   }
 
@@ -876,6 +912,11 @@
     } else {
       html = `<div class="row" style="margin-top:6px">
         ${btn('newGame', '新遊戲', false, 'class="primary"')}
+      </div>
+      <h3 style="font-size:14px;margin:16px 0 6px">場景</h3>
+      <div class="row">
+        <button data-act="scene" data-v="forest" class="${(UI.scene || 'forest') === 'forest' ? 'sel' : ''}">森林草地</button>
+        <button data-act="scene" data-v="table" class="${UI.scene === 'table' ? 'sel' : ''}">木檯</button>
       </div>
 <p class="muted" style="font-size:12px;margin-top:10px">
         A、B 兩副卡牌的效果全部自動結算，無需手動增減物資。</p>`;
@@ -1008,7 +1049,9 @@
       case 'log': UI.logOpen = !UI.logOpen; renderRail(); save(); return;
       case 'final': UI.finalOpen = true; break;
       case 'scoreSheet': UI.scoreOpen = true; break;
+      case 'scene': UI.scene = v; View3D.setScene(v); renderDrawer(); break;
       case 'closeScore': UI.scoreOpen = false; break;
+      case 'scoreTab': UI.scoreTab = v; break;
       case 'closeFinal': UI.finalOpen = false; break;
       case 'buildKind': UI.buildKind = v; break;
       case 'sowKind': UI.sowKind = v; break;
@@ -1041,6 +1084,7 @@
   // The table has to claim the window before anything renders into it.
   let has3d = false;
   try { has3d = View3D.init($('stage'), { onPick: pick3d, onHover: showTip, onStep: stepView }); } catch (e) { has3d = false; }
+  if (has3d) { try { const o = JSON.parse(localStorage.getItem(SAVE_KEY) || '{}'); View3D.setScene((o.UI && o.UI.scene) || 'forest'); } catch (e) { /* default */ } }
   if (!has3d) {
     $('stage').hidden = true;
     $('flat').hidden = false;

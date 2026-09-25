@@ -1775,6 +1775,180 @@ const View3D = (function () {
     return tex;
   }
 
+
+  // ---------------------------------------------------------------- the forest clearing
+  // The other setting: no table at all. The game lies on a sunny meadow in the middle of a
+  // wood — forest floor all round, a ring of cel-shaded trees just outside the play area,
+  // and sky above. Chosen in the menu (scene: 'forest' or 'table').
+  let sceneStyle = 'forest';
+  function setScene(s) {
+    const next = s === 'table' ? 'table' : 'forest';
+    if (next === sceneStyle) return;
+    sceneStyle = next;
+    if (ready) { buildEnvironment(); matKey = ''; if (tableGroup) fitMat(boxOf(tableGroup)); }
+  }
+
+  function forestFloorTexture() {
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = 512;
+    const x = cv.getContext('2d');
+    x.fillStyle = '#3f5a33'; x.fillRect(0, 0, 512, 512);
+    const r = rng(23);
+    const tones = ['#36502c', '#4a6838', '#56733d', '#5d4a2e'];
+    for (let i = 0; i < 90; i++) {                        // flat patches of moss, grass, soil
+      x.fillStyle = tones[i % tones.length];
+      x.beginPath();
+      x.ellipse(r() * 512, r() * 512, 14 + r() * 34, 8 + r() * 20, r() * 3, 0, Math.PI * 2);
+      x.fill();
+    }
+    for (let i = 0; i < 160; i++) {                       // fallen leaves
+      x.fillStyle = r() < 0.5 ? '#b8862f' : '#8a5a2a';
+      x.beginPath(); x.ellipse(r() * 512, r() * 512, 3.5, 1.8, r() * 3, 0, Math.PI * 2); x.fill();
+    }
+    const tex = new T.CanvasTexture(cv);
+    tex.colorSpace = T.SRGBColorSpace;
+    tex.wrapS = tex.wrapT = T.RepeatWrapping;
+    return tex;
+  }
+
+  // The meadow: a rounded, slightly wobbly patch of light grass with a darker fringe of
+  // tufts and a few flowers, transparent outside so the forest floor shows round it.
+  function meadowTexture(w, h, pad) {
+    const S = 1024 / Math.max(w, h);
+    const cv = document.createElement('canvas');
+    cv.width = Math.round(w * S); cv.height = Math.round(h * S);
+    const x = cv.getContext('2d');
+    const W = cv.width, H = cv.height, P = pad * S;
+    const r = rng(41);
+    const shape = (inset, wobble) => {
+      x.beginPath();
+      const n = 64;
+      for (let i = 0; i <= n; i++) {
+        const a = (i / n) * Math.PI * 2;
+        const cx = W / 2 + Math.cos(a) * (W / 2 - inset), cy = H / 2 + Math.sin(a) * (H / 2 - inset);
+        // squash the ellipse towards a rounded rectangle, then wobble the edge
+        const sx = Math.sign(Math.cos(a)) * Math.pow(Math.abs(Math.cos(a)), 0.35) * (W / 2 - inset);
+        const sy = Math.sign(Math.sin(a)) * Math.pow(Math.abs(Math.sin(a)), 0.35) * (H / 2 - inset);
+        const wob = 1 + Math.sin(i * 2.7) * wobble + Math.sin(i * 1.3 + 1) * wobble * 0.6;
+        const px = W / 2 + sx * wob, py = H / 2 + sy * wob;
+        if (i === 0) x.moveTo(px, py); else x.lineTo(px, py);
+        void cx; void cy;
+      }
+      x.closePath();
+    };
+    x.fillStyle = '#5f8a3e'; shape(P * 0.1, 0.012); x.fill();       // darker fringe
+    x.fillStyle = '#86b154'; shape(P * 0.45, 0.01); x.fill();       // the meadow
+    for (let i = 0; i < 70; i++) {                                  // lighter sunny patches
+      x.fillStyle = r() < 0.5 ? '#94bd5f' : '#7aa64b';
+      x.beginPath(); x.ellipse(P + r() * (W - 2 * P), P + r() * (H - 2 * P), 20 + r() * 50, 10 + r() * 24, r() * 3, 0, Math.PI * 2); x.fill();
+    }
+    for (let i = 0; i < 260; i++) {                                 // tufts
+      const tx = P * 0.6 + r() * (W - P * 1.2), ty = P * 0.6 + r() * (H - P * 1.2);
+      x.strokeStyle = r() < 0.7 ? '#4f7a33' : '#a8cf72'; x.lineWidth = 2; x.lineCap = 'round';
+      x.beginPath(); x.moveTo(tx, ty); x.lineTo(tx - 3, ty - 7); x.moveTo(tx, ty); x.lineTo(tx + 1, ty - 8);
+      x.moveTo(tx, ty); x.lineTo(tx + 4, ty - 6); x.stroke();
+    }
+    for (let i = 0; i < 70; i++) {                                  // flowers
+      const fx = P + r() * (W - 2 * P), fy = P + r() * (H - 2 * P);
+      x.fillStyle = ['#fff6e0', '#f2cf5a', '#e8a0b4'][i % 3];
+      for (let k = 0; k < 5; k++) { const a = k * 1.2566; x.beginPath(); x.arc(fx + Math.cos(a) * 3, fy + Math.sin(a) * 3, 2.2, 0, Math.PI * 2); x.fill(); }
+      x.fillStyle = '#d98a2b'; x.beginPath(); x.arc(fx, fy, 1.6, 0, Math.PI * 2); x.fill();
+    }
+    const tex = new T.CanvasTexture(cv);
+    tex.colorSpace = T.SRGBColorSpace;
+    tex.anisotropy = 8;
+    return tex;
+  }
+
+  function skyTexture() {
+    const cv = document.createElement('canvas');
+    cv.width = 16; cv.height = 512;
+    const x = cv.getContext('2d');
+    const g = x.createLinearGradient(0, 0, 0, 512);
+    g.addColorStop(0, '#8fbfd9'); g.addColorStop(0.55, '#cfe3dc'); g.addColorStop(1, '#f1e2bd');
+    x.fillStyle = g; x.fillRect(0, 0, 16, 512);
+    const tex = new T.CanvasTexture(cv);
+    tex.colorSpace = T.SRGBColorSpace;
+    return tex;
+  }
+
+  // Cel-shaded trees: a round broadleaf and a tiered pine, each in a couple of greens.
+  function forestTree(kind, h, tone) {
+    const g = new T.Group();
+    const trunk = new T.Mesh(geo('ftrunk', () => new T.CylinderGeometry(0.09, 0.14, 1, 7)), mat(new T.Color('#6b4a2c')));
+    trunk.scale.set(1, h * 0.38, 1); trunk.position.y = h * 0.19; trunk.castShadow = true;
+    g.add(trunk);
+    const greens = [['#3f6b35', '#557f3f'], ['#4b7a3a', '#6a9446'], ['#35603a', '#4a7a48']][tone % 3];
+    if (kind === 'pine') {
+      for (let k = 0; k < 3; k++) {
+        const c = new T.Mesh(geo('fcone', () => new T.ConeGeometry(1, 1, 8)), mat(new T.Color(greens[k % 2])));
+        const sc = (1 - k * 0.25) * h * 0.32;
+        c.scale.set(sc, h * 0.34, sc); c.position.y = h * (0.42 + k * 0.2); c.castShadow = true;
+        g.add(c);
+      }
+    } else {
+      [[0, 0.62, 0, 0.36], [-0.18, 0.52, 0.08, 0.26], [0.2, 0.55, -0.06, 0.27], [0.02, 0.8, 0.02, 0.24]].forEach(([dx, dy, dz, rr], k) => {
+        const b = new T.Mesh(geo('fball', () => new T.SphereGeometry(1, 12, 10)), mat(new T.Color(greens[k % 2])));
+        b.scale.setScalar(rr * h); b.position.set(dx * h, dy * h, dz * h); b.castShadow = true;
+        g.add(b);
+      });
+    }
+    return ink(g);
+  }
+
+  function forestBush(s) {
+    const g = new T.Group();
+    [[0, 0.22, 0, 0.3], [0.26, 0.16, 0.06, 0.22], [-0.24, 0.16, -0.04, 0.22]].forEach(([dx, dy, dz, rr], k) => {
+      const b = new T.Mesh(geo('fball', () => new T.SphereGeometry(1, 12, 10)), mat(new T.Color(k ? '#4f7a3a' : '#5f8c44')));
+      b.scale.setScalar(rr * s); b.position.set(dx * s, dy * s, dz * s); b.castShadow = true;
+      g.add(b);
+    });
+    return ink(g);
+  }
+
+  // Everything that depends on the size of the play area: the meadow, and the trees round it.
+  function buildClearing(x0, x1, z0, z1) {
+    const g = new T.Group();
+    const pad = 1.3;
+    const mw = x1 - x0 + pad * 2, mh = z1 - z0 + pad * 2;
+    const meadow = new T.Mesh(new T.PlaneGeometry(mw, mh),
+      new T.MeshToonMaterial({ map: meadowTexture(mw, mh, pad), transparent: true, gradientMap: TOON_ROOM, depthWrite: false }));
+    meadow.rotation.x = -Math.PI / 2;
+    meadow.position.set((x0 + x1) / 2, -0.07, (z0 + z1) / 2);
+    meadow.receiveShadow = true;
+    g.add(meadow);
+
+    // A ring of trees just outside the meadow. The near side (towards the camera) only gets
+    // low bushes, far out, so nothing ever stands between you and the table.
+    const r = rng(77);
+    const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+    const hx = (x1 - x0) / 2 + pad + 0.3, hz = (z1 - z0) / 2 + pad + 0.3;
+    const place = (px, pz, kind, h) => {
+      const t = kind === 'bush' ? forestBush(h) : forestTree(kind, h, Math.floor(r() * 3));
+      t.position.set(px, -0.08, pz);
+      t.rotation.y = r() * 6.28;
+      g.add(t);
+    };
+    for (let row = 0; row < 3; row++) {
+      const off = row * 2.1;
+      // far edge and the two sides
+      for (let xx = x0 - pad - 3 - off; xx <= x1 + pad + 3 + off; xx += 1.7 + r() * 0.9) {
+        place(xx + r() * 0.6, cz - hz - off - r() * 0.8, r() < 0.5 ? 'pine' : 'round', 2.2 + r() * 1.6 + row * 0.5);
+      }
+      for (let zz = cz - hz - off; zz <= cz + hz + 1.5; zz += 1.7 + r() * 0.9) {
+        place(cx - hx - off - r() * 0.8, zz + r() * 0.6, r() < 0.5 ? 'pine' : 'round', 2.0 + r() * 1.6 + row * 0.5);
+        place(cx + hx + off + r() * 0.8, zz + r() * 0.6, r() < 0.5 ? 'pine' : 'round', 2.0 + r() * 1.6 + row * 0.5);
+      }
+    }
+    for (let xx = x0 - pad; xx <= x1 + pad; xx += 2.4 + r()) place(xx, cz + hz + 1.5 + r(), 'bush', 0.9 + r() * 0.5);
+    // a few bushes and rocks at the meadow's rim
+    for (let i = 0; i < 10; i++) {
+      const side = i % 2 ? 1 : -1;
+      place(cx + side * (hx - 0.6) + r() * 0.4, cz - hz + 1 + r() * (hz * 2 - 2), 'bush', 0.6 + r() * 0.4);
+    }
+    return g;
+  }
+
   // The felt follows the layout: measure everything on the table, add a margin, and
   // redraw the mat (its stitched border depends on its proportions) when that changes.
   let playMat = null, matKey = '';
@@ -1786,10 +1960,21 @@ const View3D = (function () {
     if (key === matKey && playMat) return;
     matKey = key;
     if (playMat) {
-      playMat.geometry.dispose();
-      playMat.material.forEach((m) => { if (m.map) m.map.dispose(); m.dispose(); });
+      playMat.traverse((o) => {
+        if (!o.isMesh || o.userData.inkline) return;
+        if (!o.geometry.parameters || o.geometry === playMat.geometry) o.geometry.dispose();
+        const ms = Array.isArray(o.material) ? o.material : [o.material];
+        ms.forEach((m) => { if (m.map) m.map.dispose(); m.dispose(); });
+      });
       envGroup.remove(playMat);
     }
+    if (sceneStyle === 'forest') {
+      playMat = buildClearing(x0, x1, z0, z1);
+      envGroup.add(playMat);
+      if (scene.userData.lamp) scene.userData.lamp.intensity = 0.6;
+      return;
+    }
+    if (scene.userData.lamp) scene.userData.lamp.intensity = 2.6;
     const plain = () => roomMat(col('--art-mat'));
     playMat = new T.Mesh(new T.BoxGeometry(mw, 0.03, mh), [plain(), plain(),
       roomMat('#ffffff', matTexture(mw, mh)), plain(), plain(), plain()]);
@@ -1813,6 +1998,24 @@ const View3D = (function () {
       scene.remove(envGroup);
     }
     envGroup = new T.Group();
+
+    if (sceneStyle === 'forest') {
+      const floor = forestFloorTexture();
+      floor.repeat.set(14, 14);
+      const ground = new T.Mesh(new T.PlaneGeometry(140, 140), roomMat('#ffffff', floor));
+      ground.rotation.x = -Math.PI / 2;
+      ground.position.set(0, -0.09, 0);
+      ground.receiveShadow = true;
+      envGroup.add(ground);
+      playMat = null; matKey = '';
+      scene.add(envGroup);
+      if (scene.background && scene.background.isTexture) scene.background.dispose();
+      scene.background = skyTexture();
+      scene.fog = new T.Fog(new T.Color('#c9dccf'), 30, 70);
+      if (scene.userData.hemi) { scene.userData.hemi.color.set('#dfefff'); scene.userData.hemi.groundColor.set('#4a6a36'); scene.userData.hemi.intensity = 0.9; }
+      return;
+    }
+    if (scene.userData.hemi) { scene.userData.hemi.color.set('#ffffff'); scene.userData.hemi.groundColor.set('#6d5a3a'); scene.userData.hemi.intensity = 0.3; }
 
     // The table: a thick wooden top, big enough that its edges fall into the dark.
     const wood = woodTexture();
@@ -1891,6 +2094,7 @@ const View3D = (function () {
 
     // A dim room, one warm lamp over the play area, and a key light for the shadows.
     const hemi = new T.HemisphereLight(0xffffff, 0x6d5a3a, 0.3);
+    scene.userData.hemi = hemi;
     scene.add(hemi);
     const fill = new T.DirectionalLight(0xdce8ff, 0.35);
     fill.position.set(-9, 7, 4);
@@ -2046,5 +2250,5 @@ const View3D = (function () {
     };
   }
 
-  return { init, sync, resize: onResize, resetCamera, focus, debug, locate, isReady: () => ready };
+  return { init, sync, setScene, resize: onResize, resetCamera, focus, debug, locate, isReady: () => ready };
 })();
