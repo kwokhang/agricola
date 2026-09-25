@@ -905,7 +905,7 @@ const ART = (function () {
           <stop offset=".4" stop-color="#fff" stop-opacity="0"/><stop offset=".62" stop-color="#d8f0ff" stop-opacity=".1"/>
           <stop offset=".7" stop-color="#fff" stop-opacity="0"/></linearGradient>
         <filter id="tsh" x="-10%" y="-30%" width="120%" height="160%"><feDropShadow dx="0" dy="1.5" stdDeviation="1.6" flood-color="#000" flood-opacity=".85"/></filter></defs>
-      <rect width="${W}" height="${Hh}" fill="#15110d"/>
+      <rect x="1" y="1" width="${W - 2}" height="${Hh - 2}" rx="15" fill="#15110d"/>
       <g clip-path="url(#fc)">
         <image href="${src}" x="0" y="0" width="${W}" height="${Hh}" preserveAspectRatio="xMidYMin slice"/>
         <rect width="${W}" height="96" fill="url(#ftop)"/>
@@ -959,7 +959,6 @@ const ART = (function () {
         <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stop-color="#fff" stop-opacity=".12"/><stop offset=".4" stop-color="#fff" stop-opacity="0"/></linearGradient>
         <clipPath id="art"><rect x="${IN}" y="${FACE.art[0]}" width="${W - IN * 2}" height="${FACE.art[1]}" rx="6"/></clipPath></defs>
-      <rect width="${W}" height="${Hh}" fill="${t.deep}"/>
       <rect x="1" y="1" width="${W - 2}" height="${Hh - 2}" rx="15" fill="${t.deep}" stroke="#15110d" stroke-width="2"/>
       <rect x="1" y="1" width="${W - 2}" height="${Hh - 2}" rx="15" fill="url(#sheen)"/>
       <rect x="6" y="6" width="${W - 12}" height="${Hh - 12}" rx="11" fill="${t.tint}" stroke="${t.frame}" stroke-width="1.6"/>`;
