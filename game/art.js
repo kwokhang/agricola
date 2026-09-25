@@ -833,7 +833,7 @@ const ART = (function () {
   //   type line ....... 246–270 kind of card, victory points badge
   //   rules box ....... 276–386 about 26%; the type size steps down until the text fits
   //   footer .......... 392–410 English name, travelling card, play hint
-  const FACE = { name: [14, 36], art: [56, 184], type: [246, 24], rules: [276, 110], foot: [392, 18] };
+  const FACE = { name: [14, 36], art: [56, 212], rules: [276, 110], foot: [392, 18] };
 
   function fitCard(markup, x, y, w, h) {
     const s = Math.min(w / 46, h / 28);
@@ -875,26 +875,19 @@ const ART = (function () {
     return { size, lh, lines: wrap(text, (w - 4) / size, Math.floor(h / lh)) };
   }
 
-  // ---------------------------------------------------------------- the type ribbon
-  // Every card says what it is the same way: a notched ribbon across the card between the
-  // picture and the rules, "★ kind ★", in that kind's metal. Same size, type and place
-  // on the standard, full-art and ACE SPEC faces.
-  const RIBBON = {
-    occ: ['#f1dc9c', '#c89a45', '#8a6522', '#3a2a10'],
-    min: ['#f0c29c', '#bf7440', '#86461f', '#2d1a0c'],
-    maj: ['#fff2c8', '#d8a94c', '#8f621f', '#3a1812'],
-  };
-  const RIBBON_H = 26;
-  function typeRibbon(type, y, W) {
-    const [hi, mid, lo, ink2] = RIBBON[type] || RIBBON.min;
+  // ---------------------------------------------------------------- the type tag
+  // Every card names its kind the same way and in the same place: a small tag in its
+  // kind's colour at the bottom-left, followed by the English name. It sits in the footer,
+  // so it never covers a picture. Returns the markup and where the English name starts.
+  const TAG = { occ: '#c89a45', min: '#bf7440', maj: '#d8a94c' };
+  function typeTag(type, x, baseline) {
     const t = TYPE_BAND[type] || TYPE_BAND.min;
-    const id = 'rib' + type;
-    const h = RIBBON_H, m = h / 2;
-    return `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="${hi}"/><stop offset=".48" stop-color="${mid}"/>
-        <stop offset=".52" stop-color="${lo}"/><stop offset="1" stop-color="${mid}"/></linearGradient></defs>
-      <path d="M12 ${y}H${W - 12}L${W - 20} ${y + m}L${W - 12} ${y + h}H12L20 ${y + m}z" fill="url(#${id})" stroke="#2a150d" stroke-width="1.3"/>
-      <text x="${W / 2}" y="${y + 18}" text-anchor="middle" font-size="14" font-weight="900" fill="${ink2}" letter-spacing="3">★ ${t.zh} ★</text>`;
+    const w = [...t.zh].length * 10.5 + 12;
+    return {
+      svg: `<rect x="${x}" y="${baseline - 11}" width="${w}" height="15" rx="3" fill="${TAG[type] || TAG.min}"/>
+        <text x="${x + w / 2}" y="${baseline}" text-anchor="middle" font-size="10.5" font-weight="800" fill="#2a1a0c">${t.zh}</text>`,
+      next: x + w + 6,
+    };
   }
 
   // ---------------------------------------------------------------- full-art occupation cards
@@ -947,14 +940,14 @@ const ART = (function () {
     if (c.vp) s += vpBadge(c.vp, W - 30, 54, 1.05);
 
     // rules in a smoked-glass panel
-    const box = { x: 16, y: 277, w: W - 32, h: 104 };
-    s += typeRibbon(c.type, box.y - RIBBON_H - 6, W);
+    const box = { x: 16, y: 266, w: W - 32, h: 116 };
     const fit = fitRules(c.txz || c.tx || '', box.w - 22, box.h - 16);
     const top = box.y + 8 + (box.h - 16 - fit.lines.length * fit.lh) / 2 + fit.size * 0.95;
     fit.lines.forEach((ln, i) => {
       s += `<text x="${box.x + 11}" y="${(top + i * fit.lh).toFixed(1)}" font-size="${fit.size}" fill="#f7f0de">${ln}</text>`;
     });
-    s += `<text x="20" y="${Hh - 18}" font-size="11" font-style="italic" fill="#f7f0de" opacity=".8">${c.en || ''}</text>`;
+    const ftag = typeTag(c.type, 20, Hh - 18);
+    s += ftag.svg + `<text x="${ftag.next}" y="${Hh - 18}" font-size="11" font-style="italic" fill="#f7f0de" opacity=".8">${c.en || ''}</text>`;
     const tags = [c.trav ? '旅行卡' : '', o.note || ''].filter(Boolean).join(' · ');
     if (tags) s += `<text x="${W - 20}" y="${Hh - 18}" text-anchor="end" font-size="11.5" font-weight="800" fill="#f2cf7a">${tags}</text>`;
     if (o.taken) {
@@ -988,7 +981,7 @@ const ART = (function () {
     const W = CARD_W, Hh = CARD_H;
     const cost = o.cost || {};
     const kinds = Object.keys(cost);
-    const art = { x: 20, y: 54, w: W - 40, h: 183 };
+    const art = { x: 20, y: 54, w: W - 40, h: 206 };
     const src = typeof CARD_IMAGES !== 'undefined' && CARD_IMAGES[c.en];
     const twin = c.en === 'Fireplace' || c.en === 'Cooking Hearth';
     let s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${Hh}" width="${W}" height="${Hh}"
@@ -1025,12 +1018,10 @@ const ART = (function () {
         : fitCard(cardScene(c), art.x, art.y, art.w, art.h)}</g>`;
     if (c.vp) s += vpBadge(c.vp, art.x + art.w - 20, art.y - 4, 1.05);
 
-    // the banner — this card's ACE SPEC
-    const by = art.y + art.h + 8;
-    s += typeRibbon('maj', by, W);
+    const by = art.y + art.h + 10;
 
     // rules
-    const box = { x: 20, y: by + RIBBON_H + 6, w: W - 40, h: Hh - (by + RIBBON_H + 6) - 40 };
+    const box = { x: 20, y: by, w: W - 40, h: Hh - by - 34 };
     s += `<rect x="${box.x}" y="${box.y}" width="${box.w}" height="${box.h}" rx="6" fill="#f3e8cc"/>`;
     const fit = fitRules(c.txz || c.tx || '', box.w - 18, box.h - 10);
     const top = box.y + 5 + (box.h - 10 - fit.lines.length * fit.lh) / 2 + fit.size * 0.95;
@@ -1039,11 +1030,12 @@ const ART = (function () {
     });
 
     // the special rule at the foot
-    const fy = Hh - 34;
-    s += `<path d="M40 ${fy}H${W - 40}" stroke="#d8b25a" stroke-width=".6" opacity=".45"/>
-      <text x="${W / 2}" y="${fy + 11}" text-anchor="middle" font-size="9" fill="#e8d3a0" opacity=".7">公共卡・先建先得${twin ? '・全局兩張' : '・全局一張'}</text>
-      <text x="22" y="${Hh - 14}" font-size="9" font-style="italic" fill="#f3dca0" opacity=".8">${c.en || ''}</text>`;
-    if (o.note) s += `<text x="${W - 22}" y="${Hh - 14}" text-anchor="end" font-size="10.5" font-weight="800" fill="#fff2c8">${o.note}</text>`;
+    // footer: kind tag and English name on the left, the shared-card rule (or a hint) on the right
+    const tg = typeTag('maj', 20, Hh - 16);
+    s += tg.svg + `<text x="${tg.next}" y="${Hh - 16}" font-size="9" font-style="italic" fill="#f3dca0" opacity=".8">${c.en || ''}</text>`;
+    s += o.note
+      ? `<text x="${W - 22}" y="${Hh - 16}" text-anchor="end" font-size="10.5" font-weight="800" fill="#fff2c8">${o.note}</text>`
+      : `<text x="${W - 22}" y="${Hh - 16}" text-anchor="end" font-size="9" fill="#e8d3a0" opacity=".7">公共卡・先建先得${twin ? '・兩張' : '・一張'}</text>`;
     if (o.taken) {
       s += `<g transform="translate(${W / 2} ${art.y + art.h / 2}) rotate(-12)">
         <rect x="-128" y="-22" width="256" height="44" rx="9" fill="#15110d" opacity=".85"/>
@@ -1090,7 +1082,6 @@ const ART = (function () {
       <rect x="${IN + 2}" y="${FACE.art[0] + 2}" width="${W - IN * 2 - 4}" height="${FACE.art[1] - 4}" rx="5" fill="none" stroke="#fff" stroke-width="1" opacity=".35"/>`;
 
     // type line and victory points
-    s += typeRibbon(c.type, FACE.type[0] - 1, W);
     // points hang like a pennant from under the name bar, over the picture's top-right corner
     if (c.vp) s += vpBadge(c.vp, W - IN - 26, FACE.art[0] - 2, 1.05);
 
@@ -1105,7 +1096,8 @@ const ART = (function () {
 
     // footer
     const fy = FACE.foot[0] + 12;
-    s += `<text x="${IN + 4}" y="${fy}" font-size="11" font-style="italic" fill="${t.ink}" opacity=".8">${c.en || ''}</text>`;
+    const stag = typeTag(c.type, IN + 2, fy);
+    s += stag.svg + `<text x="${stag.next}" y="${fy}" font-size="11" font-style="italic" fill="${t.ink}" opacity=".8">${c.en || ''}</text>`;
     const tags = [c.trav ? '旅行卡' : '', o.note || ''].filter(Boolean).join(' · ');
     if (tags) s += `<text x="${W - IN - 4}" y="${fy}" text-anchor="end" font-size="11.5" font-weight="800" fill="${t.ink}">${tags}</text>`;
 
