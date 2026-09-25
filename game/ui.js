@@ -384,8 +384,17 @@
   }
 
   // ------------------------------------------------------------ dock: prompt
+  // Buttons in the action bar come in two weights: the step's main action — finishing it,
+  // or doing the one thing the step is for — and quiet ways out (skip, cancel, give up).
+  const MAIN_ACTS = ['confirmFences', 'confirmFeed', 'grow', 'renovate', 'bake', 'final', 'newGame', 'ngStart'];
+  const QUIET_ACTS = ['undoFences', 'discardStaged', 'ngCancel', 'closeFinal'];
   function btn(action, label, disabled, extra) {
-    return `<button data-act="${action}" ${extra || ''} ${disabled ? 'disabled' : ''}>${label}</button>`;
+    let cls = '';
+    if (!(extra || '').includes('class=')) {
+      if (MAIN_ACTS.includes(action) || (action === 'skip' && label === '完成')) cls = 'primary';
+      else if (QUIET_ACTS.includes(action) || action === 'skip') cls = 'quiet';
+    }
+    return `<button data-act="${action}" ${cls ? `class="${cls}"` : ''} ${extra || ''} ${disabled ? 'disabled' : ''}>${label}</button>`;
   }
 
   function renderPrompt() {
@@ -983,6 +992,22 @@
     if (ok && has3d) View3D.resize();
   }
   addEventListener('resize', checkSize);
+
+  // The narrow resource strip opens on a click and closes a moment after the pointer leaves
+  // the opened panel. (Opening on hover flickered: the open panel is shorter than the strip,
+  // so a pointer low on the strip ended up outside it, closed it, and re-opened it.)
+  const side = document.querySelector('.side');
+  let closeTimer = 0;
+  side.addEventListener('click', (e) => {
+    if (!document.body.classList.contains('side-strip') || side.classList.contains('open')) return;
+    side.classList.add('open');
+    e.stopPropagation();
+  });
+  side.addEventListener('mouseleave', () => {
+    clearTimeout(closeTimer);
+    closeTimer = setTimeout(() => side.classList.remove('open'), 450);
+  });
+  side.addEventListener('mouseenter', () => clearTimeout(closeTimer));
   checkSize();
 
   if (!load()) start(2);
