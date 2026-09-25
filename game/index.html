@@ -192,7 +192,8 @@
 
   /* ---------- a card you point at, upright and large in the middle ---------- */
   .preview {
-    position: fixed; z-index: 6; left: 50%; top: 42%; width: 300px;
+    /* the card takes about 70% of the window's height (a card is 5:7, so width = 50vh) */
+    position: fixed; z-index: 6; left: 50%; top: 45%; width: clamp(300px, 48vh, 460px);
     transform: translate(-50%, -50%); pointer-events: none;
     animation: pvIn .14s ease-out;
   }
