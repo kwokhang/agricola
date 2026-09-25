@@ -604,6 +604,32 @@ const View3D = (function () {
       <path d="M62 10V50" stroke="#5a4526" stroke-width=".8" opacity=".35"/>
       <text x="80" y="41" text-anchor="middle" font-size="${n > 9 ? 26 : 30}" font-weight="700" fill="#2a1d10">${n}</text></svg>`;
   }
+  // Goods waiting on an action space: one coin of the kind, standing a little proud of the
+  // board, with the count on a small dark badge at its lower right.
+  function goodsChip(kind, n) {
+    const g = new T.Group();
+    const r = 0.13, t = 0.05;
+    const side = mat(new T.Color(ART.tokenColor(kind)), { roughness: 0.4 });
+    const iconTex = svgTexture('tokenFace2:' + kind, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0.6 0.6 22.8 22.8" width="192" height="192">${ART.tokenMarkup(kind)}</svg>`, 192, 192);
+    const coin = new T.Mesh(geo('chipCoin', () => new T.CylinderGeometry(r, r, t, 32)),
+      [side, printMat(iconTex, { roughness: 0.4 }), side]);
+    coin.position.y = t / 2;
+    coin.castShadow = true;
+    g.add(coin);
+    const badge = new T.Mesh(geo('chipBadge', () => new T.PlaneGeometry(0.17, 0.17)),
+      new T.MeshBasicMaterial({ transparent: true, depthWrite: false, map: svgTexture('chipN:' + n,
+        `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 34 34" width="136" height="136">
+          <circle cx="17" cy="17" r="15" fill="#1c1a17" stroke="#f3ead2" stroke-width="2.4"/>
+          <text x="17" y="${n > 9 ? 22 : 23.5}" text-anchor="middle" font-size="${n > 9 ? 15 : 19}" font-weight="800" fill="#fff6e0"
+            font-family="-apple-system,'PingFang TC',sans-serif">${n}</text></svg>`, 136, 136) }));
+    badge.rotation.x = -Math.PI / 2;
+    badge.position.set(r * 0.78, t + 0.012, r * 0.62);
+    badge.userData.noInk = true;
+    g.add(badge);
+    ink(g);
+    return g;
+  }
+
   function goodsTray(kind, n, rim) {
     const g = new T.Group();
     const rimHex = rim ? '#' + rim.getHexString() : '#8a6a3c';
@@ -804,28 +830,43 @@ const View3D = (function () {
   // One action space: the picture fills the whole cell (painted artwork when there is some,
   // else the drawn scene), and the name and what it does sit on a dark fade along the
   // bottom, the way a card's text sits over its art.
+  // The picture is the point: it fills the space and stays mostly clear. The name sits
+  // top-left on a light shade, the rules small at the bottom-left, and the top-right corner
+  // is left free for goods that pile up there.
   function spaceTexture(G, p, def, w, h) {
     const notes = spaceNotes(G, p, def);
     const img = typeof ACTION_IMAGES !== 'undefined' && ACTION_IMAGES[def.id];
-    const band = 26 + notes.length * 13;
-    const en = def.zh.length * 16 + def.en.length * 5.6 + 22 < w - 12 ? def.en : '';
+    const accum = !!def.accum;
+    const room = w - 14 - (accum ? 58 : 0);                    // leave the goods corner free
+    const en = def.zh.length * 15 + def.en.length * 5.2 + 8 < room ? def.en : '';
+    const nb = notes.length ? 10 + notes.length * 11.5 : 0;
     const pic = img
       ? `<image href="${img}" x="0" y="0" width="${w}" height="${h}" preserveAspectRatio="xMidYMid slice"/>`
-      : ART.scene(def.id, 0, 0, w, h, h - band + 4);
+      : ART.scene(def.id, 0, 0, w, h, h - 4);
     const R = 3;
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w * R}" height="${h * R}"
       font-family="-apple-system,BlinkMacSystemFont,'PingFang TC','Noto Sans TC',sans-serif">
-      <defs><linearGradient id="fade" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#1c1a17" stop-opacity="0"/>
-        <stop offset=".35" stop-color="#1c1a17" stop-opacity=".7"/>
-        <stop offset="1" stop-color="#1c1a17" stop-opacity=".9"/></linearGradient></defs>
+      <defs>
+        <linearGradient id="ft" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#1c1a17" stop-opacity=".78"/>
+          <stop offset=".55" stop-color="#1c1a17" stop-opacity=".45"/>
+          <stop offset="1" stop-color="#1c1a17" stop-opacity="0"/></linearGradient>
+        <linearGradient id="fb" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#1c1a17" stop-opacity="0"/>
+          <stop offset=".45" stop-color="#1c1a17" stop-opacity=".6"/>
+          <stop offset="1" stop-color="#1c1a17" stop-opacity=".82"/></linearGradient>
+        <filter id="sh" x="-10%" y="-30%" width="120%" height="160%">
+          <feDropShadow dx="0" dy="0.8" stdDeviation="0.9" flood-color="#000" flood-opacity=".75"/></filter></defs>
       <rect width="${w}" height="${h}" fill="var(--art-boardface)"/>
       ${pic}
-      <rect y="${h - band - 16}" width="${w}" height="${band + 16}" fill="url(#fade)"/>
-      <text x="9" y="${h - band + 17}" font-size="16" font-weight="800" fill="#fff6e0">${def.zh}${en ? `<tspan dx="6" font-size="9.5" font-weight="600" fill-opacity=".7">${en}</tspan>` : ''}</text>
-      ${notes.map((t, k) => `<text x="9" y="${h - band + 31 + k * 13}" font-size="11" fill="#efe4c8">${t}</text>`).join('')}
+      <rect width="${w}" height="34" fill="url(#ft)"/>
+      ${nb ? `<rect y="${h - nb - 14}" width="${w}" height="${nb + 14}" fill="url(#fb)"/>` : ''}
+      <g filter="url(#sh)">
+        <text x="8" y="19" font-size="15" font-weight="800" fill="#fff6e0">${def.zh}${en ? `<tspan dx="5" font-size="8.5" font-weight="600" fill-opacity=".75">${en}</tspan>` : ''}</text>
+        ${notes.map((t, k) => `<text x="8" y="${h - nb + 12 + k * 11.5}" font-size="9.5" font-weight="600" fill="#f3ead2">${t}</text>`).join('')}
+      </g>
       <rect x="1" y="1" width="${w - 2}" height="${h - 2}" fill="none" stroke="#1c1a17" stroke-width="2.5"/></svg>`;
-    return svgTexture(`sp2:${def.id}:${notes.join('|')}:${img ? 1 : 0}`, svg, w * R, h * R);
+    return svgTexture(`sp3:${def.id}:${notes.join('|')}:${img ? 1 : 0}`, svg, w * R, h * R);
   }
 
   const slotSvg = (w, h, round, stage) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}"
@@ -930,10 +971,9 @@ const View3D = (function () {
       // Goods that have accumulated, piled in the free corner of the space.
       const kinds = Object.keys(sp.goods).filter((k) => sp.goods[k] > 0);
       kinds.forEach((k, i) => {
-        const pile = goodsTray(k, sp.goods[k]);
-        pile.position.set(cx - w / 2 + 0.3, BOARD_Y + 0.03, cz - d / 2 + 0.2 + i * 0.36);
-        pile.scale.setScalar(0.52);
-        g.add(pile);
+        const chip = goodsChip(k, sp.goods[k]);
+        chip.position.set(cx + w / 2 - 0.24 - i * 0.34, BOARD_Y + 0.03, cz - d / 2 + 0.19);
+        g.add(chip);
       });
 
       // Whoever took the space stands on it.
@@ -953,7 +993,7 @@ const View3D = (function () {
           bar.position.set(cx + ox, BOARD_Y + 0.045, cz + oz);
           g.add(bar);
         });
-        const ax = cx + w * 0.18, az = cz - d * 0.2;     // the picture half, clear of the name plate
+        const ax = cx + w * 0.12, az = cz + d * 0.02;    // the middle of the picture, clear of name, rules and goods
         const tok = workerToken(pc, true);
         tok.scale.setScalar(0.8);
         tok.position.set(ax, BOARD_Y + 0.035, az);

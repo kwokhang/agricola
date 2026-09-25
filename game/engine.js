@@ -415,11 +415,11 @@ function spaceNotes(G, p, def) {
     case 'day_laborer': return ['取 2 食物'];
     case 'major': return ['打 1 張主要或次要發展'];
     case 'fencing': return ['建造柵欄，每條 1 木材', '最多 15 條，須圍成封閉區域'];
-    case 'grain_util': return ['播種 and/or 烤麵包', '穀物田變為 3、蔬菜田變為 2'];
+    case 'grain_util': return ['播種及／或烤麵包', '穀物田變為 3、蔬菜田變為 2'];
     case 'family_growth': return ['家庭成長（須有空房間）', '之後可打 1 張次要發展'];
     case 'renovation': return [renovateWords(G, p), '之後可打 1 張發展卡'];
     case 'veg_seeds': return ['取 1 蔬菜'];
-    case 'cultivation': return ['犁 1 塊田 and/or 播種'];
+    case 'cultivation': return ['犁 1 塊田及／或播種'];
     case 'urgent_growth': return ['家庭成長 +1 人', '無需空房間'];
     case 'farm_redev': return [renovateWords(G, p), '之後可建造柵欄'];
     default: return [];
