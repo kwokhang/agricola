@@ -811,8 +811,15 @@
           ${s.bonusDetail.length ? `<p class="muted" style="font-size:11.5px">${esc(s.bonusDetail.join('、'))}</p>` : ''}`;
       }).join('');
     } else {
+      const cs = UI.cardStyle || 'full';
       html = `<div class="row" style="margin-top:6px">
         ${btn('newGame', '新遊戲', false, 'class="primary"')}
+      </div>
+      <h3 style="font-size:14px;margin:16px 0 6px">職業卡樣式</h3>
+      <div class="row">
+        <button data-act="cardStyle" data-v="full" class="${cs === 'full' ? 'sel' : ''}">全圖</button>
+        <button data-act="cardStyle" data-v="standard" class="${cs === 'standard' ? 'sel' : ''}">標準</button>
+        <span class="muted" style="font-size:12px">全圖只用喺有插畫嘅職業卡</span>
       </div><p class="muted" style="font-size:12px;margin-top:10px">
         A、B 兩副卡嘅效果全部自動結算，唔使手動加減物資。</p>`;
     }
@@ -847,6 +854,7 @@
     UI.autoKey = key;
 
     applyColors();
+    ART.setCardStyle(UI.cardStyle || 'full');
     // Frame the screen in the colour of whoever has to act.
     const who = G.over ? -1 : G.feeding ? G.feeding.i : G.current;
     document.body.style.setProperty('--turn', who < 0 ? 'transparent' : PCOLOR[who]);
@@ -934,6 +942,7 @@
     switch (t.dataset.act) {
       case 'allres': UI.allres = !UI.allres; break;
       case 'resView': UI.resView = +v; renderRes(); save(); return;
+      case 'cardStyle': UI.cardStyle = v; ART.setCardStyle(v); renderDrawer(); break;
       case 'hand': UI.handPinned = !UI.handPinned; break;
       case 'log': UI.logOpen = !UI.logOpen; renderRail(); save(); return;
       case 'final': UI.finalOpen = true; break;

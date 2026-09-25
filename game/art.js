@@ -876,8 +876,78 @@ const ART = (function () {
     return { size, lh, lines: wrap(text, (w - 4) / size, Math.floor(h / lh)) };
   }
 
+  // ---------------------------------------------------------------- full-art occupation cards
+  // The trading-card "full art" treatment: the painting runs edge to edge and the text floats
+  // over it — name and cost across the top, the rules in a smoked-glass panel at the bottom.
+  // Used for occupations that have artwork when the full-art style is switched on.
+  let cardStyle = 'full';
+  function setCardStyle(s) { cardStyle = s === 'standard' ? 'standard' : 'full'; }
+
+  function cardFaceFull(c, o) {
+    const t = TYPE_BAND[c.type] || TYPE_BAND.occ;
+    const W = CARD_W, Hh = CARD_H;
+    const cost = o.cost || {};
+    const kinds = Object.keys(cost);
+    const src = CARD_IMAGES[c.en];
+    const size = Hh;                                    // square art, scaled to the card's height
+    let s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${Hh}" width="${W}" height="${Hh}"
+      font-family="-apple-system,BlinkMacSystemFont,'PingFang TC','Noto Sans TC',sans-serif">
+      <defs>
+        <clipPath id="fc"><rect x="1" y="1" width="${W - 2}" height="${Hh - 2}" rx="15"/></clipPath>
+        <linearGradient id="ftop" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#0e0b08" stop-opacity=".78"/><stop offset="1" stop-color="#0e0b08" stop-opacity="0"/></linearGradient>
+        <linearGradient id="fbot" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#0e0b08" stop-opacity="0"/><stop offset=".45" stop-color="#0e0b08" stop-opacity=".55"/>
+          <stop offset="1" stop-color="#0e0b08" stop-opacity=".9"/></linearGradient>
+        <linearGradient id="foil" x1="0" y1="0" x2="1" y2="1">
+          <stop offset=".2" stop-color="#fff" stop-opacity="0"/><stop offset=".32" stop-color="#fff6d8" stop-opacity=".16"/>
+          <stop offset=".4" stop-color="#fff" stop-opacity="0"/><stop offset=".62" stop-color="#d8f0ff" stop-opacity=".1"/>
+          <stop offset=".7" stop-color="#fff" stop-opacity="0"/></linearGradient>
+        <filter id="tsh" x="-10%" y="-30%" width="120%" height="160%"><feDropShadow dx="0" dy="1.5" stdDeviation="1.6" flood-color="#000" flood-opacity=".85"/></filter></defs>
+      <rect width="${W}" height="${Hh}" fill="#15110d"/>
+      <g clip-path="url(#fc)">
+        <image href="${src}" x="${(W - size) / 2}" y="0" width="${size}" height="${size}" preserveAspectRatio="xMidYMid slice"/>
+        <rect width="${W}" height="96" fill="url(#ftop)"/>
+        <rect y="${Hh * 0.5}" width="${W}" height="${Hh * 0.5}" fill="url(#fbot)"/>
+        <rect width="${W}" height="${Hh}" fill="url(#foil)"/>
+      </g>
+      <rect x="1" y="1" width="${W - 2}" height="${Hh - 2}" rx="15" fill="none" stroke="#15110d" stroke-width="2"/>
+      <rect x="6" y="6" width="${W - 12}" height="${Hh - 12}" rx="11" fill="none" stroke="#d8b25a" stroke-width="1.6" opacity=".85"/>`;
+
+    // name, type pill, cost
+    const gemsW = kinds.length ? kinds.length * 32 : 0;
+    const name = c.zh || c.en;
+    const nameSize = Math.min(26, Math.floor((W - 44 - gemsW) / Math.max(1, [...name].reduce((n, ch) => n + wide(ch), 0))));
+    s += `<text x="20" y="${22 + nameSize}" font-size="${nameSize}" font-weight="900" fill="#fffaf0" filter="url(#tsh)">${name}</text>
+      <g transform="translate(20 ${34 + nameSize})"><rect width="64" height="18" rx="9" fill="${t.frame}" opacity=".92"/>
+        <text x="32" y="13" text-anchor="middle" font-size="11.5" font-weight="800" fill="#fffaf0">${t.zh}</text></g>`;
+    if (kinds.length) kinds.forEach((k, i) => { s += gem(k, cost[k], W - 30 - (kinds.length - 1 - i) * 32, 32); });
+    else s += `<text x="${W - 20}" y="37" text-anchor="end" font-size="13" font-weight="800" fill="#fffaf0" filter="url(#tsh)">免費</text>`;
+    if (c.vp) s += vpBadge(c.vp, W - 30, 54, 1.05);
+
+    // rules in a smoked-glass panel
+    const box = { x: 16, y: 262, w: W - 32, h: 118 };
+    s += `<rect x="${box.x}" y="${box.y}" width="${box.w}" height="${box.h}" rx="10" fill="#0e0b08" fill-opacity=".55"
+      stroke="#d8b25a" stroke-opacity=".5" stroke-width="1"/>`;
+    const fit = fitRules(c.txz || c.tx || '', box.w - 22, box.h - 16);
+    const top = box.y + 8 + (box.h - 16 - fit.lines.length * fit.lh) / 2 + fit.size * 0.95;
+    fit.lines.forEach((ln, i) => {
+      s += `<text x="${box.x + 11}" y="${(top + i * fit.lh).toFixed(1)}" font-size="${fit.size}" fill="#f7f0de">${ln}</text>`;
+    });
+    s += `<text x="20" y="${Hh - 18}" font-size="11" font-style="italic" fill="#f7f0de" opacity=".8">${c.en || ''}</text>`;
+    const tags = [c.trav ? '旅行卡' : '', o.note || ''].filter(Boolean).join(' · ');
+    if (tags) s += `<text x="${W - 20}" y="${Hh - 18}" text-anchor="end" font-size="11.5" font-weight="800" fill="#f2cf7a">${tags}</text>`;
+    if (o.taken) {
+      s += `<g transform="translate(${W / 2} ${Hh * 0.42}) rotate(-12)">
+        <rect x="-128" y="-22" width="256" height="44" rx="9" fill="#15110d" opacity=".85"/>
+        <text y="7" text-anchor="middle" font-size="20" font-weight="800" fill="#fffaf0">已被 ${o.taken} 取得</text></g>`;
+    }
+    return s + '</svg>';
+  }
+
   function cardFace(c, opts) {
     const o = opts || {};
+    if (cardStyle === 'full' && c.type === 'occ' && typeof CARD_IMAGES !== 'undefined' && CARD_IMAGES[c.en]) return cardFaceFull(c, o);
     const t = TYPE_BAND[c.type] || TYPE_BAND.min;
     const W = CARD_W, Hh = CARD_H, IN = 12;           // inner margin
     const cost = o.cost || {};
@@ -957,5 +1027,5 @@ const ART = (function () {
 
   return { ICONS, icon, spaceArt, sceneMarkup, scene, plate, token, board, slot, seal, meeple,
     grassTile, fieldTile, houseTile, stableArt, animalsArt, fenceArt, edgeHit, TW, TH,
-    cardFace, cardBack, cardArt, CARD_W, CARD_H, NAMES, tokenMarkup, tokenColor, vpBadge, vpIcon, workerMarkup, TYPE_BAND };
+    cardFace, cardBack, cardArt, CARD_W, CARD_H, NAMES, tokenMarkup, tokenColor, vpBadge, vpIcon, workerMarkup, TYPE_BAND, setCardStyle, getCardStyle: () => cardStyle };
 })();
