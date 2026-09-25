@@ -1084,7 +1084,8 @@ const ART = (function () {
     // rules text, fitted
     const box = { x: IN, y: FACE.rules[0], w: W - IN * 2, h: FACE.rules[1] };
     s += `<rect x="${box.x}" y="${box.y}" width="${box.w}" height="${box.h}" rx="8" fill="var(--art-plate)" stroke="${ink}" stroke-width="1.1"/>`;
-    const fit = fitRules(c.txz || c.tx || '', box.w - 20, box.h - 14);
+    const req = typeof CARD_REQ !== 'undefined' && CARD_REQ[c.en];
+    const fit = fitRules((req ? `【條件】${req.zh}。` : '') + (c.txz || c.tx || ''), box.w - 20, box.h - 14);
     const top = box.y + 8 + (box.h - 14 - fit.lines.length * fit.lh) / 2 + fit.size * 0.95;
     fit.lines.forEach((ln, i) => {
       s += `<text x="${box.x + 10}" y="${(top + i * fit.lh).toFixed(1)}" font-size="${fit.size}" fill="var(--art-ink)">${ln}</text>`;

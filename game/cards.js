@@ -27,6 +27,35 @@
 // stone, vegetable, clay, reed, vegetable).
 const GROCER_PILE = ['veg', 'reed', 'clay', 'veg', 'stone', 'reed', 'grain', 'wood'];
 
+// ---------------------------------------------------------------- prerequisites
+// What must be true before a card may be played, as printed on the card. Taken from the
+// same source as the card texts (e2crawfo/agricola), plus Brook, which that source left as
+// a TODO. `zh` is printed on the card face and shown when the card cannot be played.
+const occCount = (p) => p.played.filter((c) => c.type === 'occ').length;
+const cropFields = (p, kind) => p.farm.filter((t) => t.kind === 'field' && t.crop && t.crop.kind === kind && t.crop.n > 0).length;
+const CARD_REQ = {
+  'Big Country':          { zh: '農場所有格都已使用', ok: (G, p) => unusedSpaces(p) === 0 },
+  'Large Greenhouse':     { zh: '至少 2 張職業', ok: (G, p) => occCount(p) >= 2 },
+  'Mantelpiece':          { zh: '住黏土屋或石屋', ok: (G, p) => p.house === 'clay' || p.house === 'stone' },
+  'Sleeping Corner':      { zh: '至少 2 塊穀物田', ok: (G, p) => cropFields(p, 'grain') >= 2 },
+  'Wool Blankets':        { zh: '至少 5 隻綿羊', ok: (G, p) => animalTotal(p, 'sheep') >= 5 },
+  'Canoe':                { zh: '至少 1 張職業', ok: (G, p) => occCount(p) >= 1 },
+  'Lumber Mill':          { zh: '最多 3 張職業', ok: (G, p) => occCount(p) <= 3 },
+  'Loam Pit':             { zh: '至少 3 張職業', ok: (G, p) => occCount(p) >= 3 },
+  'Pond Hut':             { zh: '剛好 2 張職業', ok: (G, p) => occCount(p) === 2 },
+  'Loom':                 { zh: '至少 2 張職業', ok: (G, p) => occCount(p) >= 2 },
+  'Moldboard Plow':       { zh: '至少 1 張職業', ok: (G, p) => occCount(p) >= 1 },
+  'Three-Field Rotation': { zh: '至少 3 張職業', ok: (G, p) => occCount(p) >= 3 },
+  'Beanfield':            { zh: '至少 2 張職業', ok: (G, p) => occCount(p) >= 2 },
+  'Butter Churn':         { zh: '最多 3 張職業', ok: (G, p) => occCount(p) <= 3 },
+  'Acorn Basket':         { zh: '至少 3 張職業', ok: (G, p) => occCount(p) >= 3 },
+  'Strawberry Patch':     { zh: '至少 2 塊蔬菜田', ok: (G, p) => cropFields(p, 'veg') >= 2 },
+  'Threshing Board':      { zh: '至少 2 張職業', ok: (G, p) => occCount(p) >= 2 },
+  'Thick Forest':         { zh: '儲備至少 5 黏土', ok: (G, p) => p.supply.clay >= 5 },
+  'Brook':                { zh: '你有工人在「捕魚」', ok: (G, p) => G.spaces.fishing.occupiedBy === G.players.indexOf(p) },
+  'Sack Cart':            { zh: '至少 2 張職業', ok: (G, p) => occCount(p) >= 2 },
+};
+
 // ---------------------------------------------------------------- small helpers
 function future(G, p, rounds, goods) {
   const hit = [];

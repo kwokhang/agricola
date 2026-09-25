@@ -1426,7 +1426,7 @@ const View3D = (function () {
     cards.forEach((c, i) => {
       const a = (i - (n - 1) / 2) * spread;
       const cost = cardCost(G, p, c);
-      const playable = mine && kinds.includes(c.type) && canPay(p, cost);
+      const playable = mine && kinds.includes(c.type) && canPay(p, cost) && meetsReq(G, p, c);
       const slot = new T.Group();
       slot.position.set(Math.sin(a) * R, (Math.cos(a) - 1) * R * 0.9, i * 0.004);
       slot.rotation.z = -a;

@@ -836,6 +836,20 @@ function findCard(G, p, uid) {
   return maj ? { card: maj, fromMajors: true } : null;
 }
 
+// Farmyard spaces that are neither room, field, pasture nor stable.
+function unusedSpaces(p, regs) {
+  const past = new Set();
+  pastureList(p, regs || regions(p)).forEach((g) => g.tiles.forEach((t) => past.add(t)));
+  return p.farm.filter((t, i) => t.kind === 'empty' && !t.stable && !past.has(i)).length;
+}
+
+// A card's printed prerequisite (cards.js CARD_REQ); cards without one always qualify.
+function cardReq(card) { return typeof CARD_REQ !== 'undefined' ? CARD_REQ[card.en] : null; }
+function meetsReq(G, p, card) {
+  const r = cardReq(card);
+  return !r || !!r.ok(G, p);
+}
+
 function playCard(G, uid, opt) {
   const p = G.players[G.current];
   const kinds = playableNow(G);
@@ -844,6 +858,7 @@ function playCard(G, uid, opt) {
   if (!found) return false;
   const { card, fromMajors } = found;
   if (!kinds.includes(card.type)) return false;
+  if (!meetsReq(G, p, card)) return false;
 
   // Cooking Hearth may be taken by returning a Fireplace instead of paying clay.
   if (opt === 'alt') {
@@ -1228,7 +1243,7 @@ function score(G, p) {
     add(`${LABEL[k]} ${k}`, n, bracket(n, SCORE_TABLE[k]));
   }
 
-  const unused = p.farm.filter((t, i) => t.kind === 'empty' && !t.stable && !pastTiles.has(i)).length;
+  const unused = unusedSpaces(p, regs);
   add('未用農場格 Unused', unused, -unused);
 
   const fencedStables = [...pastTiles].filter((t) => p.farm[t].stable).length;

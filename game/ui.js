@@ -346,7 +346,7 @@
     const p = G.players[G.current];
     const cost = cardCost(G, p, c);
     const mine = UI.view === G.current && !G.choice;
-    const playable = (ctx === 'hand' || ctx === 'maj') && kinds.includes(c.type) && mine;
+    const playable = (ctx === 'hand' || ctx === 'maj') && kinds.includes(c.type) && mine && meetsReq(G, p, c);
     const owner = c.taken != null ? G.players[c.taken] : null;
     const band = c.type === 'occ' ? '職業 OCCUPATION'
       : c.type === 'min' ? '次要發展 MINOR IMPROVEMENT' : '主要發展 MAJOR IMPROVEMENT';
@@ -684,7 +684,9 @@
       if (owner) status = `已被 ${esc(owner.name)} 取得`;
       else if (c.played || G.players.some((q) => q.played.includes(c))) status = '已打出';
       else if ((inHand || c.type === 'maj') && UI.view === G.current && !G.choice
-        && playableNow(G).includes(c.type)) status = canPay(p, cost) ? '✓ 可以打出' : '資源不足';
+        && playableNow(G).includes(c.type)) {
+        status = !meetsReq(G, p, c) ? `條件未達成：${cardReq(c).zh}` : canPay(p, cost) ? '✓ 可以打出' : '資源不足';
+      }
       pv.innerHTML = `<div class="face">${ART.cardFace(c, { cost, taken: owner ? owner.name : '' })}</div>
         ${extra}${status ? `<div class="st">${status}</div>` : ''}`;
       pv.hidden = false;
