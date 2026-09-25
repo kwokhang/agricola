@@ -910,15 +910,47 @@ function placeAnimal(G, tile) {
     t.animals = t.animals && t.animals.kind === kind ? { kind, n: t.animals.n + 1 } : { kind, n: 1 };
     G.staging.n--;
   }
-  if (G.staging.n === 0) { G.staging = null; if (!G.pending) finishAction(G); }
+  if (G.staging.n === 0) {
+    const moving = G.staging.moving;
+    G.staging = null;
+    if (!G.pending && !moving) finishAction(G);   // rearranging is free; it ends nothing
+  }
   return true;
 }
 
 function discardStaged(G) {
   if (!G.staging) return false;
-  logEvent(G, `${G.players[G.current].name} 放棄 ${G.staging.n} 隻${LABEL[G.staging.kind]}`);
+  const moving = G.staging.moving;
+  logEvent(G, `${G.players[G.current].name} ${moving ? '放生' : '放棄'} ${G.staging.n} 隻${LABEL[G.staging.kind]}`);
   G.staging = null;
-  if (!G.pending) finishAction(G);
+  if (!G.pending && !moving) finishAction(G);
+  return true;
+}
+
+// Animals may be rearranged at any time on your turn: pick one up from a pasture, a stable
+// or a room, then place it with placeAnimal like a new arrival. Holding animals blocks
+// placing a worker until they are put down (or released).
+function pickUpAnimal(G, tile) {
+  if (G.choice || G.over || G.phase !== 'work' || G.feeding) return false;
+  const p = G.players[G.current], t = p.farm[tile];
+  let kind = null;
+  if (t.kind === 'room') {
+    const order = p.farm.reduce((n, q, j) => n + (j < tile && q.kind === 'room' ? 1 : 0), 0);
+    const pet = p.pets[order];
+    if (!pet || (G.staging && G.staging.kind !== pet.kind)) return false;
+    kind = pet.kind;
+    p.pets.splice(order, 1);
+  } else {
+    const g = regionOf(p, tile);
+    const tiles = g && g.enclosed ? g.tiles : [tile];
+    const src = tiles.find((x) => p.farm[x].animals && p.farm[x].animals.n > 0);
+    if (src == null) return false;
+    kind = p.farm[src].animals.kind;
+    if (G.staging && G.staging.kind !== kind) return false;
+    p.farm[src].animals.n--;
+    if (p.farm[src].animals.n === 0) p.farm[src].animals = null;
+  }
+  G.staging = G.staging ? Object.assign({}, G.staging, { n: G.staging.n + 1 }) : { kind, n: 1, moving: true };
   return true;
 }
 

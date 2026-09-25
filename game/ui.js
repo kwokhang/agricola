@@ -401,9 +401,9 @@
     const p = G.players[G.current];
 
     if (G.staging) {
-      parts.push(`<div class="panel"><h3>放置動物</h3>
-        <p>${ic(G.staging.kind, 20)} ${esc(LABEL[G.staging.kind])} ×${G.staging.n} — 喺「農場」撳牧場、獨立馬廄或房屋（寵物）。</p>
-        <div class="row">${btn('discardStaged', '放棄剩餘動物')}</div></div>`);
+      parts.push(`<div class="panel"><h3>${G.staging.moving ? '搬動物' : '放置動物'}</h3>
+        <p>${ic(G.staging.kind, 20)} ${esc(LABEL[G.staging.kind])} ×${G.staging.n} — 喺「農場」撳牧場、獨立馬廄或房屋（寵物）放低${G.staging.moving ? '；再撳有同類動物嘅格可以多拎一隻' : ''}。</p>
+        <div class="row">${btn('discardStaged', G.staging.moving ? '放生手上動物' : '放棄剩餘動物')}</div></div>`);
     }
 
     const st = currentStep(G);
@@ -483,7 +483,8 @@
         <div class="steps">${esc(steps)}</div>${body}</div>`);
     } else if (!G.staging) {
       parts.push(`<div class="panel"><h3>${esc(p.name)} 放人</h3>
-        <p>喺「行動板」撳一個空行動格。剩 ${p.workersLeft} 個人手。</p></div>`);
+        <p>喺「行動板」撳一個空行動格。剩 ${p.workersLeft} 個人手。</p>
+        ${ANIM.some((k) => animalTotal(p, k)) || p.pets.length ? '<p class="muted">撳農場上嘅動物可以隨時搬位。</p>' : ''}</div>`);
     }
     el.innerHTML = parts.join('');
   }
@@ -849,10 +850,13 @@
   }
 
   // ------------------------------------------------------------ input
+  const TILE_STEPS = ['plow', 'build', 'cottager', 'freestable', 'minipasture', 'sow'];
   function clickTile(i) {
     if (G.choice) return;
-    if (G.staging) { placeAnimal(G, i); return; }
+    // Holding animals: put one down here, or if it cannot go here, pick up another of the same kind.
+    if (G.staging) { if (!placeAnimal(G, i)) pickUpAnimal(G, i); return; }
     const st = currentStep(G);
+    if (!TILE_STEPS.includes(st) && st !== 'fences') { pickUpAnimal(G, i); return; }
     if (st === 'plow') plow(G, i);
     else if (st === 'build') (UI.buildKind === 'room' ? buildRoom : buildStable)(G, i);
     else if (st === 'cottager') buildRoom(G, i);
@@ -865,7 +869,7 @@
     if (!G || G.over) return;
     if (d.type === 'seat') { setView(d.pi); return; }
     if (G.choice) return;
-    if (d.type === 'tile') clickTile(d.i);
+    if (d.type === 'tile') { if (d.pi !== G.current) return; clickTile(d.i); }
     else if (d.type === 'edge') toggleFence(G, d.e);
     else if (d.type === 'space') placeWorker(G, d.id);
     else if (d.type === 'card') playCard(G, d.uid);
