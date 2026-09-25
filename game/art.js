@@ -812,6 +812,17 @@ const ART = (function () {
     return `<svg x="${x}" y="${y}" width="${w}" height="${h}" viewBox="${(26 - vw / 2).toFixed(2)} ${(24 - vh).toFixed(2)} ${vw.toFixed(2)} ${vh.toFixed(2)}" preserveAspectRatio="none">${markup}</svg>`;
   }
 
+  // Painted card art is square, with the figure's head in the upper part. The window is
+  // wider than tall, so the picture is scaled to a little over the window's width and
+  // anchored high, which keeps the face and shoulders in frame.
+  function artwork(c, x, y, w, h) {
+    const src = typeof CARD_IMAGES !== 'undefined' && CARD_IMAGES[c.en];
+    if (!src) return '';
+    const size = w * 1.08;
+    return `<image href="${src}" x="${(x + (w - size) / 2).toFixed(1)}" y="${(y - size * 0.1).toFixed(1)}"
+      width="${size.toFixed(1)}" height="${size.toFixed(1)}" preserveAspectRatio="xMidYMid slice"/>`;
+  }
+
   // A cost gem: the good's icon in a coin, with the count on a small badge.
   function gem(k, n, cx, cy) {
     return `<g transform="translate(${cx} ${cy})">
@@ -864,8 +875,8 @@ const ART = (function () {
       s += `<text x="${W - IN - 10}" y="${FACE.name[0] + FACE.name[1] / 2 + 5}" text-anchor="end" font-size="13" font-weight="700" fill="var(--art-ink)" opacity=".7">免費</text>`;
     }
 
-    // picture
-    s += `<g clip-path="url(#art)">${fitCard(cardScene(c), IN, FACE.art[0], W - IN * 2, FACE.art[1])}</g>
+    // picture: painted artwork when there is some (cardimages.js), else the drawn scene
+    s += `<g clip-path="url(#art)">${artwork(c, IN, FACE.art[0], W - IN * 2, FACE.art[1]) || fitCard(cardScene(c), IN, FACE.art[0], W - IN * 2, FACE.art[1])}</g>
       <rect x="${IN}" y="${FACE.art[0]}" width="${W - IN * 2}" height="${FACE.art[1]}" rx="6" fill="none" stroke="${ink}" stroke-width="2"/>
       <rect x="${IN + 2}" y="${FACE.art[0] + 2}" width="${W - IN * 2 - 4}" height="${FACE.art[1] - 4}" rx="5" fill="none" stroke="#fff" stroke-width="1" opacity=".35"/>`;
 
