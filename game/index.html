@@ -275,7 +275,7 @@
   .card .tx { flex: 1 1 auto; font-size: 13.5px; line-height: 1.6; color: var(--muted); margin-top: 7px; }
   .card .ft { flex: 0 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); }
   .card .costs { display: inline-flex; align-items: center; gap: 5px; flex-wrap: wrap; }
-  .vpseal { position: absolute; top: 20px; right: 8px; }
+  .vpseal { position: absolute; top: 18px; right: 10px; }
 
   /* ---------- dock ---------- */
   .dock {
@@ -393,6 +393,13 @@
   .pcard.now { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, var(--bg));
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent); }
   .pcard .sp { display: inline-flex; }
+  /* victory points: the same gold pennant as on the cards */
+  .vpi { vertical-align: -2px; flex: none; }
+  .pcard .vpv { display: inline-flex; align-items: center; gap: 3px; margin-left: 4px; padding: 0 6px 0 4px;
+    border-radius: 999px; background: color-mix(in srgb, var(--art-seal) 22%, transparent); }
+  .pcard .vpv b { color: var(--ink); font-size: 12.5px; }
+  .pcard .vpv.neg b { color: #e08a78; }
+  .final .who .tot { display: flex; align-items: center; justify-content: center; gap: 8px; }
 
   /* ---------- whose turn: the whole screen is framed in that player's colour ---------- */
   .turnframe {

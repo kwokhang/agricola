@@ -708,11 +708,25 @@ const ART = (function () {
       fill="var(--art-slot)" stroke="${ink}" stroke-width="1.3" opacity=".92"/>`;
   }
 
-  function seal(n, x, y, r) {
-    return `<g transform="translate(${x} ${y})">
-      <circle r="${r}" fill="var(--art-seal)" stroke="${ink}" stroke-width="1.6"/>
-      <text class="sealnum" y="${r * 0.36}" font-size="${r * 1.15}">${n}</text></g>`;
+  // Victory points, everywhere they appear: a swallow-tailed pennant in 山吹 gold with the
+  // number in dark ink. (x, y) is the top centre; s scales it
+  // from its natural 32 × 42.
+  function vpBadge(n, x, y, s) {
+    return `<g transform="translate(${x} ${y}) scale(${s || 1})">
+      <path d="M-16 0H16V40L0 32L-16 40z" fill="#000" opacity=".3" transform="translate(1.5 2)"/>
+      <path d="M-16 0H16V40L0 32L-16 40z" fill="var(--art-seal)" stroke="${ink}" stroke-width="1.6" stroke-linejoin="round"/>
+      <path d="M-12.5 3.5H12.5V34L0 28L-12.5 34z" fill="none" stroke="#fff" stroke-width="1" opacity=".35"/>
+      <text x="0" y="23" text-anchor="middle" font-size="20" font-weight="900" fill="${ink}"
+        font-family="-apple-system,'PingFang TC',sans-serif">${n}</text></g>`;
   }
+  // A tiny inline one for text lines (a 14 px pennant with no number).
+  function vpIcon(size) {
+    const h = size || 14;
+    return `<svg class="vpi" viewBox="-17 -1 34 44" width="${h * 0.78}" height="${h}" aria-hidden="true">
+      <path d="M-16 0H16V40L0 32L-16 40z" fill="var(--art-seal)" stroke="${ink}" stroke-width="2.4" stroke-linejoin="round"/></svg>`;
+  }
+  // Kept for older callers: the badge centred on (x, y).
+  function seal(n, x, y, r) { return vpBadge(n, x, y - r, r / 16); }
 
   // Raw scene markup, for callers that build their own SVG document (the 3D view).
   function sceneMarkup(id) {
@@ -859,7 +873,8 @@ const ART = (function () {
     s += `<rect x="${IN}" y="${FACE.type[0]}" width="${W - IN * 2}" height="${FACE.type[1]}" rx="6" fill="${t.frame}" stroke="${ink}" stroke-width="1.1"/>
       <text x="${IN + 10}" y="${FACE.type[0] + 16.5}" font-size="13" font-weight="800" fill="var(--art-count)">${t.zh}
         <tspan dx="6" font-size="10" font-weight="700" opacity=".85" letter-spacing="1">${t.en}</tspan></text>`;
-    if (c.vp) s += `<g transform="translate(${W - IN - 20} ${FACE.type[0] + FACE.type[1] / 2})">${seal(c.vp, 0, 0, 17)}</g>`;
+    // points hang like a pennant from under the name bar, over the picture's top-right corner
+    if (c.vp) s += vpBadge(c.vp, W - IN - 26, FACE.art[0] - 2, 1.05);
 
     // rules text, fitted
     const box = { x: IN, y: FACE.rules[0], w: W - IN * 2, h: FACE.rules[1] };
@@ -899,5 +914,5 @@ const ART = (function () {
 
   return { ICONS, icon, spaceArt, sceneMarkup, scene, plate, token, board, slot, seal, meeple,
     grassTile, fieldTile, houseTile, stableArt, animalsArt, fenceArt, edgeHit, TW, TH,
-    cardFace, cardBack, cardArt, CARD_W, CARD_H, NAMES, tokenMarkup };
+    cardFace, cardBack, cardArt, CARD_W, CARD_H, NAMES, tokenMarkup, vpBadge, vpIcon };
 })();

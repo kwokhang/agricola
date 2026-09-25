@@ -72,7 +72,7 @@
         <span class="bd">
           <span class="nm">${esc(p.name)}${i === G.startPlayer ? `<span class="sp" title="起始玩家">${ART.icon('start', 14)}</span>` : ''}
             ${active ? '<span class="tag">輪到</span>' : ''}</span>
-          <span class="sub"><span class="men">${men}</span>${HOUSE_ZH[p.house]} ${roomCount(p)} 間 · <b>${pts}</b> 分</span>
+          <span class="sub"><span class="men">${men}</span>${HOUSE_ZH[p.house]} ${roomCount(p)} 間<span class="vpv ${pts < 0 ? 'neg' : ''}">${ART.vpIcon(13)}<b>${pts}</b></span></span>
         </span></div>`;
     }).join('');
 
@@ -350,7 +350,7 @@
     const band = c.type === 'occ' ? '職業 OCCUPATION'
       : c.type === 'min' ? '次要發展 MINOR IMPROVEMENT' : '主要發展 MAJOR IMPROVEMENT';
     const vp = c.vp
-      ? `<svg class="vpseal" viewBox="-16 -16 32 32" width="30" height="30" aria-hidden="true">${ART.seal(c.vp, 0, 0, 14)}</svg>`
+      ? `<svg class="vpseal" viewBox="-18 -1 36 46" width="28" height="36" aria-hidden="true">${ART.vpBadge(c.vp, 0, 0)}</svg>`
       : '';
     const canSwap = c.en === 'Cooking Hearth' && playable && hasCard(p, 'Fireplace');
     return `<div class="card ${c.type}">
@@ -621,7 +621,7 @@
       const band = c.type === 'occ' ? '職業 OCCUPATION'
         : c.type === 'min' ? '次要發展 MINOR IMPROVEMENT' : '主要發展 MAJOR IMPROVEMENT';
       const vp = c.vp
-        ? `<svg class="vpseal" viewBox="-16 -16 32 32" width="38" height="38" aria-hidden="true">${ART.seal(c.vp, 0, 0, 14)}</svg>` : '';
+        ? `<svg class="vpseal" viewBox="-18 -1 36 46" width="28" height="36" aria-hidden="true">${ART.vpBadge(c.vp, 0, 0)}</svg>` : '';
       let status = '';
       const holder = G.players.find((q) => q.played.includes(c));
       let extra = '';
@@ -748,7 +748,7 @@
     const podium = sheets.slice().sort((a, b) => b.s.total - a.s.total).map((x) => {
       const win = G.n > 1 && x.s.total === best;
       return `<div class="who ${win ? 'win' : ''}" style="--pc:${PCOLOR[x.i]}">
-        <div class="nm">${esc(x.p.name)}</div><div class="tot">${x.s.total}</div>
+        <div class="nm">${esc(x.p.name)}</div><div class="tot">${ART.vpIcon(34)}${x.s.total}</div>
         ${win ? `<span class="badge">${winners.length > 1 ? '平手' : '勝出'}</span>` : ''}</div>`;
     }).join('');
 
@@ -767,7 +767,7 @@
       <div class="podium">${podium}</div>
       <table><tr><th>項目</th>${sheets.map((x) => `<th style="color:${PCOLOR[x.i]}">${esc(x.p.name)}</th>`).join('')}</tr>
         ${rows}
-        <tr class="tot"><td>總分</td>${sheets.map((x) => `<td>${x.s.total}</td>`).join('')}</tr></table>
+        <tr class="tot"><td>${ART.vpIcon(15)} 總分</td>${sheets.map((x) => `<td>${x.s.total}</td>`).join('')}</tr></table>
       ${sheets.some((x) => x.s.bonusDetail.length) ? `<p class="muted" style="font-size:12px;margin-top:8px">卡片獎勵：${
         sheets.filter((x) => x.s.bonusDetail.length).map((x) => `${esc(x.p.name)} — ${esc(x.s.bonusDetail.join('、'))}`).join('；')}</p>` : ''}
       <div class="row">${btn('closeFinal', '睇返張檯')}${btn('newGame', '新遊戲', false, 'class="primary"')}</div>
