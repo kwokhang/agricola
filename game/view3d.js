@@ -103,7 +103,7 @@ const View3D = (function () {
   // Ink outlines for the wooden pieces, to match the linework in the illustrations: a copy
   // of each mesh pushed out along its normals, drawn back-faces only in 墨.
   const INK_MAT = new T.ShaderMaterial({
-    uniforms: { c: { value: new T.Color('#1b130b') }, w: { value: 0.011 } },
+    uniforms: { c: { value: new T.Color('#1b130b') }, w: { value: 0.016 } },
     vertexShader: 'uniform float w; void main(){ vec3 p = position + normalize(normal) * w;' +
       ' gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0); }',
     fragmentShader: 'uniform vec3 c; void main(){ gl_FragColor = vec4(c, 1.0); }',
@@ -120,9 +120,22 @@ const View3D = (function () {
     }
     return root;
   }
-  const mat = (color, opts) => new T.MeshPhysicalMaterial(Object.assign({
-    color: color instanceof T.Color ? color : new T.Color(color),
-  }, GLOSS, opts || {}));
+  // Cel shading for the wooden pieces, to sit with the anime-style artwork: light falls in
+  // three flat tones — lit, mid, shadow — with hard steps between them, like cel paint.
+  const TOON_STEPS = (() => {
+    const tones = new Uint8Array([120, 200, 255]);
+    const t = new T.DataTexture(tones, tones.length, 1, T.RedFormat);
+    t.minFilter = t.magFilter = T.NearestFilter;
+    t.generateMipmaps = false;
+    t.needsUpdate = true;
+    return t;
+  })();
+  const TOON_KEYS = ['map', 'transparent', 'opacity', 'emissive', 'emissiveIntensity', 'side', 'depthWrite'];
+  const mat = (color, opts) => {
+    const o = { color: color instanceof T.Color ? color : new T.Color(color), gradientMap: TOON_STEPS };
+    for (const k of TOON_KEYS) if (opts && opts[k] !== undefined) o[k] = opts[k];
+    return new T.MeshToonMaterial(o);
+  };
   const printMat = (map, opts) => new T.MeshPhysicalMaterial(Object.assign({ map }, GLOSS, opts || {}));
 
   function box(w, h, d, color, x, y, z) {
