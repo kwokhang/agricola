@@ -130,6 +130,17 @@ const View3D = (function () {
     t.needsUpdate = true;
     return t;
   })();
+  // The table and the felt are big and mostly outside the lamp, so they get softer steps:
+  // with the pieces' steps the shadow tone would turn the whole floor black.
+  const TOON_ROOM = (() => {
+    const tones = new Uint8Array([185, 225, 255]);
+    const t = new T.DataTexture(tones, tones.length, 1, T.RedFormat);
+    t.minFilter = t.magFilter = T.NearestFilter;
+    t.generateMipmaps = false;
+    t.needsUpdate = true;
+    return t;
+  })();
+  const roomMat = (color, map) => new T.MeshToonMaterial({ color: new T.Color(color), map, gradientMap: TOON_ROOM });
   const TOON_KEYS = ['map', 'transparent', 'opacity', 'emissive', 'emissiveIntensity', 'side', 'depthWrite'];
   const mat = (color, opts) => {
     const o = { color: color instanceof T.Color ? color : new T.Color(color), gradientMap: TOON_STEPS };
@@ -813,23 +824,18 @@ const View3D = (function () {
   // The board is a printed object, so it has its own parchment colour, not a UI colour:
   // linen weave, a darker edge, a gilt double rule and wheat in the corners.
   function boardPrintSvg(w, h) {
-    const corner = (x, y, r) => `<g transform="translate(${x} ${y}) rotate(${r}) scale(1.1)" opacity=".55">${ART.ICONS.grain}</g>`;
+    // Cel-style paper: a flat sheet, a flat darker margin band, a crisp highlight along the
+    // top edge, gold rules and wheat in the corners. No texture or gradients.
+    const corner = (x, y, r) => `<g transform="translate(${x} ${y}) rotate(${r}) scale(1.1)" opacity=".6">${ART.ICONS.grain}</g>`;
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${Math.round(w * 1.2)}" height="${Math.round(h * 1.2)}">
-      <defs>
-        <pattern id="weave" width="6" height="6" patternUnits="userSpaceOnUse">
-          <path d="M0 3H6M3 0V6" stroke="#6b5530" stroke-width=".6" opacity=".09"/></pattern>
-        <radialGradient id="edge" cx=".5" cy=".5" r=".75">
-          <stop offset=".55" stop-color="#6b4a1e" stop-opacity="0"/><stop offset="1" stop-color="#6b4a1e" stop-opacity=".28"/></radialGradient>
-        <linearGradient id="sheen" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset=".6" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>
-      <rect width="${w}" height="${h}" fill="var(--art-boardprint)"/>
-      <rect width="${w}" height="${h}" fill="url(#weave)"/>
-      <rect width="${w}" height="${h}" fill="url(#sheen)"/>
-      <rect width="${w}" height="${h}" fill="url(#edge)"/>
-      <rect x="5" y="5" width="${w - 10}" height="${h - 10}" rx="7" fill="none" stroke="var(--art-seal)" stroke-width="2.2" opacity=".85"/>
-      <rect x="9" y="9" width="${w - 18}" height="${h - 18}" rx="5" fill="none" stroke="var(--art-seal)" stroke-width=".9" opacity=".7"/>
+      <rect width="${w}" height="${h}" fill="#8f7f5c"/>
+      <rect x="12" y="12" width="${w - 24}" height="${h - 24}" rx="6" fill="var(--art-boardprint)"/>
+      <path d="M18 14H${w - 18}" stroke="#d9cba4" stroke-width="2" stroke-linecap="round"/>
+      <rect x="5" y="5" width="${w - 10}" height="${h - 10}" rx="7" fill="none" stroke="var(--art-seal)" stroke-width="2.2"/>
+      <rect x="12" y="12" width="${w - 24}" height="${h - 24}" rx="6" fill="none" stroke="#5a4526" stroke-width="1.2"/>
       ${corner(2, 2, 0)}${corner(w - 2, 2, 90)}${corner(w - 2, h - 2, 180)}${corner(2, h - 2, 270)}</svg>`;
   }
+
 
   function boardSlab(wpx, hpx, cxpx, cypx) {
     const g = new T.Group();
@@ -837,7 +843,7 @@ const View3D = (function () {
     const frame = new T.Mesh(geo(`bframe${w.toFixed(2)}`, () => new T.BoxGeometry(w, 0.1, d)), mat('#ffffff', { map: frameWood() }));
     frame.castShadow = true; frame.receiveShadow = true;
     g.add(frame);
-    const print = svgTexture(`bprint:${wpx}x${hpx}`, boardPrintSvg(wpx, hpx), Math.round(wpx * 1.2), Math.round(hpx * 1.2));
+    const print = svgTexture(`bprint2:${wpx}x${hpx}`, boardPrintSvg(wpx, hpx), Math.round(wpx * 1.2), Math.round(hpx * 1.2));
     const face = plateMesh(print, w - 0.1, d - 0.1, 0, 0, 0.05);
     face.receiveShadow = true;
     g.add(face);
@@ -1630,6 +1636,8 @@ const View3D = (function () {
   }
 
   function woodTexture(baseVar, size) {
+    // Cel-style planks: two flat tones per plank, a few smooth grain lines in a flat darker
+    // tone, a crisp highlight along each plank's top edge and a dark seam. No noise.
     const cv = document.createElement('canvas');
     cv.width = cv.height = size || 1024;
     const x = cv.getContext('2d');
@@ -1639,38 +1647,35 @@ const View3D = (function () {
     const plank = 128;
     for (let row = 0; row < 1024 / plank; row++) {
       const y0 = row * plank;
-      x.fillStyle = shade(base, (r() - 0.5) * 0.06);
+      x.fillStyle = shade(base, row % 2 ? 0.02 : -0.01);
       x.fillRect(0, y0, 1024, plank);
-      // Grain: long, gently wavy strokes running along the plank.
-      for (let k = 0; k < 46; k++) {
-        const y = y0 + r() * plank;
-        const amp = 1 + r() * 4, freq = 0.004 + r() * 0.01, ph = r() * 6.28;
-        x.strokeStyle = shade(base, (r() - 0.55) * 0.14);
-        x.globalAlpha = 0.18 + r() * 0.3;
-        x.lineWidth = 0.6 + r() * 1.8;
+      x.fillStyle = shade(base, -0.06);                   // the plank's shadow half
+      x.fillRect(0, y0 + plank * 0.62, 1024, plank * 0.38);
+      x.strokeStyle = shade(base, -0.12);
+      x.lineWidth = 3;
+      x.lineCap = 'round';
+      for (let k = 0; k < 3; k++) {                       // long, calm grain curves
+        const yy = y0 + 22 + r() * (plank - 44), x0 = r() * 700, len = 180 + r() * 260;
         x.beginPath();
-        for (let px = 0; px <= 1024; px += 16) {
-          const py = y + Math.sin(px * freq + ph) * amp;
-          if (px === 0) x.moveTo(px, py); else x.lineTo(px, py);
-        }
+        x.moveTo(x0, yy);
+        x.bezierCurveTo(x0 + len * 0.3, yy - 8, x0 + len * 0.7, yy + 8, x0 + len, yy);
         x.stroke();
       }
-      // A knot now and then.
-      if (r() < 0.6) {
-        const kx = r() * 1024, ky = y0 + 20 + r() * (plank - 40);
-        for (let ring = 6; ring > 0; ring--) {
-          x.globalAlpha = 0.12;
-          x.strokeStyle = shade(base, -0.12);
-          x.lineWidth = 1.4;
-          x.beginPath();
-          x.ellipse(kx, ky, ring * 7, ring * 2.6, 0, 0, Math.PI * 2);
-          x.stroke();
-        }
+      if (r() < 0.5) {                                    // a knot: two flat ovals
+        const kx = 80 + r() * 860, ky = y0 + 40 + r() * 40;
+        x.fillStyle = shade(base, -0.14);
+        x.beginPath(); x.ellipse(kx, ky, 18, 7, 0, 0, Math.PI * 2); x.fill();
+        x.fillStyle = shade(base, -0.05);
+        x.beginPath(); x.ellipse(kx, ky, 9, 3.5, 0, 0, Math.PI * 2); x.fill();
       }
-      x.globalAlpha = 0.55;
-      x.fillStyle = shade(base, -0.16);
-      x.fillRect(0, y0, 1024, 2.5);                    // the seam between planks
-      x.globalAlpha = 1;
+      x.fillStyle = shade(base, 0.1);                     // highlight on the top edge
+      x.fillRect(0, y0 + 4, 1024, 3);
+      x.fillStyle = shade(base, -0.22);                   // seam
+      x.fillRect(0, y0, 1024, 4);
+      for (let k = 0; k < 2; k++) {                       // plank ends
+        const ex = ((row * 397 + k * 512) % 1024);
+        x.fillRect(ex, y0, 4, plank);
+      }
     }
     const tex = new T.CanvasTexture(cv);
     tex.colorSpace = T.SRGBColorSpace;
@@ -1679,41 +1684,32 @@ const View3D = (function () {
     return tex;
   }
 
-  // Felt: fine speckle, a slightly lighter centre, and a stitched border.
+
+  // Felt in cel style: a flat base, a flat lighter field inside, a stitched border.
   function matTexture(w, h) {
     const cv = document.createElement('canvas');
     cv.width = 1024; cv.height = Math.round(1024 * h / w);
     const x = cv.getContext('2d');
     const base = col('--art-mat');
     const W = cv.width, H = cv.height;
-    x.fillStyle = base.getStyle();
+    x.fillStyle = shade(base, -0.03);
     x.fillRect(0, 0, W, H);
-    const glow = x.createRadialGradient(W / 2, H * 0.45, 0, W / 2, H * 0.45, Math.max(W, H) * 0.7);
-    glow.addColorStop(0, shade(base, 0.05));
-    glow.addColorStop(1, shade(base, -0.05));
-    x.fillStyle = glow;
-    x.fillRect(0, 0, W, H);
-    const r = rng(11);
-    for (let i = 0; i < 26000; i++) {
-      x.fillStyle = r() < 0.5 ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.07)';
-      x.fillRect(r() * W, r() * H, 1.4, 1.4);
-    }
     const inset = 26;
-    x.strokeStyle = shade(base, 0.2);
-    x.globalAlpha = 0.55;
-    x.lineWidth = 3;
-    x.setLineDash([14, 9]);
+    x.fillStyle = shade(base, 0.02);
+    x.beginPath();
+    x.roundRect(inset + 14, inset + 14, W - (inset + 14) * 2, H - (inset + 14) * 2, 18);
+    x.fill();
+    x.strokeStyle = shade(base, 0.22);
+    x.lineWidth = 4;
+    x.setLineDash([16, 10]);
     x.strokeRect(inset, inset, W - inset * 2, H - inset * 2);
     x.setLineDash([]);
-    x.globalAlpha = 0.35;
-    x.lineWidth = 1.5;
-    x.strokeRect(inset + 12, inset + 12, W - (inset + 12) * 2, H - (inset + 12) * 2);
-    x.globalAlpha = 1;
     const tex = new T.CanvasTexture(cv);
     tex.colorSpace = T.SRGBColorSpace;
     tex.anisotropy = 8;
     return tex;
   }
+
 
   // The room: warm in the middle, near black at the edges. Drawn behind everything.
   function backdropTexture() {
@@ -1747,9 +1743,9 @@ const View3D = (function () {
       playMat.material.forEach((m) => { if (m.map) m.map.dispose(); m.dispose(); });
       envGroup.remove(playMat);
     }
-    const plain = () => new T.MeshStandardMaterial({ color: col('--art-mat'), roughness: 1 });
+    const plain = () => roomMat(col('--art-mat'));
     playMat = new T.Mesh(new T.BoxGeometry(mw, 0.03, mh), [plain(), plain(),
-      new T.MeshStandardMaterial({ map: matTexture(mw, mh), roughness: 1 }), plain(), plain(), plain()]);
+      roomMat('#ffffff', matTexture(mw, mh)), plain(), plain(), plain()]);
     playMat.position.set((x0 + x1) / 2, -0.075, (z0 + z1) / 2);
     playMat.receiveShadow = true;
     envGroup.add(playMat);
@@ -1774,8 +1770,7 @@ const View3D = (function () {
     // The table: a thick wooden top, big enough that its edges fall into the dark.
     const wood = woodTexture();
     wood.repeat.set(5, 4);
-    const woodMat = new T.MeshPhysicalMaterial({ map: wood, roughness: 0.48, metalness: 0,
-      clearcoat: 0.55, clearcoatRoughness: 0.32 });              // a varnished top
+    const woodMat = roomMat('#ffffff', wood);                     // cel-lit, in softer steps
     const table = new T.Mesh(new T.BoxGeometry(40, 0.8, 32), woodMat);
     table.position.set(0, -0.09 - 0.4, -3.6);
     table.receiveShadow = true;
