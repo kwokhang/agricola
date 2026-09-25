@@ -387,7 +387,7 @@
   // Buttons in the action bar come in two weights: the step's main action — finishing it,
   // or doing the one thing the step is for — and quiet ways out (skip, cancel, give up).
   const MAIN_ACTS = ['confirmFences', 'confirmFeed', 'grow', 'renovate', 'bake', 'final', 'newGame', 'ngStart'];
-  const QUIET_ACTS = ['undoFences', 'discardStaged', 'ngCancel', 'closeFinal'];
+  const QUIET_ACTS = ['cancelAction', 'undoFences', 'discardStaged', 'ngCancel', 'closeFinal'];
   function btn(action, label, disabled, extra) {
     let cls = '';
     if (!(extra || '').includes('class=')) {
@@ -506,6 +506,9 @@
         <p>在「行動板」點選一個空置的行動格。尚餘 ${p.workersLeft} 名工人。</p>
         ${ANIM.some((k) => animalTotal(p, k)) || p.pets.length ? '<p class="muted">點選農場上的動物可隨時移動。</p>' : ''}</div>`);
     }
+    if (UI.undo && inAction()) {
+      parts.push(`<div class="row undo">${btn('cancelAction', '↶ 取消此行動，工人返回')}</div>`);
+    }
     el.innerHTML = parts.join('');
   }
 
@@ -528,6 +531,26 @@
     const who = G.players[UI.view].name;
     $('free').innerHTML = `<span class="lb">${esc(who)} 隨時可做</span>` + acts.map((a) =>
       `<button data-free="${esc(a.id)}" ${a.ok && mine ? '' : 'disabled'}>${esc(a.label)}</button>`).join('');
+  }
+
+  // ------------------------------------------------------------ cancelling an action
+  // Taking an action space snapshots the game first. While that action is still being
+  // carried out (steps left, or animals waiting to be placed) it can be cancelled, which
+  // puts the whole game back as it was: the worker home, goods and building undone.
+  function inAction() {
+    return !!(G.pending || (G.staging && !G.staging.moving) || G.choice);
+  }
+  function takeSpace(id) {
+    const before = JSON.stringify(G);
+    if (placeWorker(G, id) === false) return;
+    UI.undo = inAction() ? before : null;
+  }
+  function cancelAction() {
+    if (!UI.undo) return;
+    const name = G.players[G.current].name;
+    G = JSON.parse(UI.undo);
+    UI.undo = null;
+    logEvent(G, `${name} 取消了行動`);
   }
 
   // ------------------------------------------------------------ action bar placement
@@ -856,6 +879,7 @@
     if (want && key !== UI.autoKey) UI.main = want;
     UI.autoKey = key;
 
+    if (UI.undo && !inAction()) UI.undo = null;
     applyColors();
     // Frame the screen in the colour of whoever has to act.
     const who = G.over ? -1 : G.feeding ? G.feeding.i : G.current;
@@ -892,7 +916,7 @@
     if (G.choice) return;
     if (d.type === 'tile') { if (d.pi !== G.current) return; clickTile(d.i); }
     else if (d.type === 'edge') toggleFence(G, d.e);
-    else if (d.type === 'space') placeWorker(G, d.id);
+    else if (d.type === 'space') takeSpace(d.id);
     else if (d.type === 'card') playCard(G, d.uid);
     render();
   }
@@ -930,13 +954,13 @@
     if (!t || !G) return;
 
     if (t.dataset.choice) { resolveChoice(G, t.dataset.choice); return render(); }
-    if (G.choice && !(t.dataset.act || '').startsWith('ng') && t.dataset.act !== 'newGame') return;   // a choice blocks everything else
+    if (G.choice && !(t.dataset.act || '').startsWith('ng') && !['newGame', 'cancelAction'].includes(t.dataset.act)) return;   // a choice blocks everything else
     if (t.dataset.main) { UI.main = t.dataset.main; return render(); }
     if (t.dataset.view != null) return setView(+t.dataset.view);
     if (t.dataset.ctab) { UI.cardTab = t.dataset.ctab; return render(); }
     if (t.dataset.dtab) { UI.drawerTab = t.dataset.dtab; return renderDrawer(); }
     if (t.dataset.free) { useFree(G, UI.view, t.dataset.free); return render(); }
-    if (t.dataset.space) { placeWorker(G, t.dataset.space); return render(); }
+    if (t.dataset.space) { takeSpace(t.dataset.space); return render(); }
     if (t.dataset.tile != null) { clickTile(+t.dataset.tile); return render(); }
     if (t.dataset.edge) { toggleFence(G, t.dataset.edge); return render(); }
 
@@ -944,6 +968,7 @@
     switch (t.dataset.act) {
       case 'allres': UI.allres = !UI.allres; break;
       case 'resView': UI.resView = +v; renderRes(); save(); return;
+      case 'cancelAction': cancelAction(); break;
       case 'hand': UI.handPinned = !UI.handPinned; break;
       case 'log': UI.logOpen = !UI.logOpen; renderRail(); save(); return;
       case 'final': UI.finalOpen = true; break;
