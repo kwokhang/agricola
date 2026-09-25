@@ -480,6 +480,8 @@
   .final td.neg { color: var(--maj-frame); }
   .final tr.tot td { font-weight: 900; font-size: 16px; border-top: 2px solid var(--ink); }
   .final .row { justify-content: center; margin-top: 14px; }
+  .final td .nx { display: block; font-size: 10.5px; color: var(--accent); font-weight: 600; }
+  .bar1 .menu { gap: 6px; }
 
   /* ---------- new game: players, names, colours ---------- */
   .ng { width: min(520px, 94vw); }
@@ -638,6 +640,7 @@
 <div class="modal" id="modal" hidden></div>
 <div class="modal final" id="final" hidden></div>
 <div class="modal final" id="newgame" hidden></div>
+<div class="modal final" id="scoresheet" hidden></div>
 
 <script src="../data.js"></script>
 <script src="vendor/three.min.js"></script>

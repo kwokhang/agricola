@@ -96,7 +96,8 @@
         </div>
         <div class="track">${track}</div>
       </div>
-      <div class="menu"><button id="menuBtn" class="menubtn">☰ 選單</button></div>`;
+      <div class="menu"><button data-act="scoreSheet" class="menubtn">${ART.vpIcon(14)} 計分</button>
+        <button id="menuBtn" class="menubtn">☰ 選單</button></div>`;
     $('menuBtn').addEventListener('click', () => openDrawer($('drawer').hidden));
   }
 
@@ -547,6 +548,7 @@
     return !!(G.pending || (G.staging && !G.staging.moving) || G.choice);
   }
   function takeSpace(id) {
+    UI.movedAnimals = false;
     const before = JSON.stringify(G);
     if (placeWorker(G, id) === false) return;
     UI.undo = inAction() ? before : null;
@@ -790,6 +792,36 @@
     if (ev.key === 'Enter' && ev.target.dataset && ev.target.dataset.ngName != null) startFromSetup();
   });
 
+  // ------------------------------------------------------------ live score sheet
+  // Every scoring category for every player, as the game stands now: how many you have,
+  // what it is worth, and how many more would bring the next point.
+  function scoreTable(sheets, withHints) {
+    const names = [];
+    sheets.forEach((x) => x.s.rows.forEach((r) => { if (!names.includes(r.zh)) names.push(r.zh); }));
+    const body = names.map((zh) => `<tr><td>${esc(zh)}</td>${sheets.map((x) => {
+      const r = x.s.rows.find((q) => q.zh === zh);
+      if (!r) return '<td class="muted">—</td>';
+      const nx = withHints && r.key ? nextScoreStep(r.key, r.val) : null;
+      const hint = nx ? `<span class="nx">再 ${nx.need} → +${nx.pts}</span>` : '';
+      return `<td class="${r.pts < 0 ? 'neg' : ''}"><span class="v">${r.val}</span>${r.pts > 0 ? '+' : ''}${r.pts}${hint}</td>`;
+    }).join('')}</tr>`).join('');
+    return `<table><tr><th>項目</th>${sheets.map((x) => `<th style="color:${PCOLOR[x.i]}">${esc(x.p.name)}</th>`).join('')}</tr>
+      ${body}
+      <tr class="tot"><td>${ART.vpIcon(15)} 總分</td>${sheets.map((x) => `<td>${x.s.total}</td>`).join('')}</tr></table>`;
+  }
+
+  function renderScoreSheet() {
+    const box = $('scoresheet');
+    box.hidden = !UI.scoreOpen;
+    if (box.hidden) return;
+    const sheets = G.players.map((p, i) => ({ p, i, s: score(G, p) }));
+    box.innerHTML = `<div class="sheet">
+      <h2>目前計分</h2><div class="sub">第 ${G.round} 回合 · 以現時農場計算（遊戲結束才正式結算）</div>
+      ${scoreTable(sheets, true)}
+      <p class="muted" style="font-size:12px;margin-top:8px">每格：左邊灰字為數量，右邊為分數；「再 N → +M」表示再多 N 可多得 M 分。</p>
+      <div class="row">${btn('closeScore', '關閉')}</div></div>`;
+  }
+
   // ------------------------------------------------------------ final scores
   // Pops up by itself the moment the game ends; after it is closed, the prompt reopens it.
   function renderFinal() {
@@ -809,22 +841,13 @@
         ${win ? `<span class="badge">${winners.length > 1 ? '平手' : '勝出'}</span>` : ''}</div>`;
     }).join('');
 
-    // One row per scoring category, every player side by side.
-    const cats = sheets[0].s.rows.map((r) => r.zh);
-    const rows = cats.map((zh, k) => `<tr><td>${esc(zh)}</td>${sheets.map((x) => {
-      const r = x.s.rows[k];
-      return `<td class="${r.pts < 0 ? 'neg' : ''}"><span class="v">${r.val}</span>${r.pts > 0 ? '+' : ''}${r.pts}</td>`;
-    }).join('')}</tr>`).join('');
-
     const sub = G.n > 1
       ? (winners.length > 1 ? `${winners.map((x) => esc(x.p.name)).join('、')} 同分` : `${esc(winners[0].p.name)} 以 ${best} 分勝出`)
       : `總分 ${best} 分`;
     box.innerHTML = `<div class="sheet">
       <h2>遊戲結束</h2><div class="sub">${sub}</div>
       <div class="podium">${podium}</div>
-      <table><tr><th>項目</th>${sheets.map((x) => `<th style="color:${PCOLOR[x.i]}">${esc(x.p.name)}</th>`).join('')}</tr>
-        ${rows}
-        <tr class="tot"><td>${ART.vpIcon(15)} 總分</td>${sheets.map((x) => `<td>${x.s.total}</td>`).join('')}</tr></table>
+      ${scoreTable(sheets, false)}
       ${sheets.some((x) => x.s.bonusDetail.length) ? `<p class="muted" style="font-size:12px;margin-top:8px">卡片獎勵：${
         sheets.filter((x) => x.s.bonusDetail.length).map((x) => `${esc(x.p.name)} — ${esc(x.s.bonusDetail.join('、'))}`).join('；')}</p>` : ''}
       <div class="row">${btn('closeFinal', '返回檯面')}${btn('newGame', '新遊戲', false, 'class="primary"')}</div>
@@ -863,6 +886,10 @@
   // ------------------------------------------------------------ which view the game needs
   function wantTab() {
     if (G.over || G.choice) return null;
+    // Moving animals around is something you do on the farm by choice: never move the
+    // camera for it, neither when you pick one up nor when you put it down.
+    if (G.staging && G.staging.moving) return null;
+    if (UI.movedAnimals && !G.pending) return null;
     if (G.staging) return 'farm';
     const st = currentStep(G);
     if (!st) return G.feeding ? null : 'board';
@@ -883,7 +910,7 @@
 
     // Follow the game to the view it needs, but leave manual browsing alone.
     const want = wantTab();
-    const key = [want, G.current, G.round, G.pending ? G.pending.i : -1, G.staging ? 1 : 0].join('|');
+    const key = [want, G.current, G.round, G.pending ? G.pending.i : -1, G.staging && !G.staging.moving ? 1 : 0].join('|');
     if (want && key !== UI.autoKey) UI.main = want;
     UI.autoKey = key;
 
@@ -895,7 +922,7 @@
     $('turnTag').textContent = who < 0 ? '' : `${G.players[who].name} 的回合`;
     renderStatus(); renderMainTabs();
     renderBoard(); renderFarm(); renderCards();
-    renderPrompt(); renderFree(); renderRes(); renderModal(); renderDrawer(); renderRail(); renderFinal();
+    renderPrompt(); renderFree(); renderRes(); renderModal(); renderDrawer(); renderRail(); renderFinal(); renderScoreSheet();
     document.body.classList.toggle('side-strip', has3d && ['board', 'table', 'majors'].includes(UI.main));
     if (has3d) { showTip(null); View3D.sync(G, UI); }
     placeActionBar();
@@ -907,9 +934,9 @@
   function clickTile(i) {
     if (G.choice) return;
     // Holding animals: put one down here, or if it cannot go here, pick up another of the same kind.
-    if (G.staging) { if (!placeAnimal(G, i)) pickUpAnimal(G, i); return; }
+    if (G.staging) { UI.movedAnimals = !!G.staging.moving; if (!placeAnimal(G, i)) pickUpAnimal(G, i); return; }
     const st = currentStep(G);
-    if (!TILE_STEPS.includes(st) && st !== 'fences') { pickUpAnimal(G, i); return; }
+    if (!TILE_STEPS.includes(st) && st !== 'fences') { if (pickUpAnimal(G, i)) UI.movedAnimals = true; return; }
     if (st === 'plow') plow(G, i);
     else if (st === 'build') (UI.buildKind === 'room' ? buildRoom : buildStable)(G, i);
     else if (st === 'cottager') buildRoom(G, i);
@@ -980,6 +1007,8 @@
       case 'hand': UI.handPinned = !UI.handPinned; break;
       case 'log': UI.logOpen = !UI.logOpen; renderRail(); save(); return;
       case 'final': UI.finalOpen = true; break;
+      case 'scoreSheet': UI.scoreOpen = true; break;
+      case 'closeScore': UI.scoreOpen = false; break;
       case 'closeFinal': UI.finalOpen = false; break;
       case 'buildKind': UI.buildKind = v; break;
       case 'sowKind': UI.sowKind = v; break;

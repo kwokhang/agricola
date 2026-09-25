@@ -1221,6 +1221,15 @@ const SCORE_TABLE = {
   cattle: [[7, 4], [5, 3], [3, 2], [1, 1]],
 };
 
+// For a table category: how many more you need for the next point, or null at the top.
+function nextScoreStep(key, have) {
+  const t = SCORE_TABLE[key];
+  if (!t) return null;
+  const cur = bracket(have, t);
+  const steps = t.map(([n, pts]) => ({ n, pts })).filter((x) => x.pts > cur).sort((a, b) => a.n - b.n);
+  return steps.length ? { need: steps[0].n - have, pts: steps[0].pts - cur } : null;
+}
+
 function score(G, p) {
   const regs = regions(p);
   const past = pastureList(p, regs);
@@ -1238,9 +1247,12 @@ function score(G, p) {
   add('牧場 Pastures', past.length, bracket(past.length, SCORE_TABLE.pasture));
   add('穀物 Grain', grain, bracket(grain, SCORE_TABLE.grain));
   add('蔬菜 Vegetables', veg, bracket(veg, SCORE_TABLE.veg));
+  rows[rows.length - 4].key = 'field'; rows[rows.length - 3].key = 'pasture';
+  rows[rows.length - 2].key = 'grain'; rows[rows.length - 1].key = 'veg';
   for (const k of ANIM) {
     const n = animalTotal(p, k);
     add(`${LABEL[k]} ${k}`, n, bracket(n, SCORE_TABLE[k]));
+    rows[rows.length - 1].key = k;
   }
 
   const unused = unusedSpaces(p, regs);
