@@ -419,14 +419,20 @@
     if (st) {
       const def = G.pending.spaceId ? spaceDef(G.pending.spaceId) : null;
       const title = def ? def.zh : '卡片行動';
+      const lastPlow = G.pending.steps.lastIndexOf('plow');
       const steps = G.pending.steps.map((s, i) =>
-        `${i === G.pending.i ? '▶ ' : i < G.pending.i ? '✓ ' : ''}${STEP_ZH[s] || s}`)
+        `${i === G.pending.i ? '▶ ' : i < G.pending.i ? '✓ ' : ''}${STEP_ZH[s] || s}${
+          G.pending.data.moldboardPending && s === 'plow' && i === lastPlow && G.pending.steps.indexOf('plow') !== i ? '（鏵式犁）' : ''}`)
         .join(def && def.andOr ? '　／　' : '　→　');
       let body = '';
 
       if (st === 'plow') {
         const any = p.farm.some((t, i) => canPlow(p, i));
-        body = `<p>在「農場」點選一格空地犁田${fieldCount(p) ? '（須與現有田地相鄰）' : ''}。`
+        // The Moldboard Plow's extra step is the last plow step added to this action.
+        const mbStep = G.pending.data.moldboardPending && G.pending.i === G.pending.steps.lastIndexOf('plow')
+          && G.pending.steps.indexOf('plow') !== G.pending.i;
+        body = (mbStep ? `<p class="bonus">鏵式犁：額外犁 1 塊田（卡上尚有 ${p.moldboard} 塊）。</p>` : '')
+          + `<p>在「農場」點選一格空地犁田${fieldCount(p) ? '（須與現有田地相鄰）' : ''}。`
           + (any ? '' : '<span class="muted">沒有可用位置。</span>') + `</p>
           <div class="row">${btn('skip', '跳過')}</div>`;
       } else if (st === 'build') {
