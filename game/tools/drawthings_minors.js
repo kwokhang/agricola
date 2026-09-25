@@ -1,7 +1,8 @@
 // Draw Things script: paint the 48 minor improvement cards for Agricola in one go.
 //
 // How to use
-//   1. In Draw Things, pick the model / LoRA / sampler you used for the occupation cards.
+//   1. In Draw Things choose the model  FLUX.2 [klein] 9B  and Text to Image. The script keeps
+//      the app's model, sampler and steps, turns every LoRA off and forces text-to-image.
 //   2. Scripts panel → add a new script → paste this whole file → Run.
 //   3. Images are saved to your Pictures folder as  agricola_minor_<name>.png
 //      (the path is printed in the log). Move them into  resource/minorimprovement/
@@ -21,12 +22,13 @@ const FILE_PREFIX = 'agricola_minor_';
 // true: use whatever is in the app's prompt box as the style (handy if you already tuned one).
 const USE_APP_PROMPT_AS_STYLE = false;
 
-const STYLE = 'anime illustration, soft watercolour and ink, Studio Ghibli inspired, ' +
-  '17th century European farming village, warm afternoon light, cosy, detailed, ' +
-  'still life, the object is the clear centre of the picture, ';
-const NEGATIVE = 'text, letters, watermark, signature, frame, border, card, ui, ' +
-  'close-up face, portrait, crowd, blurry, lowres, jpeg artifacts, deformed, extra limbs, ' +
-  'modern objects, photo, 3d render';
+// FLUX reads sentences better than tag lists, and ignores negative prompts, so what to
+// avoid is said in the prompt itself.
+const STYLE = 'Japan anime style, hand drawing in the manner of Hayao Miyazaki, ' +
+  'soft watercolour colours with fine ink lines, an 18th century western European farming village, ' +
+  'warm afternoon light, cosy and detailed. ';
+const ENDING = ' The object is the clear centre of the picture. No text, no letters, no border, no frame.';
+const NEGATIVE = '';
 
 // ------------------------------------------------------------------ the 48 cards
 // [English name (file name comes from this), subject]
@@ -95,9 +97,12 @@ todo.forEach((c, k) => {
   configuration.width = WIDTH;
   configuration.height = HEIGHT;
   configuration.seed = SEED_OVERRIDE[c.en] != null ? SEED_OVERRIDE[c.en] : BASE_SEED + c.i;
+  configuration.loras = [];            // no LoRA
+  configuration.strength = 1.0;        // text to image: nothing from the canvas is kept
   canvas.clear();
   console.log(`(${k + 1}/${todo.length}) ${c.en}`);
-  pipeline.run({ configuration, prompt: style + c.subject, negativePrompt: NEGATIVE });
+  const subject = c.subject.charAt(0).toUpperCase() + c.subject.slice(1) + '.';
+  pipeline.run({ configuration, prompt: style + subject + ENDING, negativePrompt: NEGATIVE });
   canvas.saveImage(outDir + '/' + fileName(c.en), true);
 });
 console.log('Done: ' + todo.length + ' images.');
