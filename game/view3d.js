@@ -1195,7 +1195,8 @@ const View3D = (function () {
       for (const e of allEdges()) {
         const on = !!p.fences[e];
         if (on && !fresh.includes(e)) continue;
-        if (!on && (fenceCount(p) >= 15 || p.supply.wood < 1)) continue;
+        // payable with wood, or clay (Rammed Clay), or a free fence (Hedge Keeper)
+        if (!on && (fenceCount(p) >= 15 || !fencePayable(G, p, G.pending.data))) continue;
         const [k, a, b] = e.split(':');
         const r = +a, c = +b;
         const hit = new T.Mesh(
