@@ -348,13 +348,12 @@ function occCost(G, p) {
 
 // ---------------------------------------------------------------- game setup
 function newGame(names, seed) {
-  let s = seed >>> 0 || (Date.now() >>> 0);
+  let s = seed >>> 0 || ((Date.now() ^ Math.floor(Math.random() * 4294967296)) >>> 0);
   const rng = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
 
   const n = names.length;
   const players = names.map(newPlayer);
-  players[0].supply.food = n === 1 ? 0 : 2;
-  if (n > 1) players[1].supply.food = 3;
+
 
   const occ = shuffle(CARDS.filter((c) => c.type === 'occ' && c.p <= n).map((c, i) => ({ ...c, uid: 'o' + i })), rng);
   const min = shuffle(CARDS.filter((c) => c.type === 'min' && c.p <= n).map((c, i) => ({ ...c, uid: 'm' + i })), rng);
@@ -366,17 +365,23 @@ function newGame(names, seed) {
   const order = [];
   for (let st = 1; st <= 6; st++) order.push(...shuffle(byStage[st].slice(), rng));
 
+  // The starting player is drawn at random (after the shuffles, once the generator is well
+  // mixed); they get 2 food, the other player 3.
+  const first = n > 1 ? Math.floor(rng() * n) : 0;
+  players.forEach((p, i) => { p.supply.food = n === 1 ? 0 : (i === first ? 2 : 3); });
+
   const spaces = {};
   BASE_SPACES.forEach((s2) => { spaces[s2.id] = { id: s2.id, revealed: true, occupiedBy: null, goods: {} }; });
   ROUND_SPACES.forEach((s2) => { spaces[s2.id] = { id: s2.id, revealed: false, occupiedBy: null, goods: {} }; });
 
   const G = {
-    players, n, round: 0, phase: 'setup', startPlayer: 0, current: 0,
+    players, n, round: 0, phase: 'setup', startPlayer: first, current: first,
     roundOrder: order, spaces,
     majors: CARDS.filter((c) => c.type === 'maj').map((c, i) => ({ ...c, uid: 'M' + i, taken: null })),
     pending: null, staging: null, feeding: null, choice: null, over: false, log: [],
   };
   beginRound(G);
+  if (n > 1) logEvent(G, `隨機決定由 ${players[first].name} 先開始`);
   return G;
 }
 
