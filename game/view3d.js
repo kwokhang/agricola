@@ -19,8 +19,8 @@ const View3D = (function () {
   // right hand, and the two farms side by side underneath it, each with its name, family,
   // supply tray and played cards in a column below.
   const LAYOUT = {
-    board: { x: 0, z: -3.8 },                                   // spans x ±5.7, z -6.7 … -0.9
-    majors: { x: 8.5, z: -3.8 },                                // world; 4 rows by kind beside the board
+    board: { x: -2.9, z: -3.8 },                                // 4 × 6 spaces, left half
+    majors: { x: 3.7, z: -3.8 },                                // world; 4 rows by kind beside the board
     seat: (pi, n) => ({ x: n === 1 ? 0 : (pi === 0 ? -2.88 : 2.88), z: 0.95, rot: 0 }),
     farm: { x: 0, z: 0 },                                       // seat-local
     plate: { x: -1.5, z: 1.98 },                                // seat-local
@@ -744,15 +744,20 @@ const View3D = (function () {
   // one column of six; the big board is seven columns, six rows tall so both boards match.
   const CELL_W = 186, CELL_H = 124;
   const SM = { w: CELL_W, h: CELL_H, gap: 8, pad: 14, rows: 6 };
-  const BG = { w: CELL_W, h: CELL_H, gap: 8, pad: 14, rows: 6, cols: 7 };
+  const BG = { w: CELL_W, h: CELL_H, gap: 8, pad: 14, rows: 6, cols: 3 };
   const BOARD_GAP = 18;
   const SM_W = SM.pad * 2 + SM.w;
   const SM_H = SM.pad * 2 + SM.rows * SM.h + (SM.rows - 1) * SM.gap;
   const BG_W = BG.pad * 2 + BG.cols * BG.w + (BG.cols - 1) * BG.gap;
   const BG_H = BG.pad * 2 + BG.rows * BG.h + (BG.rows - 1) * BG.gap;
   const PX_W = SM_W + BOARD_GAP + BG_W, PX_H = Math.max(SM_H, BG_H);
-  const BOARD_WORLD_W = 11.4;
-  const PS = BOARD_WORLD_W / PX_W;                 // pixels → world units
+  const PS = 0.00708;                              // pixels → world units (a cell is ~1.3 wide)
+  // The big board, packed: the four accumulation spaces then rounds 1–14, filled top to
+  // bottom, column by column — 18 spaces in 3 × 6, no gaps. Harvests are a seal on the
+  // round they follow.
+  const BIG_ORDER = BOARD_LAYOUT.accum.map((id) => ({ id })).concat(
+    Array.from({ length: 14 }, (_, k) => ({ round: k + 1 })));
+  const bigCell = (i) => [Math.floor(i / BG.rows), i % BG.rows];
   const bx = (px) => (px - PX_W / 2) * PS;
   const bz = (py) => (py - PX_H / 2) * PS;
   const STAGE_OF = {};
@@ -799,6 +804,11 @@ const View3D = (function () {
 
   // Harvest is a marker between rounds, not a place to stand: a small ribbon with notched
   // ends, printed flat, so it never reads as another action space.
+  const harvestSealSvg = () => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="160" height="160"
+    font-family="-apple-system,'PingFang TC',sans-serif">
+    <circle cx="20" cy="20" r="18.5" fill="#26402b" stroke="#b8912f" stroke-width="2"/>
+    <g transform="translate(10.5 4) scale(.8)">${ART.ICONS.grain}</g>
+    <text x="20" y="33" text-anchor="middle" font-size="8.5" font-weight="900" fill="#fff8e6">收成</text></svg>`;
   const HARV_W = 156, HARV_H = 52;
   const harvestSvg = (after) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${HARV_W} ${HARV_H}"
     width="${HARV_W * 2}" height="${HARV_H * 2}" font-family="-apple-system,'PingFang TC','Noto Sans TC',sans-serif">
@@ -918,40 +928,34 @@ const View3D = (function () {
     const cellX = (c) => ox + BG.pad + c * (BG.w + BG.gap);
     const cellY = (r) => BG.pad + r * (BG.h + BG.gap);
 
-    BOARD_LAYOUT.roundCols.forEach((rounds, c) => {
-      rounds.forEach((n, r) => {
-        const id = G.roundOrder[n - 1];
-        if (G.spaces[id].revealed) {
-          addSpace(spaceDef(id), cellX(c), cellY(r), BG.w, BG.h);
-        } else {
-          const tex = svgTexture(`slot:${n}`, slotSvg(BG.w, BG.h, n, STAGE_OF[id]), BG.w * 2, BG.h * 2);
-          const slot = plateMesh(tex, BG.w * PS, BG.h * PS, bx(cellX(c) + BG.w / 2), bz(cellY(r) + BG.h / 2), BOARD_Y + 0.005);
-          slot.userData.hover = { kind: 'slot', round: n };
-          hoverables.push(slot);
-          g.add(slot);
-        }
-      });
-      if (c > 0) {
-        const after = rounds[rounds.length - 1];
-        const done = G.round > after || (G.round === after && G.phase !== 'work');
-        const tex = svgTexture(`harv5:${after}`, harvestSvg(after), HARV_W * 2, HARV_H * 2);
-        const rib = new T.Mesh(geo('harvRibbon', () => new T.PlaneGeometry(HARV_W * PS, HARV_H * PS)),
-          new T.MeshStandardMaterial({ map: tex, transparent: true, roughness: 0.5, opacity: done ? 0.4 : 1 }));
-        rib.rotation.x = -Math.PI / 2;
-        // tucked against the top of its cell, right under the last round of the stage
-        rib.position.set(bx(cellX(c) + BG.w / 2), BOARD_Y + 0.012, bz(cellY(rounds.length) + HARV_H / 2 + 2));
-        g.add(rib);
+    BIG_ORDER.forEach((cell, i) => {
+      const [c, r] = bigCell(i);
+      if (cell.id) { addSpace(spaceDef(cell.id), cellX(c), cellY(r), BG.w, BG.h); return; }
+      const n = cell.round, id = G.roundOrder[n - 1];
+      if (G.spaces[id].revealed) {
+        addSpace(spaceDef(id), cellX(c), cellY(r), BG.w, BG.h);
+      } else {
+        const tex = svgTexture(`slot:${n}`, slotSvg(BG.w, BG.h, n, STAGE_OF[id]), BG.w * 2, BG.h * 2);
+        const slot = plateMesh(tex, BG.w * PS, BG.h * PS, bx(cellX(c) + BG.w / 2), bz(cellY(r) + BG.h / 2), BOARD_Y + 0.005);
+        slot.userData.hover = { kind: 'slot', round: n };
+        hoverables.push(slot);
+        g.add(slot);
       }
-    });
-
-    BOARD_LAYOUT.accum.forEach((id, i) => {
-      addSpace(spaceDef(id), cellX(0), cellY(i + 1), BG.w, BG.h);
+      if (HARVEST_ROUNDS.includes(n)) {
+        // a harvest seal on the round's top-right corner: "harvest after this round"
+        const done = G.round > n || (G.round === n && G.phase !== 'work');
+        const seal = new T.Mesh(geo('harvSeal', () => new T.CircleGeometry(0.2, 32)),
+          new T.MeshBasicMaterial({ map: svgTexture('hseal', harvestSealSvg(), 160, 160), transparent: true, opacity: done ? 0.45 : 1 }));
+        seal.rotation.x = -Math.PI / 2;
+        seal.position.set(bx(cellX(c) + BG.w) - 0.16, BOARD_Y + 0.06, bz(cellY(r)) + 0.16);
+        g.add(seal);
+      }
     });
 
     // Goods that cards have parked on future round spaces sit on those spaces, each player's
     // on a disc of their colour, exactly where the rules say they wait.
     const roundCell = {};
-    BOARD_LAYOUT.roundCols.forEach((rounds, c) => rounds.forEach((n, r) => { roundCell[n] = [c, r]; }));
+    BIG_ORDER.forEach((cell, i) => { if (cell.round) roundCell[cell.round] = bigCell(i); });
     G.players.forEach((q, pi) => {
       const parked = Object.assign({}, q.futures);
       if (q.handplow && q.handplow > G.round && q.handplow <= 14) {
@@ -1441,7 +1445,7 @@ const View3D = (function () {
       safe: { l: 0.12, r: 0.12, t: 0.26, b: 0.3 } }),
     // The board is wide, so its view gets tighter margins: the top-left only has the camera
     // tabs, and the action bar sits over the empty middle of the board's lower edge.
-    board: () => ({ az: 0, pol: 0.3, pad: 0.98, boxes: ['board'], safe: { l: 0.01, r: 0.1, t: 0.24, b: 0.1 } }),
+    board: () => ({ az: 0, pol: 0.3, pad: 0.98, boxes: ['board'], safe: { l: 0.05, r: 0.1, t: 0.3, b: 0.1 } }),
     farm: (UI) => ({ az: 0, pol: 0.56, pad: 1.04, boxes: ['farm' + UI.view] }),
     cards: (UI) => ({ az: 0, pol: 0.5, pad: 1.02, boxes: ['played' + UI.view] }),
     majors: () => ({ az: 0, pol: 0.42, pad: 1.0, boxes: ['majors'], safe: { l: 0.04, r: 0.15, t: 0.34, b: 0.3 } }),
