@@ -58,16 +58,22 @@ def main():
     # Action spaces, keyed by space id, matched on the space's English name or its id.
     spaces = {}
     eng = open(os.path.join(ROOT, 'game', 'engine.js'), encoding='utf-8').read()
-    for sid, en in re.findall(r"id:\s*'([a-z_0-9]+)',\s*en:\s*'([^']+)'", eng):
-        spaces[key(en)] = sid
-        spaces[key(sid)] = sid
+    for sid, en in re.findall(r"id:\s*'([a-z_0-9]+)',[^}]*?en:\s*'([^']+)'", eng):
+        for k in {key(en), key(sid)}:
+            spaces[k] = sid
+            spaces.setdefault(k.rstrip('s'), sid)                  # grainseed -> Grain Seeds
+            spaces.setdefault(k.replace('or', 'our'), sid)         # daylabour -> Day Laborer
+    # File names people actually use that the rules above do not cover.
+    ALIASES = {'daylabour': 'day_laborer', 'daylabor': 'day_laborer', 'daylabourer': 'day_laborer'}
+    for k, sid in ALIASES.items():
+        spaces.setdefault(k, sid)
     actions = {}
     folder = os.path.join(SRC, 'action')
     for f in sorted(os.listdir(folder)) if os.path.isdir(folder) else []:
         base, ext = os.path.splitext(f)
         if ext.lower() not in ('.png', '.jpg', '.jpeg', '.webp'):
             continue
-        sid = spaces.get(key(base))
+        sid = spaces.get(key(base)) or spaces.get(key(base).rstrip('s'))
         if not sid:
             unmatched.append(f'action/{f}')
             continue
