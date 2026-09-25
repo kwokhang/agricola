@@ -875,6 +875,28 @@ const ART = (function () {
     return { size, lh, lines: wrap(text, (w - 4) / size, Math.floor(h / lh)) };
   }
 
+  // ---------------------------------------------------------------- the type ribbon
+  // Every card says what it is the same way: a notched ribbon across the card between the
+  // picture and the rules, "★ kind ★", in that kind's metal. Same size, type and place
+  // on the standard, full-art and ACE SPEC faces.
+  const RIBBON = {
+    occ: ['#f1dc9c', '#c89a45', '#8a6522', '#3a2a10'],
+    min: ['#f0c29c', '#bf7440', '#86461f', '#2d1a0c'],
+    maj: ['#fff2c8', '#d8a94c', '#8f621f', '#3a1812'],
+  };
+  const RIBBON_H = 26;
+  function typeRibbon(type, y, W) {
+    const [hi, mid, lo, ink2] = RIBBON[type] || RIBBON.min;
+    const t = TYPE_BAND[type] || TYPE_BAND.min;
+    const id = 'rib' + type;
+    const h = RIBBON_H, m = h / 2;
+    return `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="${hi}"/><stop offset=".48" stop-color="${mid}"/>
+        <stop offset=".52" stop-color="${lo}"/><stop offset="1" stop-color="${mid}"/></linearGradient></defs>
+      <path d="M12 ${y}H${W - 12}L${W - 20} ${y + m}L${W - 12} ${y + h}H12L20 ${y + m}z" fill="url(#${id})" stroke="#2a150d" stroke-width="1.3"/>
+      <text x="${W / 2}" y="${y + 18}" text-anchor="middle" font-size="14" font-weight="900" fill="${ink2}" letter-spacing="3">★ ${t.zh} ★</text>`;
+  }
+
   // ---------------------------------------------------------------- full-art occupation cards
   // The trading-card "full art" treatment: the painting runs edge to edge and the text floats
   // over it — name and cost across the top, the rules in a smoked-glass panel at the bottom.
@@ -919,16 +941,14 @@ const ART = (function () {
     const gemsW = kinds.length ? kinds.length * 32 : 0;
     const name = c.zh || c.en;
     const nameSize = Math.min(26, Math.floor((W - 44 - gemsW) / Math.max(1, [...name].reduce((n, ch) => n + wide(ch), 0))));
-    s += `<text x="20" y="${22 + nameSize}" font-size="${nameSize}" font-weight="900" fill="#fffaf0" filter="url(#tsh)">${name}</text>
-      <g transform="translate(20 ${34 + nameSize})"><rect width="64" height="18" rx="9" fill="${t.frame}" opacity=".92"/>
-        <text x="32" y="13" text-anchor="middle" font-size="11.5" font-weight="800" fill="#fffaf0">${t.zh}</text></g>`;
+    s += `<text x="20" y="${22 + nameSize}" font-size="${nameSize}" font-weight="900" fill="#fffaf0" filter="url(#tsh)">${name}</text>`;
     if (kinds.length) kinds.forEach((k, i) => { s += gem(k, cost[k], W - 30 - (kinds.length - 1 - i) * 32, 32); });
     else s += `<text x="${W - 20}" y="37" text-anchor="end" font-size="13" font-weight="800" fill="#fffaf0" filter="url(#tsh)">免費</text>`;
     if (c.vp) s += vpBadge(c.vp, W - 30, 54, 1.05);
 
     // rules in a smoked-glass panel
-    const box = { x: 16, y: 268, w: W - 32, h: 112 };
-    s += `<path d="M24 ${box.y - 4}H${W - 24}" stroke="url(#rule)" stroke-width="1.2"/>`;
+    const box = { x: 16, y: 277, w: W - 32, h: 104 };
+    s += typeRibbon(c.type, box.y - RIBBON_H - 6, W);
     const fit = fitRules(c.txz || c.tx || '', box.w - 22, box.h - 16);
     const top = box.y + 8 + (box.h - 16 - fit.lines.length * fit.lh) / 2 + fit.size * 0.95;
     fit.lines.forEach((ln, i) => {
@@ -968,7 +988,7 @@ const ART = (function () {
     const W = CARD_W, Hh = CARD_H;
     const cost = o.cost || {};
     const kinds = Object.keys(cost);
-    const art = { x: 20, y: 54, w: W - 40, h: 190 };
+    const art = { x: 20, y: 54, w: W - 40, h: 183 };
     const src = typeof CARD_IMAGES !== 'undefined' && CARD_IMAGES[c.en];
     const twin = c.en === 'Fireplace' || c.en === 'Cooking Hearth';
     let s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${Hh}" width="${W}" height="${Hh}"
@@ -1007,11 +1027,10 @@ const ART = (function () {
 
     // the banner — this card's ACE SPEC
     const by = art.y + art.h + 8;
-    s += `<path d="M14 ${by}H${W - 14}L${W - 22} ${by + 14}L${W - 14} ${by + 28}H14L22 ${by + 14}z" fill="url(#banner)" stroke="#5a3510" stroke-width="1.4"/>
-      <text x="${W / 2}" y="${by + 19.5}" text-anchor="middle" font-size="15" font-weight="900" fill="#3a1812" letter-spacing="3">★ 主要發展 ★</text>`;
+    s += typeRibbon('maj', by, W);
 
     // rules
-    const box = { x: 20, y: by + 34, w: W - 40, h: Hh - (by + 34) - 40 };
+    const box = { x: 20, y: by + RIBBON_H + 6, w: W - 40, h: Hh - (by + RIBBON_H + 6) - 40 };
     s += `<rect x="${box.x}" y="${box.y}" width="${box.w}" height="${box.h}" rx="6" fill="#f3e8cc"/>`;
     const fit = fitRules(c.txz || c.tx || '', box.w - 18, box.h - 10);
     const top = box.y + 5 + (box.h - 10 - fit.lines.length * fit.lh) / 2 + fit.size * 0.95;
@@ -1071,9 +1090,7 @@ const ART = (function () {
       <rect x="${IN + 2}" y="${FACE.art[0] + 2}" width="${W - IN * 2 - 4}" height="${FACE.art[1] - 4}" rx="5" fill="none" stroke="#fff" stroke-width="1" opacity=".35"/>`;
 
     // type line and victory points
-    s += `<rect x="${IN}" y="${FACE.type[0]}" width="${W - IN * 2}" height="${FACE.type[1]}" rx="6" fill="${t.frame}" stroke="${ink}" stroke-width="1.1"/>
-      <text x="${IN + 10}" y="${FACE.type[0] + 16.5}" font-size="13" font-weight="800" fill="var(--art-count)">${t.zh}
-        <tspan dx="6" font-size="10" font-weight="700" opacity=".85" letter-spacing="1">${t.en}</tspan></text>`;
+    s += typeRibbon(c.type, FACE.type[0] - 1, W);
     // points hang like a pennant from under the name bar, over the picture's top-right corner
     if (c.vp) s += vpBadge(c.vp, W - IN - 26, FACE.art[0] - 2, 1.05);
 
