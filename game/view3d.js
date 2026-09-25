@@ -19,8 +19,8 @@ const View3D = (function () {
   // right hand, and the two farms side by side underneath it, each with its name, family,
   // supply tray and played cards in a column below.
   const LAYOUT = {
-    board: { x: 0, z: -3.6 },                                   // spans x ±5.7, z -6.2 … -1.0
-    majors: { x: 8.5, z: -3.6 },                                // world; 4 rows by kind beside the board
+    board: { x: 0, z: -3.8 },                                   // spans x ±5.7, z -6.7 … -0.9
+    majors: { x: 8.5, z: -3.8 },                                // world; 4 rows by kind beside the board
     seat: (pi, n) => ({ x: n === 1 ? 0 : (pi === 0 ? -2.88 : 2.88), z: 0.95, rot: 0 }),
     farm: { x: 0, z: 0 },                                       // seat-local
     plate: { x: -1.5, z: 1.98 },                                // seat-local
@@ -659,15 +659,33 @@ const View3D = (function () {
   }
 
   // A card as a physical object: a thin slab with the printed face on top.
+  // A rounded card blank: a rounded rectangle extruded to card thickness, lying flat, with
+  // its caps' UVs remapped to 0–1 so the printed face lands exactly on it. The corner
+  // radius matches the printed border, so no square corner ever shows.
+  function cardGeometry(w, h) {
+    return geo(`rcard${w}_${h}`, () => {
+      const r = w * 0.053, x = -w / 2, y = -h / 2;
+      const sh = new T.Shape();
+      sh.moveTo(x + r, y); sh.lineTo(x + w - r, y); sh.quadraticCurveTo(x + w, y, x + w, y + r);
+      sh.lineTo(x + w, y + h - r); sh.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      sh.lineTo(x + r, y + h); sh.quadraticCurveTo(x, y + h, x, y + h - r);
+      sh.lineTo(x, y + r); sh.quadraticCurveTo(x, y, x + r, y);
+      const g = new T.ExtrudeGeometry(sh, { depth: 0.018, bevelEnabled: false, curveSegments: 6 });
+      const pos = g.attributes.position, uv = g.attributes.uv;
+      for (let i = 0; i < pos.count; i++) uv.setXY(i, (pos.getX(i) - x) / w, (pos.getY(i) - y) / h);
+      g.rotateX(-Math.PI / 2);        // shape's +y becomes the card's far edge (-z), face up
+      g.translate(0, -0.009, 0);
+      return g;
+    });
+  }
+
   function cardMesh(face, w, h, opts) {
     const o = opts || {};
-    const edge = mat(col('--art-plate'));
     const top = o.unlit
       ? new T.MeshBasicMaterial({ map: face, toneMapped: false })
       : printMat(face);
-    const back = mat(col('--art-frame'));
-    const m = new T.Mesh(geo(`card${w}_${h}`, () => new T.BoxGeometry(w, 0.018, h)),
-      [edge, edge, top, back, edge, edge]);
+    const edge = mat(new T.Color('#2a221a'), { roughness: 0.6 });
+    const m = new T.Mesh(cardGeometry(w, h), [top, edge]);
     m.castShadow = !o.unlit;
     m.receiveShadow = !o.unlit;
     return m;
@@ -675,8 +693,11 @@ const View3D = (function () {
 
   // ---------------------------------------------------------------- action board
   // The printed 1–2 player board, in its own pixel space, then scaled onto the table.
-  const SM = { w: 210, h: 108, gap: 8, pad: 14, rows: 6 };
-  const BG = { w: 180, h: 130, gap: 8, pad: 14, rows: 5, cols: 7 };
+  // Every action space is the same 3:2 cell, the shape of the artwork. The small board is
+  // one column of six; the big board is seven columns, six rows tall so both boards match.
+  const CELL_W = 186, CELL_H = 124;
+  const SM = { w: CELL_W, h: CELL_H, gap: 8, pad: 14, rows: 6 };
+  const BG = { w: CELL_W, h: CELL_H, gap: 8, pad: 14, rows: 6, cols: 7 };
   const BOARD_GAP = 18;
   const SM_W = SM.pad * 2 + SM.w;
   const SM_H = SM.pad * 2 + SM.rows * SM.h + (SM.rows - 1) * SM.gap;
@@ -691,21 +712,31 @@ const View3D = (function () {
   ROUND_SPACES.forEach((d) => { STAGE_OF[d.id] = d.stage; });
 
   // One action space, printed exactly like the DOM board prints it.
+  // One action space: the picture fills the whole cell (painted artwork when there is some,
+  // else the drawn scene), and the name and what it does sit on a dark fade along the
+  // bottom, the way a card's text sits over its art.
   function spaceTexture(G, p, def, w, h) {
     const notes = spaceNotes(G, p, def);
-    const plateH = notes.length ? 56 : 34;
-    const en = def.zh.length * 17 + def.en.length * 6.4 + 18 < w - 12 ? def.en : '';
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w * 2}" height="${h * 2}"
+    const img = typeof ACTION_IMAGES !== 'undefined' && ACTION_IMAGES[def.id];
+    const band = 26 + notes.length * 13;
+    const en = def.zh.length * 16 + def.en.length * 5.6 + 22 < w - 12 ? def.en : '';
+    const pic = img
+      ? `<image href="${img}" x="0" y="0" width="${w}" height="${h}" preserveAspectRatio="xMidYMid slice"/>`
+      : ART.scene(def.id, 0, 0, w, h, h - band + 4);
+    const R = 3;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w * R}" height="${h * R}"
       font-family="-apple-system,BlinkMacSystemFont,'PingFang TC','Noto Sans TC',sans-serif">
-      ${GRAIN_DEF}
-      <style>.plate-main{font-size:17px;font-weight:700;fill:var(--art-ink)}
-        .plate-en{font-size:10px;fill:var(--art-ink);opacity:.6}
-        .plate-note{font-size:11.5px;fill:var(--art-ink);opacity:.85}</style>
+      <defs><linearGradient id="fade" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#1c1a17" stop-opacity="0"/>
+        <stop offset=".35" stop-color="#1c1a17" stop-opacity=".7"/>
+        <stop offset="1" stop-color="#1c1a17" stop-opacity=".9"/></linearGradient></defs>
       <rect width="${w}" height="${h}" fill="var(--art-boardface)"/>
-      ${ART.scene(def.id, 0, 0, w, h, h - plateH - 6)}
-      ${ART.plate(6, h - plateH - 6, w - 12, plateH, def.zh, en, notes)}
-      <rect width="${w}" height="${h}" fill="none" stroke="var(--art-ink)" stroke-width="3"/></svg>`;
-    return svgTexture(`sp:${def.id}:${notes.join('|')}:${w}`, svg, w * 2, h * 2);
+      ${pic}
+      <rect y="${h - band - 16}" width="${w}" height="${band + 16}" fill="url(#fade)"/>
+      <text x="9" y="${h - band + 17}" font-size="16" font-weight="800" fill="#fff6e0">${def.zh}${en ? `<tspan dx="6" font-size="9.5" font-weight="600" fill-opacity=".7">${en}</tspan>` : ''}</text>
+      ${notes.map((t, k) => `<text x="9" y="${h - band + 31 + k * 13}" font-size="11" fill="#efe4c8">${t}</text>`).join('')}
+      <rect x="1" y="1" width="${w - 2}" height="${h - 2}" fill="none" stroke="#1c1a17" stroke-width="2.5"/></svg>`;
+    return svgTexture(`sp2:${def.id}:${notes.join('|')}:${img ? 1 : 0}`, svg, w * R, h * R);
   }
 
   const slotSvg = (w, h, round, stage) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}"
@@ -1367,7 +1398,7 @@ const View3D = (function () {
       safe: { l: 0.12, r: 0.12, t: 0.26, b: 0.3 } }),
     // The board is wide, so its view gets tighter margins: the top-left only has the camera
     // tabs, and the action bar sits over the empty middle of the board's lower edge.
-    board: () => ({ az: 0, pol: 0.34, pad: 0.95, boxes: ['board'], safe: { l: 0.015, r: 0.15, t: 0.2, b: 0.12 } }),
+    board: () => ({ az: 0, pol: 0.34, pad: 0.95, boxes: ['board'], safe: { l: 0.015, r: 0.15, t: 0.3, b: 0.12 } }),
     farm: (UI) => ({ az: 0, pol: 0.56, pad: 1.04, boxes: ['farm' + UI.view] }),
     cards: (UI) => ({ az: 0, pol: 0.5, pad: 1.02, boxes: ['played' + UI.view] }),
     majors: () => ({ az: 0, pol: 0.42, pad: 1.0, boxes: ['majors'], safe: { l: 0.04, r: 0.15, t: 0.34, b: 0.3 } }),

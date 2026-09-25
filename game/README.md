@@ -135,7 +135,8 @@ HUD、成本、卡面成本寶石、行動格物資牌同物資盤全部用同�
 
 ## 卡牌插畫
 
-將圖擺入 `resource/occupation/`、`resource/majorimprovement/`（次要發展用 `resource/minorimprovement/`），
+將圖擺入 `resource/occupation/`、`resource/majorimprovement/`（次要發展用 `resource/minorimprovement/`；
+行動格用 `resource/action/`，檔名用行動格英文名或 id，例如 `farmexpansion.png`，建議 3:2 橫圖），
 檔名用卡嘅英文名、唔理大細楷同空格，例如 `animaltamer.png` → Animal Tamer。然後行：
 
     python3 game/tools/build_card_images.py
@@ -143,3 +144,9 @@ HUD、成本、卡面成本寶石、行動格物資牌同物資盤全部用同�
 佢會將每張圖縮成 512px JPEG、轉 base64，寫入 `game/cardimages.js`（遊戲喺 file:// 開，
 SVG 貼圖讀唔到外部 PNG，所以要嵌入）。有圖嘅卡用插畫，冇圖嘅照用繪製場景。
 職業係人像，偏上對齊保留個頭；發展卡係物件，對齊中間偏下保留主體。每張大約 160KB，全套都有圖嘅話要再壓細。
+
+## 行動格
+
+所有行動格同一個 3:2 大細（`CELL_W × CELL_H`），細板一行 6 格，大板 7 欄 × 6 行，
+兩塊板一樣高。插圖鋪滿成格（有 `resource/action/` 圖就用圖，冇就用繪製場景），
+名同效果寫喺底部嘅深色漸層上面。

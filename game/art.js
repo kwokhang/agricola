@@ -768,9 +768,10 @@ const ART = (function () {
   // wrapping, so lines are measured by hand: a CJK glyph is one unit, latin about half.
   const CARD_W = 300, CARD_H = 420;
   const TYPE_BAND = {
-    occ: { frame: 'var(--occ-frame)', tint: 'var(--occ-tint)', ink: 'var(--occ-ink)', zh: '職業', en: 'OCCUPATION' },
-    min: { frame: 'var(--min-frame)', tint: 'var(--min-tint)', ink: 'var(--min-ink)', zh: '次要發展', en: 'MINOR IMPROVEMENT' },
-    maj: { frame: 'var(--maj-frame)', tint: 'var(--maj-tint)', ink: 'var(--maj-ink)', zh: '主要發展', en: 'MAJOR IMPROVEMENT' },
+    // deep: the frame, the type's colour sunk towards 墨 so the border is quiet
+    occ: { frame: 'var(--occ-frame)', deep: '#4a3b1f', tint: 'var(--occ-tint)', ink: 'var(--occ-ink)', zh: '職業', en: 'OCCUPATION' },
+    min: { frame: 'var(--min-frame)', deep: '#4c2d19', tint: 'var(--min-tint)', ink: 'var(--min-ink)', zh: '次要發展', en: 'MINOR IMPROVEMENT' },
+    maj: { frame: 'var(--maj-frame)', deep: '#452017', tint: 'var(--maj-tint)', ink: 'var(--maj-ink)', zh: '主要發展', en: 'MAJOR IMPROVEMENT' },
   };
 
   const wide = (ch) => (ch.charCodeAt(0) > 0x2e7f ? 1 : 0.55);
@@ -876,13 +877,13 @@ const ART = (function () {
     let s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${Hh}" width="${W}" height="${Hh}"
       font-family="-apple-system,BlinkMacSystemFont,'PingFang TC','Noto Sans TC',sans-serif">
       <defs>
-        <linearGradient id="bev" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stop-color="#fff" stop-opacity=".35"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/>
-          <stop offset="1" stop-color="#000" stop-opacity=".25"/></linearGradient>
+        <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#fff" stop-opacity=".12"/><stop offset=".4" stop-color="#fff" stop-opacity="0"/></linearGradient>
         <clipPath id="art"><rect x="${IN}" y="${FACE.art[0]}" width="${W - IN * 2}" height="${FACE.art[1]}" rx="6"/></clipPath></defs>
-      <rect width="${W}" height="${Hh}" rx="16" fill="${t.frame}"/>
-      <rect width="${W}" height="${Hh}" rx="16" fill="url(#bev)"/>
-      <rect x="6" y="6" width="${W - 12}" height="${Hh - 12}" rx="11" fill="${t.tint}" stroke="${ink}" stroke-width="1.2" opacity=".98"/>`;
+      <rect width="${W}" height="${Hh}" fill="${t.deep}"/>
+      <rect x="1" y="1" width="${W - 2}" height="${Hh - 2}" rx="15" fill="${t.deep}" stroke="#15110d" stroke-width="2"/>
+      <rect x="1" y="1" width="${W - 2}" height="${Hh - 2}" rx="15" fill="url(#sheen)"/>
+      <rect x="6" y="6" width="${W - 12}" height="${Hh - 12}" rx="11" fill="${t.tint}" stroke="${t.frame}" stroke-width="1.6"/>`;
 
     // name bar, with cost gems on the right
     const gemsW = kinds.length ? kinds.length * 32 + 4 : 0;
