@@ -969,7 +969,7 @@ const ART = (function () {
     const W = CARD_W, Hh = CARD_H;
     const cost = o.cost || {};
     const kinds = Object.keys(cost);
-    const art = { x: 20, y: 62, w: W - 40, h: 178 };
+    const art = { x: 20, y: 54, w: W - 40, h: 190 };
     const src = typeof CARD_IMAGES !== 'undefined' && CARD_IMAGES[c.en];
     const twin = c.en === 'Fireplace' || c.en === 'Cooking Hearth';
     let s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${Hh}" width="${W}" height="${Hh}"
@@ -985,23 +985,22 @@ const ART = (function () {
           <stop offset=".55" stop-color="#b8832c"/><stop offset="1" stop-color="#e8c574"/></linearGradient>
         <linearGradient id="bevel" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stop-color="#fff4cf"/><stop offset="1" stop-color="#8a5f22"/></linearGradient>
-        <clipPath id="aceArt"><rect x="${art.x}" y="${art.y}" width="${art.w}" height="${art.h}" rx="5"/></clipPath></defs>
+        <clipPath id="aceArt"><rect x="${art.x}" y="${art.y}" width="${art.w}" height="${art.h}"/></clipPath></defs>
       <rect x="1" y="1" width="${W - 2}" height="${Hh - 2}" rx="15" fill="url(#foilA)" stroke="#2a150d" stroke-width="2"/>
       ${sparkles(W, Hh, c.en.length * 131 + 7)}
       <rect x="9" y="9" width="${W - 18}" height="${Hh - 18}" rx="9" fill="#3a1812" stroke="#2a150d" stroke-width="1.2"/>
       <rect x="11" y="11" width="${W - 22}" height="${Hh - 22}" rx="8" fill="none" stroke="#f3dca0" stroke-width=".8" opacity=".6"/>`;
 
-    // header: kind in small caps, then the name; cost on the right
-    s += `<text x="22" y="28" font-size="9.5" font-weight="800" fill="#f3dca0" letter-spacing="1.6">MAJOR IMPROVEMENT</text>`;
+    // header: the name, cost on the right (the banner under the art says what kind it is)
     const name = c.zh || c.en;
     const gemsW = kinds.length ? kinds.length * 32 : 0;
     const nameSize = Math.min(24, Math.floor((W - 48 - gemsW) / Math.max(1, [...name].reduce((n, ch) => n + wide(ch), 0))));
-    s += `<text x="22" y="${30 + nameSize}" font-size="${nameSize}" font-weight="900" fill="#fff6e0">${name}</text>`;
-    if (kinds.length) kinds.forEach((k, i) => { s += gem(k, cost[k], W - 34 - (kinds.length - 1 - i) * 32, 36); });
-    else s += `<text x="${W - 22}" y="44" text-anchor="end" font-size="13" font-weight="800" fill="#fff6e0">免費</text>`;
+    s += `<text x="22" y="${22 + nameSize * 0.9}" font-size="${nameSize}" font-weight="900" fill="#fff6e0">${name}</text>`;
+    if (kinds.length) kinds.forEach((k, i) => { s += gem(k, cost[k], W - 34 - (kinds.length - 1 - i) * 32, 32); });
+    else s += `<text x="${W - 22}" y="38" text-anchor="end" font-size="13" font-weight="800" fill="#fff6e0">免費</text>`;
 
     // the picture, in a gold bevel
-    s += `<rect x="${art.x - 3}" y="${art.y - 3}" width="${art.w + 6}" height="${art.h + 6}" rx="7" fill="url(#bevel)"/>
+    s += `<rect x="${art.x - 3}" y="${art.y - 3}" width="${art.w + 6}" height="${art.h + 6}" fill="url(#bevel)"/>
       <g clip-path="url(#aceArt)">${src
         ? `<image href="${src}" x="${art.x}" y="${art.y}" width="${art.w}" height="${art.h}" preserveAspectRatio="xMidYMid slice"/>`
         : fitCard(cardScene(c), art.x, art.y, art.w, art.h)}</g>`;
@@ -1013,7 +1012,7 @@ const ART = (function () {
       <text x="${W / 2}" y="${by + 19.5}" text-anchor="middle" font-size="15" font-weight="900" fill="#3a1812" letter-spacing="3">★ 主要發展 ★</text>`;
 
     // rules
-    const box = { x: 20, y: by + 34, w: W - 40, h: Hh - (by + 34) - 48 };
+    const box = { x: 20, y: by + 34, w: W - 40, h: Hh - (by + 34) - 40 };
     s += `<rect x="${box.x}" y="${box.y}" width="${box.w}" height="${box.h}" rx="6" fill="#f3e8cc"/>`;
     const fit = fitRules(c.txz || c.tx || '', box.w - 18, box.h - 10);
     const top = box.y + 5 + (box.h - 10 - fit.lines.length * fit.lh) / 2 + fit.size * 0.95;
@@ -1022,9 +1021,9 @@ const ART = (function () {
     });
 
     // the special rule at the foot
-    const fy = Hh - 42;
-    s += `<rect x="20" y="${fy}" width="${W - 40}" height="20" rx="4" fill="#1c0d09" stroke="#d8b25a" stroke-width=".8"/>
-      <text x="${W / 2}" y="${fy + 14}" text-anchor="middle" font-size="10.5" font-weight="700" fill="#f3dca0">公共卡：先建先得${twin ? '（全局兩張）' : '（全局一張）'}</text>
+    const fy = Hh - 34;
+    s += `<path d="M40 ${fy}H${W - 40}" stroke="#d8b25a" stroke-width=".6" opacity=".45"/>
+      <text x="${W / 2}" y="${fy + 11}" text-anchor="middle" font-size="9" fill="#e8d3a0" opacity=".7">公共卡・先建先得${twin ? '・全局兩張' : '・全局一張'}</text>
       <text x="22" y="${Hh - 14}" font-size="9" font-style="italic" fill="#f3dca0" opacity=".8">${c.en || ''}</text>`;
     if (o.note) s += `<text x="${W - 22}" y="${Hh - 14}" text-anchor="end" font-size="10.5" font-weight="800" fill="#fff2c8">${o.note}</text>`;
     if (o.taken) {
