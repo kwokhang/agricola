@@ -1664,6 +1664,34 @@ const View3D = (function () {
     return tex;
   }
 
+  // The felt follows the layout: measure everything on the table, add a margin, and
+  // redraw the mat (its stitched border depends on its proportions) when that changes.
+  let playMat = null, matKey = '';
+  function fitMat(box3) {
+    const M = 0.8;
+    const x0 = box3.min.x - M, x1 = box3.max.x + M, z0 = box3.min.z - M, z1 = box3.max.z + M;
+    const mw = x1 - x0, mh = z1 - z0;
+    const key = [mw, mh, x0, z0].map((v) => v.toFixed(1)).join(',');
+    if (key === matKey && playMat) return;
+    matKey = key;
+    if (playMat) {
+      playMat.geometry.dispose();
+      playMat.material.forEach((m) => { if (m.map) m.map.dispose(); m.dispose(); });
+      envGroup.remove(playMat);
+    }
+    const plain = () => new T.MeshStandardMaterial({ color: col('--art-mat'), roughness: 1 });
+    playMat = new T.Mesh(new T.BoxGeometry(mw, 0.03, mh), [plain(), plain(),
+      new T.MeshStandardMaterial({ map: matTexture(mw, mh), roughness: 1 }), plain(), plain(), plain()]);
+    playMat.position.set((x0 + x1) / 2, -0.075, (z0 + z1) / 2);
+    playMat.receiveShadow = true;
+    envGroup.add(playMat);
+    // keep the lamp over the middle of the mat
+    if (scene.userData.lamp) {
+      scene.userData.lamp.position.set((x0 + x1) / 2, 22, (z0 + z1) / 2 + 1.5);
+      scene.userData.lamp.target.position.set((x0 + x1) / 2, 0, (z0 + z1) / 2);
+    }
+  }
+
   function buildEnvironment() {
     if (envGroup) {
       envGroup.traverse((o) => {
@@ -1685,19 +1713,8 @@ const View3D = (function () {
     table.receiveShadow = true;
     envGroup.add(table);
 
-    // The play mat under both seats and the action board.
-    const mw = 18.6, mh = 15.4;
-    const mat = new T.Mesh(new T.BoxGeometry(mw, 0.03, mh), [
-      new T.MeshStandardMaterial({ color: col('--art-mat'), roughness: 1 }),
-      new T.MeshStandardMaterial({ color: col('--art-mat'), roughness: 1 }),
-      new T.MeshStandardMaterial({ map: matTexture(mw, mh), roughness: 1 }),
-      new T.MeshStandardMaterial({ color: col('--art-mat'), roughness: 1 }),
-      new T.MeshStandardMaterial({ color: col('--art-mat'), roughness: 1 }),
-      new T.MeshStandardMaterial({ color: col('--art-mat'), roughness: 1 }),
-    ]);
-    mat.position.set(1.0, -0.075, -0.4);
-    mat.receiveShadow = true;
-    envGroup.add(mat);
+    // The play mat is sized to whatever is on the table; see fitMat().
+    playMat = null; matKey = '';
 
     scene.add(envGroup);
     const bd = backdropTexture();
@@ -1772,6 +1789,7 @@ const View3D = (function () {
     lamp.position.set(1, 22, 1);
     lamp.target.position.set(1, 0, -0.8);
     scene.add(lamp, lamp.target);
+    scene.userData.lamp = lamp;
     const sun = new T.DirectionalLight(0xfff1d6, 1.5);
     sun.position.set(6, 15, 8);
     sun.castShadow = true;
@@ -1841,6 +1859,7 @@ const View3D = (function () {
       return s;
     });
     root.add(tableGroup);
+    fitMat(boxOf(tableGroup));
 
     handGroup = buildHand(G, UI);
     camera.add(handGroup);
