@@ -36,7 +36,7 @@ function future(G, p, rounds, goods) {
     for (const k of Object.keys(goods)) p.futures[r][k] = (p.futures[r][k] || 0) + goods[k];
     hit.push(r);
   }
-  if (hit.length) logEvent(G, `${p.name} 喺第 ${hit.join('、')} 回合格放低 ${costText(goods)}`);
+  if (hit.length) logEvent(G, `${p.name} 在第 ${hit.join('、')} 回合格放置 ${costText(goods)}`);
 }
 
 const nextRounds = (G, n) => Array.from({ length: n }, (_, i) => G.round + i + 1);
@@ -93,13 +93,13 @@ const CARD_FX = {
     },
     free(x, c) {
       if (x.acting && x.p.turnFlags.seasonal && x.p.supply.grain > 0) {
-        offer(x, c, 'seasonal:veg', '季節工：改攞 1 蔬菜', true);
+        offer(x, c, 'seasonal:veg', '季節工：改為取得 1 蔬菜', true);
       }
     },
     doFree(x) {
       x.p.supply.grain--; x.p.supply.veg++;
       x.p.turnFlags.seasonal = false;
-      logEvent(x.G, `${x.p.name} 季節工改攞 1 蔬菜`);
+      logEvent(x.G, `${x.p.name} 季節工改為取得 1 蔬菜`);
     },
   },
 
@@ -115,7 +115,7 @@ const CARD_FX = {
     free(x, c) {
       const good = GROCER_PILE[x.p.grocer];
       const left = GROCER_PILE.length - x.p.grocer;
-      if (good) offer(x, c, 'grocer', `雜貨商：1 食物買 1 ${LABEL[good]}（仲有 ${left} 件）`, x.p.supply.food >= 1);
+      if (good) offer(x, c, 'grocer', `雜貨商：1 食物買 1 ${LABEL[good]}（尚餘 ${left} 件）`, x.p.supply.food >= 1);
     },
     doFree(x) {
       const good = GROCER_PILE[x.p.grocer];
@@ -145,12 +145,12 @@ const CARD_FX = {
 
   'Adoptive Parents': {
     free(x, c) {
-      if (x.acting && x.p.newborn > 0) offer(x, c, 'adopt', '養父母：1 食物令新生兒即刻行動', x.p.supply.food >= 1);
+      if (x.acting && x.p.newborn > 0) offer(x, c, 'adopt', '養父母：支付 1 食物讓新生兒立即行動', x.p.supply.food >= 1);
     },
     doFree(x) {
       if (x.p.newborn < 1 || x.p.supply.food < 1) return false;
       x.p.supply.food--; x.p.newborn--; x.p.workersLeft++;
-      logEvent(x.G, `${x.p.name} 用養父母，新生兒即刻可以行動`);
+      logEvent(x.G, `${x.p.name} 使用養父母，新生兒可立即行動`);
     },
   },
 
@@ -271,7 +271,7 @@ const CARD_FX = {
     onPlay(x) {
       if (x.p.supply.food < 1) return;
       ask(x.G, 'roofBallaster', x.G.current,
-        [{ id: 'yes', label: `付 1 食物換 ${roomCount(x.p)} 石頭` }, { id: 'no', label: '唔要' }]);
+        [{ id: 'yes', label: `付 1 食物換 ${roomCount(x.p)} 石頭` }, { id: 'no', label: '不需要' }]);
     },
   },
 
@@ -348,7 +348,7 @@ const CARD_FX = {
     doFree(x) {
       const to = x.id.split(':')[1];
       if (!removeAnimal(x.p, 'sheep')) return false;
-      gain(x.G, x.p, { [to]: 1 }, '趕羊人換到');
+      gain(x.G, x.p, { [to]: 1 }, '趕羊人換得');
     },
   },
 
@@ -514,7 +514,7 @@ const CARD_FX = {
       const left = 14 - x.G.round;
       x.p.bonusVp += left;
       x.p.noRenovate = true;
-      logEvent(x.G, `${x.p.name} 壁爐架：+${left} 獎勵分，之後唔可以翻新`);
+      logEvent(x.G, `${x.p.name} 壁爐架：+${left} 獎勵分，此後不可翻新`);
     },
   },
 
@@ -594,7 +594,7 @@ const CARD_FX = {
     onTurnEnd(x) {
       if (!x.p.turnFlags.lasso || x.p.workersLeft < 1 || usedThisRound(x.G, x.p, 'lasso')) return;
       markUsed(x.G, x.p, 'lasso');
-      ask(x.G, 'lasso', x.G.current, [{ id: 'yes', label: '套索：即刻再放一個人' }, { id: 'no', label: '結束回合' }]);
+      ask(x.G, 'lasso', x.G.current, [{ id: 'yes', label: '套索：立即再放置一名工人' }, { id: 'no', label: '結束回合' }]);
     },
   },
 
@@ -743,7 +743,7 @@ const CARD_CHOICE = {
   },
   lasso(G, ch, id) {
     if (id !== 'yes') return;
-    logEvent(G, `${G.players[ch.pi].name} 用套索，即刻再放一個人`);
+    logEvent(G, `${G.players[ch.pi].name} 使用套索，立即再放置一名工人`);
     return 'hold';                      // keep the turn with this player
   },
 };

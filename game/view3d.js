@@ -1306,7 +1306,7 @@ const View3D = (function () {
     <rect x="6" y="6" width="538" height="278" rx="22" fill="#fff" fill-opacity=".05"
       stroke="#fff" stroke-opacity=".35" stroke-width="4" stroke-dasharray="18 12"/>
     <text x="275" y="160" text-anchor="middle" font-size="34" font-weight="700" fill="#fff" fill-opacity=".22"
-      font-family="-apple-system,'PingFang TC',sans-serif" letter-spacing="6">打出嘅卡 · PLAYED</text></svg>`;
+      font-family="-apple-system,'PingFang TC',sans-serif" letter-spacing="6">已打出的卡 · PLAYED</text></svg>`;
 
   // ---------------------------------------------------------------- majors on the table
   const rowZh = (k, d) => (typeof ZH !== 'undefined' && ZH.majorRows && ZH.majorRows[k]) || d;

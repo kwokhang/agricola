@@ -68,7 +68,7 @@
       const men = Array.from({ length: p.people }, (_, k) =>
         `<span class="mp ${k < p.workersLeft ? '' : 'used'}">${ART.meeple(PCOLOR[i], 14)}</span>`).join('');
       const pts = score(G, p).total;
-      return `<div class="pcard ${active ? 'now' : ''}" style="--pc:${PCOLOR[i]}" data-view="${i}" title="睇 ${esc(p.name)} 嘅農場">
+      return `<div class="pcard ${active ? 'now' : ''}" style="--pc:${PCOLOR[i]}" data-view="${i}" title="查看 ${esc(p.name)} 的農場">
         <span class="av">${ART.meeple(PCOLOR[i], 34)}</span>
         <span class="bd">
           <span class="nm">${esc(p.name)}${i === G.startPlayer ? `<span class="sp" title="起始玩家">${ART.icon('start', 14)}</span>` : ''}
@@ -111,9 +111,9 @@
     $('mainTabs').innerHTML = tabs.map(([k, l]) =>
       `<button data-main="${k}" class="${UI.main === k ? 'sel' : ''}">${esc(l)}</button>`).join('')
       + (has3d ? `<button data-act="hand" class="${UI.handPinned ? 'sel' : ''}"
-          title="手牌平時收埋，要打卡先會自動彈出；撳呢個掣可以一直攤開">${UI.handPinned ? '▼ 收起' : '▲ 攤開'}手牌 ${held}</button>` : '');
+          title="手牌平時收起，需要打出卡牌時會自動展開；按此按鈕可保持展開">${UI.handPinned ? '▼ 收起' : '▲ 展開'}手牌 ${held}</button>` : '');
 
-    $('playerTabs').innerHTML = G.n < 2 ? '' : '睇邊個：' + G.players.map((q, i) =>
+    $('playerTabs').innerHTML = G.n < 2 ? '' : '查看：' + G.players.map((q, i) =>
       `<button data-view="${i}" class="${i === UI.view ? 'sel' : ''}">${ART.meeple(PCOLOR[i], 14)} ${esc(q.name)}</button>`).join('');
 
     if (has3d) return;
@@ -144,29 +144,29 @@
   // whose board is on screen, so a clay house shows clay room costs.
   function spaceNote(def) {
     const p = G.players[UI.view];
-    if (def.accum) return [`每回合累積 ${accWords(def)}`, '放人攞晒格上全部'];
+    if (def.accum) return [`每回合累積 ${accWords(def)}`, '放置工人即取走格上全部物資'];
     switch (def.id) {
-      case 'farmland': return ['犁 1 塊田', '第一塊隨意，之後要相鄰'];
+      case 'farmland': return ['犁 1 塊田', '第一塊可任選，之後須相鄰'];
       case 'grain_seeds': return ['取 1 穀物'];
       case 'farm_expansion': return [`房間 ${costWords(roomCost(G, p))}`, '馬廄 2 木材（最多 4 個）'];
-      case 'meeting_place': return ['攞起始玩家標記', '之後可打 1 張次要發展'];
+      case 'meeting_place': return ['取得起始玩家標記', '之後可打 1 張次要發展'];
       case 'lessons': return ['打 1 張職業', '第 1 張免費，之後 1 食物'];
       case 'day_laborer': return ['取 2 食物'];
       case 'major': return ['打 1 張主要或次要發展'];
-      case 'fencing': return ['起柵欄，每條 1 木材', '最多 15 條，要圍成密封'];
-      case 'grain_util': return ['播種 and/or 烤麵包', '穀物田變 3、蔬菜田變 2'];
-      case 'family_growth': return ['家庭成長（要有空房）', '之後可打 1 張次要發展'];
+      case 'fencing': return ['建造柵欄，每條 1 木材', '最多 15 條，須圍成封閉區域'];
+      case 'grain_util': return ['播種 and/or 烤麵包', '穀物田變為 3、蔬菜田變為 2'];
+      case 'family_growth': return ['家庭成長（須有空房間）', '之後可打 1 張次要發展'];
       case 'renovation': return [renoWords(p), '之後可打 1 張發展卡'];
       case 'veg_seeds': return ['取 1 蔬菜'];
       case 'cultivation': return ['犁 1 塊田 and/or 播種'];
-      case 'urgent_growth': return ['家庭成長 +1 人', '唔使有空房'];
-      case 'farm_redev': return [renoWords(p), '之後可起柵欄'];
+      case 'urgent_growth': return ['家庭成長 +1 人', '無需空房間'];
+      case 'farm_redev': return [renoWords(p), '之後可建造柵欄'];
       default: return [];
     }
   }
   function renoWords(p) {
     const c = renovateCost(G, p);
-    return c ? `翻新 ${costWords(c)}` : '已經係石屋，唔使翻新';
+    return c ? `翻新 ${costWords(c)}` : '已是石屋，無需翻新';
   }
 
   function cellSpace(def, x, y, w, h, key) {
@@ -333,7 +333,7 @@
     const due = Object.keys(p.futures).sort((a, b) => a - b)
       .map((r) => `R${r}:${Object.keys(p.futures[r]).map((k) => LABEL[k] + p.futures[r][k]).join('')}`);
     if (due.length) bits.push(`回合格待收 ${due.join(' · ')}`);
-    if (!View3D.isReady()) bits.push('開唔到 WebGL，用平面農場板');
+    if (!View3D.isReady()) bits.push('無法啟用 WebGL，改用平面農場板');
     $('farmInfo').textContent = bits.join(' · ');
 
     if (View3D.isReady()) View3D.sync(G, UI);
@@ -360,7 +360,7 @@
       <div class="tx">${esc(c.txz)}</div>
       <div class="ft"><span class="costs">${costHtml(cost)}${c.trav ? '<span class="muted"> · 旅行卡</span>' : ''}</span>
         <span class="row">
-        ${canSwap ? `<button data-act="playAlt" data-v="${c.uid}">退火爐換</button>` : ''}
+        ${canSwap ? `<button data-act="playAlt" data-v="${c.uid}">退回火爐換取</button>` : ''}
         ${owner ? `<span class="muted">已被 ${esc(owner.name)} 取得</span>`
           : ctx === 'played' ? '' : `<button data-act="play" data-v="${c.uid}" ${playable && canPay(p, cost) ? '' : 'disabled'}>打出</button>`}
         </span>
@@ -380,7 +380,7 @@
     else if (UI.cardTab === 'min') list = p.hand.min.map((c) => cardHtml(c, 'hand'));
     else if (UI.cardTab === 'maj') list = G.majors.map((c) => cardHtml(c, 'maj'));
     else list = p.played.map((c) => cardHtml(c, 'played'));
-    $('cards').innerHTML = list.join('') || '<p class="muted">冇卡。</p>';
+    $('cards').innerHTML = list.join('') || '<p class="muted">沒有卡牌。</p>';
   }
 
   // ------------------------------------------------------------ dock: prompt
@@ -392,7 +392,7 @@
     const el = $('prompt');
     if (G.over) {
       el.innerHTML = `<div class="panel"><h3>遊戲結束</h3>
-        <div class="row">${btn('final', '睇最終分數', false, 'class="primary"')}${btn('newGame', '新遊戲')}</div></div>`;
+        <div class="row">${btn('final', '查看最終分數', false, 'class="primary"')}${btn('newGame', '新遊戲')}</div></div>`;
       return;
     }
     if (G.feeding) { el.innerHTML = feedPanel(); return; }
@@ -401,9 +401,9 @@
     const p = G.players[G.current];
 
     if (G.staging) {
-      parts.push(`<div class="panel"><h3>${G.staging.moving ? '搬動物' : '放置動物'}</h3>
-        <p>${ic(G.staging.kind, 20)} ${esc(LABEL[G.staging.kind])} ×${G.staging.n} — 喺「農場」撳牧場、獨立馬廄或房屋（寵物）放低${G.staging.moving ? '；再撳有同類動物嘅格可以多拎一隻' : ''}。</p>
-        <div class="row">${btn('discardStaged', G.staging.moving ? '放生手上動物' : '放棄剩餘動物')}</div></div>`);
+      parts.push(`<div class="panel"><h3>${G.staging.moving ? '移動動物' : '放置動物'}</h3>
+        <p>${ic(G.staging.kind, 20)} ${esc(LABEL[G.staging.kind])} ×${G.staging.n} — 在「農場」點選牧場、獨立馬廄或房屋（寵物）放置${G.staging.moving ? '；點選有同類動物的格子可再拿起一隻' : ''}。</p>
+        <div class="row">${btn('discardStaged', G.staging.moving ? '放走手上的動物' : '放棄剩餘動物')}</div></div>`);
     }
 
     const st = currentStep(G);
@@ -417,8 +417,8 @@
 
       if (st === 'plow') {
         const any = p.farm.some((t, i) => canPlow(p, i));
-        body = `<p>喺「農場」撳一格空地犁田${fieldCount(p) ? '（要同已有田相鄰）' : ''}。`
-          + (any ? '' : '<span class="muted">冇合法位置。</span>') + `</p>
+        body = `<p>在「農場」點選一格空地犁田${fieldCount(p) ? '（須與現有田地相鄰）' : ''}。`
+          + (any ? '' : '<span class="muted">沒有可用位置。</span>') + `</p>
           <div class="row">${btn('skip', '跳過')}</div>`;
       } else if (st === 'build') {
         const noStable = G.pending.limit && G.pending.limit.stable === 0;
@@ -426,21 +426,21 @@
             <button data-act="buildKind" data-v="room" class="${UI.buildKind === 'room' ? 'sel' : ''}">建房間 ${costHtml(roomCost(G, p))}</button>
             ${noStable ? '' : `<button data-act="buildKind" data-v="stable" class="${UI.buildKind === 'stable' ? 'sel' : ''}">建馬廄 ${costHtml({ wood: 2 })}</button>`}
             ${btn('skip', '完成')}
-            <span class="muted">喺「農場」撳格建造，可以連建多間；房間要同現有房間相鄰。</span>
+            <span class="muted">在「農場」點選格子建造，可連續建造多間；房間須與現有房間相鄰。</span>
           </div>`;
       } else if (st === 'cottager') {
         const cost = renovateCost(G, p);
         body = `<div class="row">
             ${cost ? btn('renovate', `翻新為${HOUSE_ZH[nextHouse(p)]} ${costText(cost)}`, !canPay(p, cost)) : ''}
             ${btn('skip', '跳過')}
-            <span class="muted">或者喺「農場」撳格建 1 間房（${costWords(roomCost(G, p))}）。</span>
+            <span class="muted">或在「農場」點選格子建造 1 個房間（${costWords(roomCost(G, p))}）。</span>
           </div>`;
       } else if (st === 'freestable') {
         body = `<div class="row">${btn('skip', '跳過')}
-          <span class="muted">喺「農場」撳一格空地，免費起 1 個馬廄。</span></div>`;
+          <span class="muted">在「農場」點選一格空地，免費建造 1 個馬廄。</span></div>`;
       } else if (st === 'minipasture') {
         body = `<div class="row">${btn('skip', '跳過')}
-          <span class="muted">喺「農場」撳一格空地，免費圍起做牧場；已有牧場就要同佢相鄰。</span></div>`;
+          <span class="muted">在「農場」點選一格空地，免費圍成牧場；若已有牧場，須與其相鄰。</span></div>`;
       } else if (st === 'fences') {
         const ok = fencesValid(p);
         const a = fenceAllowance(G, p);
@@ -451,51 +451,51 @@
         const built = fenceCount(p), left = Math.max(0, 15 - built);
         const payable = freeLeft + p.supply.wood + (a.clayOk ? p.supply.clay : 0);
         const canBuild = Math.min(left, payable);
-        const limit = left <= payable ? '柵欄用晒' : `受${a.clayOk ? '木材／黏土' : '木材'}限制`;
+        const limit = left <= payable ? '柵欄已用完' : `受${a.clayOk ? '木材／黏土' : '木材'}限制`;
         body = `<div class="fencebar">
             <span class="fb-n"><b>${built}</b> / 15 條柵欄</span>
             <span class="fb-track">${Array.from({ length: 15 }, (_, k) =>
               `<i class="${k < built - n ? 'old' : k < built ? 'new' : k < built + canBuild ? 'can' : ''}"></i>`).join('')}</span>
-            <span class="fb-can">仲可以起 <b>${canBuild}</b> 條<small>（${limit}）</small></span>
+            <span class="fb-can">尚可建造 <b>${canBuild}</b> 條<small>（${limit}）</small></span>
           </div>
-          <p>喺「農場」撳格與格之間起柵欄，每條 ${costHtml({ wood: 1 })}${a.clayOk ? '（冇木可以用黏土）' : ''}${freeLeft ? `，仲有 ${freeLeft} 條免費` : ''}。今次新起嘅可以再撳一次取消。</p>`
-          + (ok ? '' : '<p class="muted">⚠️ 有柵欄未圍成牧場，唔可以完成。移走佢哋先。</p>')
-          + `<div class="row">${btn('confirmFences', '完成', !ok)}${btn('undoFences', `取消今次全部（${n}）`, !n)}</div>`;
+          <p>在「農場」點選格子之間建造柵欄，每條 ${costHtml({ wood: 1 })}${a.clayOk ? '（木材不足時可用黏土）' : ''}${freeLeft ? `，尚有 ${freeLeft} 條免費` : ''}。本次新建的柵欄可再點選一次取消。</p>`
+          + (ok ? '' : '<p class="muted">⚠️ 有柵欄未圍成牧場，無法完成，請先移除。</p>')
+          + `<div class="row">${btn('confirmFences', '完成', !ok)}${btn('undoFences', `取消本次全部（${n}）`, !n)}</div>`;
       } else if (st === 'sow') {
         const bean = p.beanfield && !p.beanfield.crop;
         body = `<div class="row">
             <button data-act="sowKind" data-v="grain" class="${UI.sowKind === 'grain' ? 'sel' : ''}">播 ${ic('grain', 17)} 穀物（${p.supply.grain}）</button>
             <button data-act="sowKind" data-v="veg" class="${UI.sowKind === 'veg' ? 'sel' : ''}">播 ${ic('veg', 17)} 蔬菜（${p.supply.veg}）</button>
-            ${bean ? btn('sowBean', '播落豆田', p.supply.veg < 1) : ''}
+            ${bean ? btn('sowBean', '播種到豆田', p.supply.veg < 1) : ''}
             ${btn('skip', '完成')}
-            <span class="muted">喺「農場」撳空田播種。穀物變 3、蔬菜變 2。</span>
+            <span class="muted">在「農場」點選空田播種。穀物變為 3、蔬菜變為 2。</span>
           </div>`;
       } else if (st === 'bake') {
         const ov = ovensOf(p);
         body = ov.length
           ? `<div class="row">${ov.map((o) => `<button data-act="bake" data-v="${esc(o)}" ${p.supply.grain < 1 ? 'disabled' : ''}>${esc(OVENS[o].zh)}：1 穀物 → ${ic('food', 17)}${OVENS[o].food}</button>`).join('')}${btn('skip', '完成')}</div>`
-          : `<div class="row">${btn('skip', '完成')}<span class="muted">你冇烤爐，唔可以烤麵包。</span></div>`;
+          : `<div class="row">${btn('skip', '完成')}<span class="muted">你沒有烤爐，無法烤麵包。</span></div>`;
       } else if (st === 'growth' || st === 'growthAny') {
         const ok = canGrow(G, st === 'growthAny');
         body = `<div class="row">${btn('grow', '家庭成長 +1 人', !ok)}${btn('skip', '跳過')}
-          <span class="muted">${st === 'growthAny' ? '即使冇空房都可以。' : `住得落 ${livingSpace(p)} 人、現有 ${p.people} 人。`}</span></div>`;
+          <span class="muted">${st === 'growthAny' ? '即使沒有空房間亦可。' : `可容納 ${livingSpace(p)} 人、現有 ${p.people} 人。`}</span></div>`;
       } else if (st === 'renovate') {
         const cost = renovateCost(G, p);
         body = cost
           ? `<div class="row">${btn('renovate', `翻新為${HOUSE_ZH[nextHouse(p)]} ${costText(cost)}`, !canPay(p, cost))}${btn('skip', '跳過')}</div>`
-          : `<div class="row">${btn('skip', '跳過')}<span class="muted">${p.noRenovate ? '壁爐架令你唔可以再翻新。' : '已經係石屋，唔使翻新。'}</span></div>`;
+          : `<div class="row">${btn('skip', '跳過')}<span class="muted">${p.noRenovate ? '因壁爐架，你不可再翻新。' : '已是石屋，無需翻新。'}</span></div>`;
       } else {
         body = `<div class="row">${btn('skip', '跳過')}<span class="muted">${has3d
-          ? '手牌彈咗出嚟，撳一張金框嘅打出；主要發展直接喺檯上撳。'
-          : '喺「卡片」撳「打出」。'}</span></div>`;
+          ? '手牌已展開，點選一張金框卡牌打出；主要發展請直接在檯面點選。'
+          : '在「卡片」頁點選「打出」。'}</span></div>`;
       }
 
       parts.push(`<div class="panel"><h3>${esc(title)} — ${esc(STEP_ZH[st] || st)}</h3>
         <div class="steps">${esc(steps)}</div>${body}</div>`);
     } else if (!G.staging) {
-      parts.push(`<div class="panel"><h3>${esc(p.name)} 放人</h3>
-        <p>喺「行動板」撳一個空行動格。剩 ${p.workersLeft} 個人手。</p>
-        ${ANIM.some((k) => animalTotal(p, k)) || p.pets.length ? '<p class="muted">撳農場上嘅動物可以隨時搬位。</p>' : ''}</div>`);
+      parts.push(`<div class="panel"><h3>${esc(p.name)} 放置工人</h3>
+        <p>在「行動板」點選一個空置的行動格。尚餘 ${p.workersLeft} 名工人。</p>
+        ${ANIM.some((k) => animalTotal(p, k)) || p.pets.length ? '<p class="muted">點選農場上的動物可隨時移動。</p>' : ''}</div>`);
     }
     el.innerHTML = parts.join('');
   }
@@ -506,8 +506,8 @@
     const short = Math.max(0, need - p.supply.food);
     return `<div class="panel"><h3>餵食 — ${esc(p.name)}</h3>
       <p>需要 <b>${need}</b> 食物（成人 ${p.people - p.newborn} × ${G.n === 1 ? 3 : 2}${p.newborn ? ` ＋ 新生兒 ${p.newborn} × 1` : ''}），現有 <b>${p.supply.food}</b>。
-      ${short ? `<span class="muted">仲差 ${short}，唔補就每差 1 攞 1 個乞討標記（-3 分）。用下面「隨時可做」換食物。</span>` : ''}</p>
-      <div class="row">${btn('confirmFeed', short ? `確認（攞 ${short} 個乞討標記）` : '確認餵食', false, 'class="primary"')}</div></div>`;
+      ${short ? `<span class="muted">尚欠 ${short}，若不補足，每欠 1 食物須拿取 1 個乞討標記（-3 分）。可使用下方「隨時可做」換取食物。</span>` : ''}</p>
+      <div class="row">${btn('confirmFeed', short ? `確認（拿取 ${short} 個乞討標記）` : '確認餵食', false, 'class="primary"')}</div></div>`;
   }
 
   function renderFree() {
@@ -575,7 +575,7 @@
     $('resbar').innerHTML = `${tabs}
       <div class="rhead" style="--pc:${PCOLOR[shown]}">
         <span class="big">${ART.meeple(PCOLOR[shown], 40)}</span>
-        <span class="rt"><b>${esc(p.name)}</b><span class="home">${home}<em>${p.workersLeft}/${p.people} 喺屋企</em></span></span>
+        <span class="rt"><b>${esc(p.name)}</b><span class="home">${home}<em>${p.workersLeft}/${p.people} 在家</em></span></span>
       </div>
       ${chipsFor(p)}`;
     $('allres').hidden = true;
@@ -615,7 +615,7 @@
       if (q.handplow === n) parts.push('1 塊田（手犁）');
       return parts.length ? `${esc(q.name)}：${parts.join('、')}` : '';
     }).filter(Boolean);
-    return bits.length ? `<p class="parked">第 ${n} 回合開始時收：<br>${bits.join('<br>')}</p>` : '';
+    return bits.length ? `<p class="parked">第 ${n} 回合開始時獲得：<br>${bits.join('<br>')}</p>` : '';
   }
 
   function showTip(info) {
@@ -645,14 +645,14 @@
       if (c.en === 'Grocer' && holder) {
         const left = GROCER_PILE.slice(holder.grocer);
         extra = left.length
-          ? `<div class="pile">疊頂：<b>${LABEL[left[0]]}</b>　之後：${left.slice(1).map((k) => LABEL[k]).join('、') || '冇'}</div>`
-          : '<div class="pile">疊上已經冇嘢</div>';
+          ? `<div class="pile">疊頂：<b>${LABEL[left[0]]}</b>　之後：${left.slice(1).map((k) => LABEL[k]).join('、') || '無'}</div>`
+          : '<div class="pile">卡上已無物資</div>';
       }
-      if (c.en === 'Moldboard Plow' && holder) extra = `<div class="pile">卡上仲有 <b>${holder.moldboard}</b> 塊田</div>`;
+      if (c.en === 'Moldboard Plow' && holder) extra = `<div class="pile">卡上尚有 <b>${holder.moldboard}</b> 塊田</div>`;
       if (owner) status = `已被 ${esc(owner.name)} 取得`;
       else if (c.played || G.players.some((q) => q.played.includes(c))) status = '已打出';
       else if ((inHand || c.type === 'maj') && UI.view === G.current && !G.choice
-        && playableNow(G).includes(c.type)) status = canPay(p, cost) ? '✓ 可以打出' : '資源唔夠';
+        && playableNow(G).includes(c.type)) status = canPay(p, cost) ? '✓ 可以打出' : '資源不足';
       pv.innerHTML = `<div class="face">${ART.cardFace(c, { cost, taken: owner ? owner.name : '' })}</div>
         ${extra}${status ? `<div class="st">${status}</div>` : ''}`;
       pv.hidden = false;
@@ -661,8 +661,8 @@
 
     if (info.kind === 'slot') {
       const parked = parkedHtml(G.roundOrder[info.round - 1]);
-      el.innerHTML = `<h3>第 ${info.round} 回合</h3><div class="en">未翻開嘅行動格</div>
-        ${parked || '<p class="muted">呢格暫時冇卡放物資。</p>'}`;
+      el.innerHTML = `<h3>第 ${info.round} 回合</h3><div class="en">未翻開的行動格</div>
+        ${parked || '<p class="muted">此格暫無卡牌放置的物資。</p>'}`;
       el.hidden = false;
       return;
     }
@@ -673,8 +673,8 @@
       if (!def) { el.hidden = true; return; }
       const goods = Object.keys(sp.goods).filter((k) => sp.goods[k] > 0)
         .map((k) => `<span class="cst">${ic(k, 16)}<b>${sp.goods[k]}</b></span>`).join(' ');
-      const who = sp.occupiedBy !== null ? `<span class="muted">${esc(G.players[sp.occupiedBy].name)} 已經放咗人</span>`
-        : canPlace(G, info.id) ? '<span style="color:var(--accent)">可以放人</span>' : '';
+      const who = sp.occupiedBy !== null ? `<span class="muted">${esc(G.players[sp.occupiedBy].name)} 已放置工人</span>`
+        : canPlace(G, info.id) ? '<span style="color:var(--accent)">可放置工人</span>' : '';
       el.innerHTML = `<h3>${esc(def.zh)}</h3><div class="en">${esc(def.en)}</div>${parkedHtml(info.id)}
         <p>${spaceNotes(G, G.players[UI.view], def).map(esc).join('<br>')}</p>
         <div class="costs">${goods}${goods && who ? ' · ' : ''}${who}</div>`;
@@ -690,7 +690,7 @@
     if (!G.choice) { m.hidden = true; m.innerHTML = ''; return; }
     const p = G.players[G.choice.pi];
     m.hidden = false;
-    m.innerHTML = `<div class="panel"><h3>${esc(p.name)} 揀一項</h3>
+    m.innerHTML = `<div class="panel"><h3>${esc(p.name)} 選擇一項</h3>
       <div class="row">${G.choice.opts.map((o) =>
         `<button data-choice="${esc(o.id)}" class="primary">${esc(o.label)}</button>`).join('')}</div></div>`;
   }
@@ -717,14 +717,14 @@
       const taken = NG.players.slice(0, NG.n).filter((_, j) => j !== i).map((o) => o.color);
       return `<div class="ngrow" style="--pc:${q.color}">
         <span class="av">${ART.meeple(q.color, 40)}</span>
-        <label class="ngname">${NG.n === 1 ? '你嘅名' : `玩家 ${i + 1} 嘅名`}
+        <label class="ngname">${NG.n === 1 ? '你的名稱' : `玩家 ${i + 1} 的名稱`}
           <input data-ng-name="${i}" maxlength="10" value="${esc(q.name)}" placeholder="${NG.n === 1 ? '玩家' : `玩家 ${i + 1}`}"></label>
         <div class="sw">${SWATCHES.map(([c, zh]) => `<button data-act="ngColor" data-v="${i}|${c}" title="${zh}"
           class="${q.color === c ? 'sel' : ''}" style="--c:${c}" ${taken.includes(c) ? 'disabled' : ''}></button>`).join('')}</div>
       </div>`;
     }).join('');
     box.innerHTML = `<div class="sheet ng">
-      <h2>新遊戲</h2><div class="sub">現時嘅進度會被取代。</div>
+      <h2>新遊戲</h2><div class="sub">目前的進度將被取代。</div>
       <div class="ngcount">玩家人數
         ${[1, 2].map((n) => `<button data-act="ngCount" data-v="${n}" class="${NG.n === n ? 'sel' : ''}">${n} 人</button>`).join('')}</div>
       ${rows}
@@ -787,7 +787,7 @@
         <tr class="tot"><td>${ART.vpIcon(15)} 總分</td>${sheets.map((x) => `<td>${x.s.total}</td>`).join('')}</tr></table>
       ${sheets.some((x) => x.s.bonusDetail.length) ? `<p class="muted" style="font-size:12px;margin-top:8px">卡片獎勵：${
         sheets.filter((x) => x.s.bonusDetail.length).map((x) => `${esc(x.p.name)} — ${esc(x.s.bonusDetail.join('、'))}`).join('；')}</p>` : ''}
-      <div class="row">${btn('closeFinal', '睇返張檯')}${btn('newGame', '新遊戲', false, 'class="primary"')}</div>
+      <div class="row">${btn('closeFinal', '返回檯面')}${btn('newGame', '新遊戲', false, 'class="primary"')}</div>
     </div>`;
   }
 
@@ -815,7 +815,7 @@
         ${btn('newGame', '新遊戲', false, 'class="primary"')}
       </div>
 <p class="muted" style="font-size:12px;margin-top:10px">
-        A、B 兩副卡嘅效果全部自動結算，唔使手動加減物資。</p>`;
+        A、B 兩副卡牌的效果全部自動結算，無需手動增減物資。</p>`;
     }
     $('drawerBody').innerHTML = html;
   }
@@ -851,7 +851,7 @@
     // Frame the screen in the colour of whoever has to act.
     const who = G.over ? -1 : G.feeding ? G.feeding.i : G.current;
     document.body.style.setProperty('--turn', who < 0 ? 'transparent' : PCOLOR[who]);
-    $('turnTag').textContent = who < 0 ? '' : `${G.players[who].name} 嘅回合`;
+    $('turnTag').textContent = who < 0 ? '' : `${G.players[who].name} 的回合`;
     renderStatus(); renderMainTabs();
     renderBoard(); renderFarm(); renderCards();
     renderPrompt(); renderFree(); renderRes(); renderModal(); renderDrawer(); renderRail(); renderFinal();

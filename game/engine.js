@@ -396,27 +396,27 @@ function accumWords(G, def) {
 
 function renovateWords(G, p) {
   const c = renovateCost(G, p);
-  return c ? `翻新 ${costWords(c)}` : (p.noRenovate ? '不可再翻新' : '已經係石屋，唔使翻新');
+  return c ? `翻新 ${costWords(c)}` : (p.noRenovate ? '不可再翻新' : '已是石屋，無需翻新');
 }
 
 function spaceNotes(G, p, def) {
-  if (def.accum) return [`每回合累積 ${accumWords(G, def)}`, '放人攑晒格上全部'];
+  if (def.accum) return [`每回合累積 ${accumWords(G, def)}`, '放置工人即取走格上全部物資'];
   switch (def.id) {
-    case 'farmland': return ['犁 1 塊田', '第一塊隨意，之後要相鄰'];
+    case 'farmland': return ['犁 1 塊田', '第一塊可任選，之後須相鄰'];
     case 'grain_seeds': return ['取 1 穀物'];
     case 'farm_expansion': return [`房間 ${costWords(roomCost(G, p))}`, '馬廄 2 木材（最多 4 個）'];
-    case 'meeting_place': return ['攑起始玩家標記', '之後可打 1 張次要發展'];
+    case 'meeting_place': return ['取得起始玩家標記', '之後可打 1 張次要發展'];
     case 'lessons': return ['打 1 張職業', '第 1 張免費，之後 1 食物'];
     case 'day_laborer': return ['取 2 食物'];
     case 'major': return ['打 1 張主要或次要發展'];
-    case 'fencing': return ['起柵欄，每條 1 木材', '最多 15 條，要圈成密封'];
-    case 'grain_util': return ['播種 and/or 烤麵包', '穀物田變 3、蔑菜田變 2'];
-    case 'family_growth': return ['家庭成長（要有空房）', '之後可打 1 張次要發展'];
+    case 'fencing': return ['建造柵欄，每條 1 木材', '最多 15 條，須圍成封閉區域'];
+    case 'grain_util': return ['播種 and/or 烤麵包', '穀物田變為 3、蔬菜田變為 2'];
+    case 'family_growth': return ['家庭成長（須有空房間）', '之後可打 1 張次要發展'];
     case 'renovation': return [renovateWords(G, p), '之後可打 1 張發展卡'];
-    case 'veg_seeds': return ['取 1 蔑菜'];
+    case 'veg_seeds': return ['取 1 蔬菜'];
     case 'cultivation': return ['犁 1 塊田 and/or 播種'];
-    case 'urgent_growth': return ['家庭成長 +1 人', '唔使有空房'];
-    case 'farm_redev': return [renovateWords(G, p), '之後可起柵欄'];
+    case 'urgent_growth': return ['家庭成長 +1 人', '無需空房間'];
+    case 'farm_redev': return [renovateWords(G, p), '之後可建造柵欄'];
     default: return [];
   }
 }
@@ -754,7 +754,7 @@ function sowBeanfield(G) {
   p.supply.veg--;
   p.beanfield.crop = { kind: 'veg', n: 2 };
   G.pending.used.sow = true;
-  logEvent(G, `${p.name} 喺豆田播種 1 蔬菜`);
+  logEvent(G, `${p.name} 在豆田播種 1 蔬菜`);
   return true;
 }
 
@@ -921,7 +921,7 @@ function placeAnimal(G, tile) {
 function discardStaged(G) {
   if (!G.staging) return false;
   const moving = G.staging.moving;
-  logEvent(G, `${G.players[G.current].name} ${moving ? '放生' : '放棄'} ${G.staging.n} 隻${LABEL[G.staging.kind]}`);
+  logEvent(G, `${G.players[G.current].name} ${moving ? '放走' : '放棄'} ${G.staging.n} 隻${LABEL[G.staging.kind]}`);
   G.staging = null;
   if (!G.pending && !moving) finishAction(G);
   return true;
@@ -985,7 +985,7 @@ function autoPlaceAnimal(G, p, kind, n) {
   }
   if (G) {
     if (placed) logEvent(G, `${p.name} 獲得 ${placed} 隻${LABEL[kind]}`);
-    if (placed < n) logEvent(G, `${p.name} 無位放，${n - placed} 隻${LABEL[kind]}走失`);
+    if (placed < n) logEvent(G, `${p.name} 沒有位置，${n - placed} 隻${LABEL[kind]}流失`);
   }
   return placed;
 }
@@ -1000,7 +1000,7 @@ function putAnimalsOnPasture(G, p, kind, n, region) {
     putAnimal(p, kind, { tile: g.tiles.find((t) => p.farm[t].animals && p.farm[t].animals.kind === kind) ?? g.tiles[0] });
     placed++;
   }
-  if (placed) logEvent(G, `${p.name} 喺新牧場獲得 ${placed} 隻${LABEL[kind]}`);
+  if (placed) logEvent(G, `${p.name} 在新牧場獲得 ${placed} 隻${LABEL[kind]}`);
   return placed;
 }
 
