@@ -548,20 +548,24 @@
       ${row('動物', ANIM.map((k) => chip(k, animalTotal(p, k))).join('') + fill(1))}</span>`;
   }
 
+  // The resource panel is about one player at a time. Its header is that player's own
+  // colour — a big worker coin, name, and the workers still at home — and in a 2-player game
+  // the other player is one tab away.
   function renderRes() {
-    const p = G.players[UI.view];
-    const men = Array.from({ length: p.people }, (_, k) =>
-      `<span class="mp ${k < p.workersLeft ? '' : 'used'}">${ART.meeple(PCOLOR[UI.view], 16)}</span>`).join('');
-    $('resbar').innerHTML =
-      `<span class="who">${ART.meeple(PCOLOR[UI.view], 16)} ${esc(p.name)}<span class="men">${men}</span></span>
-       ${chipsFor(p)}
-       ${G.n > 1 ? `<button class="rtoggle" data-act="allres">${UI.allres ? '▲ 收埋' : '▼ 其他玩家'}</button>` : ''}`;
-
-    const box = $('allres');
-    box.hidden = !(UI.allres && G.n > 1);
-    if (box.hidden) { box.innerHTML = ''; return; }
-    box.innerHTML = G.players.map((q, i) => (i === UI.view ? '' :
-      `<div class="prow"><span class="who">${ART.meeple(PCOLOR[i], 16)} ${esc(q.name)}</span>${chipsFor(q)}</div>`)).join('');
+    const shown = UI.resView != null && G.players[UI.resView] ? UI.resView : UI.view;
+    const p = G.players[shown];
+    const home = Array.from({ length: p.people }, (_, k) =>
+      `<span class="mp ${k < p.workersLeft ? '' : 'used'}">${ART.meeple(PCOLOR[shown], 18)}</span>`).join('');
+    const tabs = G.n > 1 ? `<div class="rtabs">${G.players.map((q, i) =>
+      `<button data-act="resView" data-v="${i}" class="${i === shown ? 'sel' : ''}" style="--pc:${PCOLOR[i]}">
+        ${ART.meeple(PCOLOR[i], 18)}<span>${esc(q.name)}</span></button>`).join('')}</div>` : '';
+    $('resbar').innerHTML = `${tabs}
+      <div class="rhead" style="--pc:${PCOLOR[shown]}">
+        <span class="big">${ART.meeple(PCOLOR[shown], 40)}</span>
+        <span class="rt"><b>${esc(p.name)}</b><span class="home">${home}<em>${p.workersLeft}/${p.people} 喺屋企</em></span></span>
+      </div>
+      ${chipsFor(p)}`;
+    $('allres').hidden = true;
   }
 
   // ------------------------------------------------------------ right rail: log
@@ -819,7 +823,7 @@
   function render() {
     if (!G) return;
     // The board follows whoever is acting; you can still peek at the other farm within a turn.
-    if (UI.lastCurrent !== G.current) { UI.view = G.current; UI.lastCurrent = G.current; }
+    if (UI.lastCurrent !== G.current) { UI.view = G.current; UI.lastCurrent = G.current; UI.resView = null; }
     if (G.phase === 'work' && (G.pending || G.staging)) UI.view = G.current;
     if (G.feeding) UI.view = G.feeding.i;
 
@@ -913,6 +917,7 @@
     const v = t.dataset.v;
     switch (t.dataset.act) {
       case 'allres': UI.allres = !UI.allres; break;
+      case 'resView': UI.resView = +v; renderRes(); save(); return;
       case 'hand': UI.handPinned = !UI.handPinned; break;
       case 'log': UI.logOpen = !UI.logOpen; renderRail(); save(); return;
       case 'final': UI.finalOpen = true; break;

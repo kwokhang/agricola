@@ -97,7 +97,29 @@ const View3D = (function () {
 
   // Every component gets the finish the cards have: a satin base with a thin clear coat, so
   // pieces, tiles and printed boards all catch the lamp and the room the same way.
-  const GLOSS = { roughness: 0.46, metalness: 0, clearcoat: 0.3, clearcoatRoughness: 0.36 };
+  // Matte, like gouache on wood: the artwork is watercolour and ink, so nothing should shine.
+  const GLOSS = { roughness: 0.66, metalness: 0, clearcoat: 0.06, clearcoatRoughness: 0.7 };
+
+  // Ink outlines for the wooden pieces, to match the linework in the illustrations: a copy
+  // of each mesh pushed out along its normals, drawn back-faces only in 墨.
+  const INK_MAT = new T.ShaderMaterial({
+    uniforms: { c: { value: new T.Color('#1b130b') }, w: { value: 0.011 } },
+    vertexShader: 'uniform float w; void main(){ vec3 p = position + normalize(normal) * w;' +
+      ' gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0); }',
+    fragmentShader: 'uniform vec3 c; void main(){ gl_FragColor = vec4(c, 1.0); }',
+    side: T.BackSide,
+  });
+  function ink(root) {
+    const meshes = [];
+    root.traverse((o) => { if (o.isMesh && !o.userData.inkline && !o.userData.noInk) meshes.push(o); });
+    for (const o of meshes) {
+      const line = new T.Mesh(o.geometry, INK_MAT);
+      line.userData.inkline = true;
+      line.raycast = () => {};
+      o.add(line);
+    }
+    return root;
+  }
   const mat = (color, opts) => new T.MeshPhysicalMaterial(Object.assign({
     color: color instanceof T.Color ? color : new T.Color(color),
   }, GLOSS, opts || {}));
@@ -149,12 +171,12 @@ const View3D = (function () {
     coin.castShadow = true; coin.receiveShadow = true;
     g.add(coin);
     const face = new T.Mesh(geo('wkFace', () => new T.CircleGeometry(0.22, 32)),
-      printMat(svgTexture('worker:' + hex, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0.6 0.6 22.8 22.8" width="192" height="192">${ART.workerMarkup(hex)}</svg>`, 192, 192),
+      printMat(svgTexture('worker2:' + hex, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0.6 0.6 22.8 22.8" width="192" height="192">${ART.workerMarkup(hex)}</svg>`, 192, 192),
         { roughness: 0.35 }));
     face.rotation.x = -Math.PI / 2;
     face.position.y = 0.071;
     g.add(face);
-    return g;
+    return ink(g);
   }
 
 
@@ -365,7 +387,7 @@ const View3D = (function () {
     g.add(box(0.2, 0.03, 0.06, col('--art-stone-lt'), 0.02, 0.015, front + 0.03));    // doorstep
     const chim = box(0.08, 0.2, 0.08, col(k === 'wood' ? '--art-clay' : '--art-stone'), -0.2, Hw + Hr - 0.02, -0.08);
     g.add(chim);
-    return g;
+    return ink(g);
   }
 
   function stableMesh() {
@@ -378,7 +400,7 @@ const View3D = (function () {
       b.rotation.z = s * 0.72;
       g.add(b);
     });
-    return g;
+    return ink(g);
   }
 
   function cropMesh(kind) {
@@ -409,7 +431,7 @@ const View3D = (function () {
       leaf.scale.set(1.3, 0.25, 0.8); leaf.position.set(0.07, 0.13, 0.02); leaf.rotation.z = -0.4;
       g.add(leaf);
     }
-    return g;
+    return ink(g);
   }
 
   // The three animals follow the colours of the wooden pieces in the box — white sheep,
@@ -479,7 +501,7 @@ const View3D = (function () {
       const tail = new T.Mesh(geo('ctail', () => new T.CylinderGeometry(0.008, 0.008, 0.16, 4)), mat(hide));
       tail.position.set(0, 0.19, -0.19); tail.rotation.x = 0.35; g.add(tail);
     }
-    return g;
+    return ink(g);
   }
 
   function fencePiece(horizontal) {
@@ -491,7 +513,7 @@ const View3D = (function () {
     [-1, 1].forEach((s) => {
       g.add(box(0.09, 0.34, 0.09, cd, horizontal ? s * len / 2 : 0, 0.17, horizontal ? 0 : s * len / 2));
     });
-    return g;
+    return ink(g);
   }
 
   // A single unit of goods, as the wooden bit it would be in the box.
@@ -540,7 +562,7 @@ const View3D = (function () {
       d.position.y = 0.035; d.castShadow = true;
       g.add(d);
     }
-    return g;
+    return ink(g);
   }
 
   // Goods piled in a loose cluster, with a count plate once there are more than a few.
@@ -570,7 +592,7 @@ const View3D = (function () {
         y = 0.025;
       }
       const side = mat(new T.Color(ART.tokenColor(kind)), { roughness: 0.4 });
-      const iconTex = svgTexture('tokenFace:' + kind, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0.6 0.6 22.8 22.8" width="192" height="192">${ART.tokenMarkup(kind)}</svg>`, 192, 192);
+      const iconTex = svgTexture('tokenFace2:' + kind, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0.6 0.6 22.8 22.8" width="192" height="192">${ART.tokenMarkup(kind)}</svg>`, 192, 192);
       const faceMat = printMat(iconTex, { roughness: 0.4 });
       for (let st = 0; st < stacks; st++) {
         const count = Math.min(per, Math.max(1, n) - st * per);
@@ -586,6 +608,7 @@ const View3D = (function () {
         face.position.set(sx + ((count - 1) % 2) * 0.012, y + t * count + 0.001, (((count - 1) * 7) % 3 - 1) * 0.01);
         g.add(face);
       }
+      ink(g);
       if (n > 1) {
         const tag = new T.Mesh(geo('pileTag', () => new T.CircleGeometry(0.16, 28)),
           new T.MeshBasicMaterial({ map: svgTexture('ptag:' + n, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="96" height="96">
@@ -1398,7 +1421,7 @@ const View3D = (function () {
       safe: { l: 0.12, r: 0.12, t: 0.26, b: 0.3 } }),
     // The board is wide, so its view gets tighter margins: the top-left only has the camera
     // tabs, and the action bar sits over the empty middle of the board's lower edge.
-    board: () => ({ az: 0, pol: 0.34, pad: 0.95, boxes: ['board'], safe: { l: 0.015, r: 0.15, t: 0.3, b: 0.12 } }),
+    board: () => ({ az: 0, pol: 0.3, pad: 0.98, boxes: ['board'], safe: { l: 0.01, r: 0.1, t: 0.24, b: 0.1 } }),
     farm: (UI) => ({ az: 0, pol: 0.56, pad: 1.04, boxes: ['farm' + UI.view] }),
     cards: (UI) => ({ az: 0, pol: 0.5, pad: 1.02, boxes: ['played' + UI.view] }),
     majors: () => ({ az: 0, pol: 0.42, pad: 1.0, boxes: ['majors'], safe: { l: 0.04, r: 0.15, t: 0.34, b: 0.3 } }),
@@ -1808,7 +1831,7 @@ const View3D = (function () {
     scene.add(root);
 
     scene.environment = reflections();
-    scene.environmentIntensity = 0.4;
+    scene.environmentIntensity = 0.28;
 
     // A dim room, one warm lamp over the play area, and a key light for the shadows.
     const hemi = new T.HemisphereLight(0xffffff, 0x6d5a3a, 0.3);
@@ -1857,7 +1880,7 @@ const View3D = (function () {
   function disposeGroup(parent, g) {
     if (!g) return;
     g.traverse((o) => {
-      if (!o.isMesh || !o.material) return;
+      if (!o.isMesh || !o.material || o.userData.inkline) return;
       if (Array.isArray(o.material)) o.material.forEach((m) => m.dispose());
       else o.material.dispose();
     });

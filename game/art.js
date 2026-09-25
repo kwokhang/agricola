@@ -133,12 +133,21 @@ const ART = (function () {
   const tokenColor = (k) => (TOKEN[k] ? TOKEN[k].bg : '#6a583a');
 
   // The coin itself, in a 24 × 24 box.
+  // Painted like the artwork: a flat colour, a soft light wash from the upper left, a darker
+  // pool at the lower right, and an ink rim.
+  const WASH = `<defs><radialGradient id="cwash" cx=".34" cy=".3" r=".8">
+      <stop offset="0" stop-color="#fff" stop-opacity=".34"/><stop offset=".55" stop-color="#fff" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000" stop-opacity=".22"/></radialGradient></defs>`;
+  function coinBase(fill) {
+    return `${WASH}<circle cx="12" cy="12" r="11.2" fill="${fill}"/>
+      <circle cx="12" cy="12" r="11.2" fill="url(#cwash)"/>
+      <circle cx="12" cy="12" r="11.2" fill="none" stroke="#1b130b" stroke-width="1.1"/>
+      <circle cx="12" cy="12" r="9.7" fill="none" stroke="#fff" stroke-width=".6" opacity=".3" stroke-dasharray="1.4 .8"/>`;
+  }
   function tokenMarkup(k) {
     const t = TOKEN[k];
     if (!t) return ICONS[k] || '';
-    return `<circle cx="12" cy="12" r="11.3" fill="${t.bg}" stroke="#1b130b" stroke-width="1"/>
-      <circle cx="12" cy="12" r="9.8" fill="none" stroke="#fff" stroke-width=".7" opacity=".28"/>
-      <g fill="${t.fg}">${t.g}</g>`;
+    return `${coinBase(t.bg)}<g fill="${t.fg}">${t.g}</g>`;
   }
 
 
@@ -745,8 +754,7 @@ const ART = (function () {
   // — straw hat, dungarees, a pitchfork over the shoulder — so it reads as a farmhand.
   function workerMarkup(fill) {
     const c = '#f4ecd8';
-    return `<circle cx="12" cy="12" r="11.3" fill="${fill}" stroke="#1b130b" stroke-width="1"/>
-      <circle cx="12" cy="12" r="9.8" fill="none" stroke="#fff" stroke-width=".7" opacity=".3"/>
+    return `${coinBase(fill)}
       <g stroke="${c}" stroke-width="1.1" stroke-linecap="round" fill="none">
         <path d="M17.2 20.2L19.1 8.4"/><path d="M18.1 8.1L18.5 5.6M19.1 8.4L19.5 5.8M20.1 8.6L20.5 6.1M18.1 8.1Q19.1 7.6 20.1 8.6"/></g>
       <path d="M6.4 20.6Q6.6 14.3 12 13.8Q17.4 14.3 17.6 20.6Q14.9 21.7 12 21.7Q9.1 21.7 6.4 20.6z" fill="${c}"/>
