@@ -741,14 +741,20 @@ const ART = (function () {
     return `<svg class="spaceart" viewBox="0 0 56 42" width="56" height="42" preserveAspectRatio="xMidYMid slice" aria-hidden="true">${f ? f() : SKY() + GROUND()}</svg>`;
   }
 
-  // A worker, in the same coin style as the goods: the player's colour with a cream meeple
-  // — the board-game worker, arms out and feet apart — so it reads as "one of your people".
-  const MEEPLE_PATH = 'M12 4.1a2.9 2.9 0 1 1 0 5.8a2.9 2.9 0 1 1 0-5.8z' +
-    'M12 10.4c-1.9 0-2.7.9-3.2 1.7l-3.5 1.1c-.9.3-.8 1.6.1 1.7l3.1-.1-1.3 5.2c-.2.9.7 1.4 1.4.9L12 18l3.4 3c.7.5 1.6 0 1.4-.9l-1.3-5.2 3.1.1c.9-.1 1-1.4.1-1.7l-3.5-1.1c-.5-.8-1.3-1.7-3.2-1.7z';
+  // A worker, in the same coin style as the goods: the player's colour with a cream farmer
+  // — straw hat, dungarees, a pitchfork over the shoulder — so it reads as a farmhand.
   function workerMarkup(fill) {
+    const c = '#f4ecd8';
     return `<circle cx="12" cy="12" r="11.3" fill="${fill}" stroke="#1b130b" stroke-width="1"/>
       <circle cx="12" cy="12" r="9.8" fill="none" stroke="#fff" stroke-width=".7" opacity=".3"/>
-      <path d="${MEEPLE_PATH}" fill="#f4ecd8" stroke="#1b130b" stroke-width=".5" stroke-opacity=".35"/>`;
+      <g stroke="${c}" stroke-width="1.1" stroke-linecap="round" fill="none">
+        <path d="M17.2 20.2L19.1 8.4"/><path d="M18.1 8.1L18.5 5.6M19.1 8.4L19.5 5.8M20.1 8.6L20.5 6.1M18.1 8.1Q19.1 7.6 20.1 8.6"/></g>
+      <path d="M6.4 20.6Q6.6 14.3 12 13.8Q17.4 14.3 17.6 20.6Q14.9 21.7 12 21.7Q9.1 21.7 6.4 20.6z" fill="${c}"/>
+      <path d="M9.7 14.4V18.4H14.3V14.4" fill="none" stroke="${fill}" stroke-width="1.1"/>
+      <circle cx="12" cy="10.3" r="2.6" fill="${c}"/>
+      <path d="M8.8 7.9Q9 4.2 12 4.2T15.2 7.9z" fill="${c}"/>
+      <ellipse cx="12" cy="8" rx="6.2" ry="1.4" fill="${c}"/>
+      <path d="M8.9 7.1H15.1" stroke="${fill}" stroke-width=".9"/>`;
   }
 
   function meeple(colorVar, size) {

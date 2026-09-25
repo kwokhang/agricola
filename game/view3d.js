@@ -551,36 +551,51 @@ const View3D = (function () {
     const g = new T.Group();
     const o = opts || {};
     if (o.base) {
-      // A stack of coins, one per good up to five: the goods' colour on the sides, the top
-      // one printed with its icon — the same object as a worker, just in the goods' colour.
+      // Real coins: one per good, in stacks of five standing side by side, so the pile itself
+      // is the count. The goods' colour on the sides, the top coin of each stack printed with
+      // its icon. The number is a small dark marker lying on the board in front — printed
+      // matter, not something floating in the air.
       const r = 0.36 * (o.spread || 1) + 0.12;
-      const t = 0.07;
+      const t = 0.07, per = 5;
+      const stacks = Math.ceil(Math.max(1, n) / per);
+      const gap = r * 2 + 0.04;
       let y = 0;
       if (o.base !== true) {                     // goods parked for a player sit on their colour
-        const pad = new T.Mesh(geo(`pilePad${r.toFixed(2)}`, () => new T.CylinderGeometry(r + 0.06, r + 0.06, 0.025, 32)),
+        const pw = gap * (stacks - 1) + r * 2 + 0.12;
+        const pad = new T.Mesh(geo(`pilePad${pw.toFixed(2)}_${r.toFixed(2)}`, () => new T.BoxGeometry(pw, 0.025, r * 2 + 0.12)),
           mat(o.base, { roughness: 0.35 }));
-        pad.position.y = 0.0125;
+        pad.position.set(gap * (stacks - 1) / 2, 0.0125, 0);
         pad.receiveShadow = true;
         g.add(pad);
         y = 0.025;
       }
       const side = mat(new T.Color(ART.tokenColor(kind)), { roughness: 0.4 });
-      const layers = Math.max(1, Math.min(n, 5));
-      for (let k = 0; k < layers; k++) {
-        const c = new T.Mesh(geo(`pileCoin${r.toFixed(2)}`, () => new T.CylinderGeometry(r, r, t * 0.92, 32)), side);
-        c.position.set((k % 2) * 0.012, y + t * k + t / 2, ((k * 7) % 3 - 1) * 0.01);
-        c.castShadow = true; c.receiveShadow = true;
-        g.add(c);
-      }
       const iconTex = svgTexture('tokenFace:' + kind, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0.6 0.6 22.8 22.8" width="192" height="192">${ART.tokenMarkup(kind)}</svg>`, 192, 192);
-      const face = new T.Mesh(geo(`pileIcon${r.toFixed(2)}`, () => new T.CircleGeometry(r, 32)), printMat(iconTex, { roughness: 0.4 }));
-      face.rotation.x = -Math.PI / 2;
-      face.position.set(((layers - 1) % 2) * 0.012, y + t * layers + 0.001, (((layers - 1) * 7) % 3 - 1) * 0.01);
-      g.add(face);
-      // the count stands beside the stack, never over the icon
-      const plate = countPlate(kind, n, 1);
-      plate.position.set(r * 0.85, y + t * layers + 0.04, r * 0.8);
-      g.add(plate);
+      const faceMat = printMat(iconTex, { roughness: 0.4 });
+      for (let st = 0; st < stacks; st++) {
+        const count = Math.min(per, Math.max(1, n) - st * per);
+        const sx = st * gap;
+        for (let k = 0; k < count; k++) {
+          const c = new T.Mesh(geo(`pileCoin${r.toFixed(2)}`, () => new T.CylinderGeometry(r, r, t * 0.92, 32)), side);
+          c.position.set(sx + (k % 2) * 0.012, y + t * k + t / 2, ((k * 7) % 3 - 1) * 0.01);
+          c.castShadow = true; c.receiveShadow = true;
+          g.add(c);
+        }
+        const face = new T.Mesh(geo(`pileIcon${r.toFixed(2)}`, () => new T.CircleGeometry(r, 32)), faceMat);
+        face.rotation.x = -Math.PI / 2;
+        face.position.set(sx + ((count - 1) % 2) * 0.012, y + t * count + 0.001, (((count - 1) * 7) % 3 - 1) * 0.01);
+        g.add(face);
+      }
+      if (n > 1) {
+        const tag = new T.Mesh(geo('pileTag', () => new T.CircleGeometry(0.16, 28)),
+          new T.MeshBasicMaterial({ map: svgTexture('ptag:' + n, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="96" height="96">
+            <circle cx="20" cy="20" r="19" fill="#1c1a17" stroke="#efe8d8" stroke-width="2"/>
+            <text x="20" y="27.5" text-anchor="middle" font-size="${n > 9 ? 19 : 22}" font-weight="900" fill="#efe8d8"
+              font-family="-apple-system,sans-serif">${n}</text></svg>`, 96, 96), transparent: true }));
+        tag.rotation.x = -Math.PI / 2;
+        tag.position.set(gap * (stacks - 1) + r + 0.1, y + 0.004, r * 0.75);
+        g.add(tag);
+      }
       return g;
     }
     const lift = 0;
