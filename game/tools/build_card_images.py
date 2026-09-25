@@ -9,7 +9,7 @@ spaces and punctuation removed: "animaltamer.png" -> "Animal Tamer".
 Run from anywhere:  python3 game/tools/build_card_images.py
 Needs macOS `sips` for the resize.
 """
-import base64, json, os, re, subprocess, sys, tempfile
+import base64, json, os, re, struct, subprocess, sys, tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.normpath(os.path.join(HERE, '..', '..'))
@@ -30,11 +30,60 @@ def card_names():
         names.setdefault(key(re.sub(r"'s\b", '', en)), en)   # basketmakerworkshop -> Basketmaker's Workshop
     return names
 
+def read_bmp(path):
+    """Pixels of an uncompressed 24/32-bit BMP as rows of (r, g, b), top row first."""
+    d = open(path, 'rb').read()
+    off = struct.unpack_from('<I', d, 10)[0]
+    w, h = struct.unpack_from('<ii', d, 18)
+    bpp = struct.unpack_from('<H', d, 28)[0] // 8
+    stride = (w * bpp + 3) & ~3
+    rows = []
+    for y in range(abs(h)):
+        base = off + y * stride
+        rows.append([(d[base + x * bpp + 2], d[base + x * bpp + 1], d[base + x * bpp]) for x in range(w)])
+    return rows if h < 0 else rows[::-1]
+
+def border(path):
+    """How many pixels of flat frame (a near-uniform dark or light band) each edge carries."""
+    with tempfile.TemporaryDirectory() as tmp:
+        bmp = os.path.join(tmp, 'x.bmp')
+        subprocess.run(['sips', '-Z', '256', '-s', 'format', 'bmp', path, '--out', bmp], check=True, capture_output=True)
+        px = read_bmp(bmp)
+    h, w = len(px), len(px[0])
+    def flat(line):
+        lum = [0.3 * r + 0.59 * g + 0.11 * b for r, g, b in line]
+        m = sum(lum) / len(lum)
+        sd = (sum((v - m) ** 2 for v in lum) / len(lum)) ** 0.5
+        return sd < 14 and (m < 60 or m > 225)
+    def run(lines):
+        n = 0
+        for line in lines[:int(len(lines) * 0.08)]:
+            if not flat(line): break
+            n += 1
+        return n
+    cols = [[px[y][x] for y in range(h)] for x in range(w)]
+    edges = {'top': run(px), 'bottom': run(px[::-1]), 'left': run(cols), 'right': run(cols[::-1])}
+    found = {k: v for k, v in edges.items() if v}
+    # A frame runs round the picture; a pale sky or a dark floor along one edge is not one.
+    return (found if len(found) >= 3 else {}), (w, h)
+
 def encode(path):
     with tempfile.TemporaryDirectory() as tmp:
+        src = path
+        found, (sw, sh) = border(path)
+        if found:
+            # scale the trim from the 256 px sample back to full size, plus a pixel of anti-alias
+            fw, fh = [int(v) for v in subprocess.run(['sips', '-g', 'pixelWidth', '-g', 'pixelHeight', path],
+                      capture_output=True, text=True).stdout.split()[-3::2]]
+            k = fw / sw
+            t, b_, l, r = [int(round((found.get(e, 0) + (1 if found.get(e) else 0)) * k)) for e in ('top', 'bottom', 'left', 'right')]
+            src = os.path.join(tmp, 'crop.png')
+            subprocess.run(['sips', '-c', str(fh - t - b_), str(fw - l - r), '--cropOffset', str(t), str(l),
+                            path, '--out', src], check=True, capture_output=True)
+            print(f'    trimmed border {found} from {os.path.basename(path)}')
         out = os.path.join(tmp, 'x.jpg')
         subprocess.run(['sips', '-Z', str(SIZE), '-s', 'format', 'jpeg',
-                        '-s', 'formatOptions', str(QUALITY), path, '--out', out],
+                        '-s', 'formatOptions', str(QUALITY), src, '--out', out],
                        check=True, capture_output=True)
         return 'data:image/jpeg;base64,' + base64.b64encode(open(out, 'rb').read()).decode()
 

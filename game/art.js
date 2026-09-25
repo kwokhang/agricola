@@ -847,13 +847,12 @@ const ART = (function () {
   function artwork(c, x, y, w, h) {
     const src = typeof CARD_IMAGES !== 'undefined' && CARD_IMAGES[c.en];
     if (!src) return '';
-    const size = w * 1.08;
-    // occupations are portraits (keep the head); improvements are objects (keep the middle)
-    const focus = c.type === 'occ' ? 0.41 : 0.6;
-    const top = y + h / 2 - size * focus;
-    return `<image href="${src}" x="${(x + (w - size) / 2).toFixed(1)}" y="${Math.min(y, top).toFixed(1)}"
-      width="${size.toFixed(1)}" height="${size.toFixed(1)}" preserveAspectRatio="xMidYMid slice"/>`;
+    // Pictures come square or 3:4. Occupations are portraits, so keep the top (the head);
+    // improvements are objects, so keep the middle.
+    const align = c.type === 'occ' ? 'xMidYMin' : 'xMidYMid';
+    return `<image href="${src}" x="${x}" y="${y}" width="${w}" height="${h}" preserveAspectRatio="${align} slice"/>`;
   }
+
 
   // A cost gem: the good's icon in a coin, with the count on a small badge.
   function gem(k, n, cx, cy) {
@@ -889,7 +888,6 @@ const ART = (function () {
     const cost = o.cost || {};
     const kinds = Object.keys(cost);
     const src = CARD_IMAGES[c.en];
-    const size = Hh;                                    // square art, scaled to the card's height
     let s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${Hh}" width="${W}" height="${Hh}"
       font-family="-apple-system,BlinkMacSystemFont,'PingFang TC','Noto Sans TC',sans-serif">
       <defs>
@@ -897,8 +895,11 @@ const ART = (function () {
         <linearGradient id="ftop" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stop-color="#0e0b08" stop-opacity=".78"/><stop offset="1" stop-color="#0e0b08" stop-opacity="0"/></linearGradient>
         <linearGradient id="fbot" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stop-color="#0e0b08" stop-opacity="0"/><stop offset=".45" stop-color="#0e0b08" stop-opacity=".55"/>
-          <stop offset="1" stop-color="#0e0b08" stop-opacity=".9"/></linearGradient>
+          <stop offset="0" stop-color="#0e0b08" stop-opacity="0"/><stop offset=".3" stop-color="#0e0b08" stop-opacity=".72"/>
+          <stop offset="1" stop-color="#0e0b08" stop-opacity=".94"/></linearGradient>
+        <linearGradient id="rule" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stop-color="#d8b25a" stop-opacity="0"/><stop offset=".5" stop-color="#d8b25a"/>
+          <stop offset="1" stop-color="#d8b25a" stop-opacity="0"/></linearGradient>
         <linearGradient id="foil" x1="0" y1="0" x2="1" y2="1">
           <stop offset=".2" stop-color="#fff" stop-opacity="0"/><stop offset=".32" stop-color="#fff6d8" stop-opacity=".16"/>
           <stop offset=".4" stop-color="#fff" stop-opacity="0"/><stop offset=".62" stop-color="#d8f0ff" stop-opacity=".1"/>
@@ -906,9 +907,9 @@ const ART = (function () {
         <filter id="tsh" x="-10%" y="-30%" width="120%" height="160%"><feDropShadow dx="0" dy="1.5" stdDeviation="1.6" flood-color="#000" flood-opacity=".85"/></filter></defs>
       <rect width="${W}" height="${Hh}" fill="#15110d"/>
       <g clip-path="url(#fc)">
-        <image href="${src}" x="${(W - size) / 2}" y="0" width="${size}" height="${size}" preserveAspectRatio="xMidYMid slice"/>
+        <image href="${src}" x="0" y="0" width="${W}" height="${Hh}" preserveAspectRatio="xMidYMin slice"/>
         <rect width="${W}" height="96" fill="url(#ftop)"/>
-        <rect y="${Hh * 0.5}" width="${W}" height="${Hh * 0.5}" fill="url(#fbot)"/>
+        <rect y="${Hh * 0.52}" width="${W}" height="${Hh * 0.48}" fill="url(#fbot)"/>
         <rect width="${W}" height="${Hh}" fill="url(#foil)"/>
       </g>
       <rect x="1" y="1" width="${W - 2}" height="${Hh - 2}" rx="15" fill="none" stroke="#15110d" stroke-width="2"/>
@@ -926,9 +927,9 @@ const ART = (function () {
     if (c.vp) s += vpBadge(c.vp, W - 30, 54, 1.05);
 
     // rules in a smoked-glass panel
-    const box = { x: 16, y: 262, w: W - 32, h: 118 };
-    s += `<rect x="${box.x}" y="${box.y}" width="${box.w}" height="${box.h}" rx="10" fill="#0e0b08" fill-opacity=".55"
-      stroke="#d8b25a" stroke-opacity=".5" stroke-width="1"/>`;
+    const box = { x: 16, y: 268, w: W - 32, h: 112 };
+    s += `<path d="M24 ${box.y - 4}H${W - 24}" stroke="url(#rule)" stroke-width="1.2"/>
+      <path d="M${W / 2} ${box.y - 8.5}l4.5 4.5-4.5 4.5-4.5-4.5z" fill="#d8b25a"/>`;
     const fit = fitRules(c.txz || c.tx || '', box.w - 22, box.h - 16);
     const top = box.y + 8 + (box.h - 16 - fit.lines.length * fit.lh) / 2 + fit.size * 0.95;
     fit.lines.forEach((ln, i) => {
