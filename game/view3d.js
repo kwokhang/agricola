@@ -611,11 +611,17 @@ const View3D = (function () {
     const r = 0.13, t = 0.05;
     const side = mat(new T.Color(ART.tokenColor(kind)), { roughness: 0.4 });
     const iconTex = svgTexture('tokenFace2:' + kind, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0.6 0.6 22.8 22.8" width="192" height="192">${ART.tokenMarkup(kind)}</svg>`, 192, 192);
-    const coin = new T.Mesh(geo('chipCoin', () => new T.CylinderGeometry(r, r, t, 32)),
-      [side, printMat(iconTex, { roughness: 0.4 }), side]);
+    const coin = new T.Mesh(geo('chipCoin', () => new T.CylinderGeometry(r, r, t, 32)), side);
     coin.position.y = t / 2;
     coin.castShadow = true;
     g.add(coin);
+    // the icon on a flat disc laid on top, so it reads upright from the player's side
+    // (a cylinder's cap UVs would turn it sideways)
+    const face = new T.Mesh(geo('chipFace', () => new T.CircleGeometry(r, 32)), printMat(iconTex, { roughness: 0.4 }));
+    face.rotation.x = -Math.PI / 2;
+    face.position.y = t + 0.001;
+    face.userData.noInk = true;
+    g.add(face);
     const badge = new T.Mesh(geo('chipBadge', () => new T.PlaneGeometry(0.17, 0.17)),
       new T.MeshBasicMaterial({ transparent: true, depthWrite: false, map: svgTexture('chipN:' + n,
         `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 34 34" width="136" height="136">
@@ -1030,7 +1036,10 @@ const View3D = (function () {
           new T.MeshBasicMaterial({ map: svgTexture('htab2', harvestSealSvg(), HTAB_W * 3, HTAB_H * 3), transparent: true, opacity: done ? 0.45 : 1 }));
         seal.rotation.x = -Math.PI / 2;
         // hanging from the cell's bottom edge, over the gap and the top of the next cell's picture
-        seal.position.set(bx(cellX(c) + BG.w / 2), BOARD_Y + 0.06, bz(cellY(r) + BG.h + HTAB_H / 2 - 5));
+        // the bottom row has no cell below, so its tab tucks inside the cell instead of
+        // hanging off the board over the grass
+        const tabY = r === BG.rows - 1 ? cellY(r) + BG.h - HTAB_H / 2 - 3 : cellY(r) + BG.h + HTAB_H / 2 - 5;
+        seal.position.set(bx(cellX(c) + BG.w / 2), BOARD_Y + 0.06, bz(tabY));
         g.add(seal);
       }
     });
@@ -1881,26 +1890,20 @@ const View3D = (function () {
     x.fillStyle = '#44592f'; shape(P * 0.1, 0.012); x.fill();       // longer grass at the edge
     x.fillStyle = '#5b7340'; shape(P * 0.45, 0.01); x.fill();       // the green
     x.save(); shape(P * 0.45, 0.01); x.clip();
-    const band = Math.max(W, H) / 18;                               // mown strips
-    x.fillStyle = 'rgba(120,150,80,.10)';
-    for (let k = 0; k * band < W; k += 2) x.fillRect(k * band, 0, band, H);
+    for (let i = 0; i < 120; i++) {                                 // soft tone changes, no drawn blades
+      x.fillStyle = r() < 0.5 ? 'rgba(98,122,68,.18)' : 'rgba(72,94,50,.16)';
+      x.beginPath(); x.ellipse(r() * W, r() * H, 40 + r() * 90, 20 + r() * 50, r() * 3, 0, Math.PI * 2); x.fill();
+    }
     for (let i = 0; i < 9; i++) {                                   // worn earth, near the edge
       const ex = r() < 0.5 ? P * (0.5 + r() * 0.5) : W - P * (0.5 + r() * 0.5);
       const ey = P + r() * (H - 2 * P);
       const [ax, ay] = r() < 0.5 ? [ex, ey] : [P + r() * (W - 2 * P), r() < 0.5 ? P * (0.5 + r() * 0.5) : H - P * (0.5 + r() * 0.5)];
-      x.fillStyle = 'rgba(122,98,62,.55)';
+      x.fillStyle = 'rgba(122,98,62,.5)';
       x.beginPath(); x.ellipse(ax, ay, 26 + r() * 40, 12 + r() * 16, r() * 3, 0, Math.PI * 2); x.fill();
-      x.fillStyle = 'rgba(122,98,62,.3)';
+      x.fillStyle = 'rgba(122,98,62,.28)';
       x.beginPath(); x.ellipse(ax + 8, ay - 4, 40 + r() * 40, 18 + r() * 18, r() * 3, 0, Math.PI * 2); x.fill();
     }
     x.restore();
-    for (let i = 0; i < 180; i++) {                                 // tufts: mostly green, some dry
-      const tx = P * 0.6 + r() * (W - P * 1.2), ty = P * 0.6 + r() * (H - P * 1.2);
-      const q = r();
-      x.strokeStyle = q < 0.65 ? '#4a6233' : q < 0.85 ? '#66804a' : '#9c9057'; x.lineWidth = 2; x.lineCap = 'round';
-      x.beginPath(); x.moveTo(tx, ty); x.lineTo(tx - 3, ty - 7); x.moveTo(tx, ty); x.lineTo(tx + 1, ty - 8);
-      x.moveTo(tx, ty); x.lineTo(tx + 4, ty - 6); x.stroke();
-    }
     const tex = new T.CanvasTexture(cv);
     tex.colorSpace = T.SRGBColorSpace;
     tex.anisotropy = 8;
@@ -1953,7 +1956,67 @@ const View3D = (function () {
     return ink(g);
   }
 
+  // Real grass: tufts of thin blades, cel-shaded, dark at the root and lighter at the tip,
+  // scattered over the meadow round the play area (never under or between the boards).
+  function grassTuftGeometry() {
+    const pos = [], colr = [];
+    const root = new T.Color('#3b5327'), tip = new T.Color('#8fae5c');
+    const blades = 7;
+    for (let b = 0; b < blades; b++) {
+      const a = (b / blades) * Math.PI * 2 + b * 0.7;
+      const lean = 0.18 + (b % 3) * 0.1, h = 0.75 + ((b * 37) % 10) / 22, wdt = 0.07;
+      const bx = Math.cos(a) * 0.05, bz = Math.sin(a) * 0.05;
+      const px = -Math.sin(a) * wdt, pz = Math.cos(a) * wdt;
+      pos.push(bx - px, 0, bz - pz, bx + px, 0, bz + pz, bx + Math.cos(a) * lean, h, bz + Math.sin(a) * lean);
+      colr.push(root.r, root.g, root.b, root.r, root.g, root.b, tip.r, tip.g, tip.b);
+    }
+    const gg = new T.BufferGeometry();
+    gg.setAttribute('position', new T.Float32BufferAttribute(pos, 3));
+    gg.setAttribute('color', new T.Float32BufferAttribute(colr, 3));
+    gg.computeVertexNormals();
+    return gg;
+  }
+  function grassField(mx0, mx1, mz0, mz1, holes) {
+    const r = rng(303);
+    const spots = [];
+    const area = (mx1 - mx0) * (mz1 - mz0);
+    for (let i = 0; i < area * 14 && spots.length < 4000; i++) {
+      const x = mx0 + r() * (mx1 - mx0), z = mz0 + r() * (mz1 - mz0);
+      if (holes.some((h) => x > h.min.x && x < h.max.x && z > h.min.z && z < h.max.z)) continue;
+      spots.push([x, z]);
+      if (r() < 0.45) spots.push([x + (r() - 0.5) * 0.25, z + (r() - 0.5) * 0.25]);   // clumps
+    }
+    const m = new T.MeshToonMaterial({ vertexColors: true, gradientMap: TOON_ROOM, side: T.DoubleSide });
+    const inst = new T.InstancedMesh(geo('grassTuft', grassTuftGeometry), m, spots.length);
+    const o = new T.Object3D(), c = new T.Color();
+    spots.forEach(([x, z], k) => {
+      o.position.set(x, -0.07, z);
+      o.rotation.set(0, r() * 6.28, 0);
+      const sc = 0.2 + r() * 0.2;
+      o.scale.set(sc, sc * (0.8 + r() * 0.6), sc);
+      o.updateMatrix();
+      inst.setMatrixAt(k, o.matrix);
+      c.setHSL(0.24 + r() * 0.05, 0.3 + r() * 0.15, 0.62 + r() * 0.3);
+      inst.setColorAt(k, c);
+    });
+    inst.receiveShadow = true;
+    inst.userData.sharedGeo = true;             // the tuft geometry is cached; keep it on refit
+    return inst;
+  }
+
   // Everything that depends on the size of the play area: the meadow, and the trees round it.
+  // Footprints of everything lying on the meadow (each board, card, farm and tray), a
+  // little enlarged, so grass grows round and between them but never through them.
+  function grassHoles() {
+    const out = [];
+    if (!tableGroup) return out;
+    tableGroup.children.forEach((top) => top.children.forEach((c) => {
+      if (c.userData.inkline) return;
+      const b = boxOf(c);
+      if (!b.isEmpty()) out.push(b.expandByScalar(0.12));
+    }));
+    return out;
+  }
   function buildClearing(x0, x1, z0, z1) {
     const g = new T.Group();
     const pad = 1.3;
@@ -1964,6 +2027,8 @@ const View3D = (function () {
     meadow.position.set((x0 + x1) / 2, -0.07, (z0 + z1) / 2);
     meadow.receiveShadow = true;
     g.add(meadow);
+    // tufts over the meadow, kept a little off the edge and clear of the boards
+    g.add(grassField(x0 - pad * 0.85, x1 + pad * 0.85, z0 - pad * 0.85, z1 + pad * 0.85, grassHoles()));
 
     // A ring of trees just outside the meadow. The near side (towards the camera) only gets
     // low bushes, far out, so nothing ever stands between you and the table.
@@ -2009,7 +2074,7 @@ const View3D = (function () {
     if (playMat) {
       playMat.traverse((o) => {
         if (!o.isMesh || o.userData.inkline) return;
-        if (!o.geometry.parameters || o.geometry === playMat.geometry) o.geometry.dispose();
+        if ((!o.geometry.parameters && !o.userData.sharedGeo) || o.geometry === playMat.geometry) o.geometry.dispose();
         const ms = Array.isArray(o.material) ? o.material : [o.material];
         ms.forEach((m) => { if (m.map) m.map.dispose(); m.dispose(); });
       });

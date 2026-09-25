@@ -913,11 +913,6 @@
       html = `<div class="row" style="margin-top:6px">
         ${btn('newGame', '新遊戲', false, 'class="primary"')}
       </div>
-      <h3 style="font-size:14px;margin:16px 0 6px">場景</h3>
-      <div class="row">
-        <button data-act="scene" data-v="forest" class="${(UI.scene || 'forest') === 'forest' ? 'sel' : ''}">森林草地</button>
-        <button data-act="scene" data-v="table" class="${UI.scene === 'table' ? 'sel' : ''}">木檯</button>
-      </div>
 <p class="muted" style="font-size:12px;margin-top:10px">
         A、B 兩副卡牌的效果全部自動結算，無需手動增減物資。</p>`;
     }
@@ -960,6 +955,7 @@
     // Frame the screen in the colour of whoever has to act.
     const who = G.over ? -1 : G.feeding ? G.feeding.i : G.current;
     document.body.style.setProperty('--turn', who < 0 ? 'transparent' : PCOLOR[who]);
+    if (who < 0) document.body.style.removeProperty('--turnc'); else document.body.style.setProperty('--turnc', PCOLOR[who]);
     $('turnTag').textContent = who < 0 ? '' : `${G.players[who].name} 的回合`;
     renderStatus(); renderMainTabs();
     renderBoard(); renderFarm(); renderCards();
@@ -1049,7 +1045,6 @@
       case 'log': UI.logOpen = !UI.logOpen; renderRail(); save(); return;
       case 'final': UI.finalOpen = true; break;
       case 'scoreSheet': UI.scoreOpen = true; break;
-      case 'scene': UI.scene = v; View3D.setScene(v); renderDrawer(); break;
       case 'closeScore': UI.scoreOpen = false; break;
       case 'scoreTab': UI.scoreTab = v; break;
       case 'closeFinal': UI.finalOpen = false; break;
@@ -1084,7 +1079,6 @@
   // The table has to claim the window before anything renders into it.
   let has3d = false;
   try { has3d = View3D.init($('stage'), { onPick: pick3d, onHover: showTip, onStep: stepView }); } catch (e) { has3d = false; }
-  if (has3d) { try { const o = JSON.parse(localStorage.getItem(SAVE_KEY) || '{}'); View3D.setScene((o.UI && o.UI.scene) || 'forest'); } catch (e) { /* default */ } }
   if (!has3d) {
     $('stage').hidden = true;
     $('flat').hidden = false;
