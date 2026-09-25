@@ -1281,11 +1281,12 @@ const View3D = (function () {
       font-family="-apple-system,'PingFang TC',sans-serif" letter-spacing="6">打出嘅卡 · PLAYED</text></svg>`;
 
   // ---------------------------------------------------------------- majors on the table
+  const rowZh = (k, d) => (typeof ZH !== 'undefined' && ZH.majorRows && ZH.majorRows[k]) || d;
   const MAJOR_ROWS = [
-    { zh: '煮食', cards: ['Fireplace', 'Cooking Hearth'] },
-    { zh: '烤麵包', cards: ['Clay Oven', 'Stone Oven'] },
-    { zh: '工坊', cards: ['Joinery', 'Pottery', "Basketmaker's Workshop"] },
-    { zh: '水井', cards: ['Well'] },
+    { zh: rowZh('cooking', '煮食'), cards: ['Fireplace', 'Cooking Hearth'] },
+    { zh: rowZh('baking', '烤麵包'), cards: ['Clay Oven', 'Stone Oven'] },
+    { zh: rowZh('workshops', '工坊'), cards: ['Joinery', 'Pottery', "Basketmaker's Workshop"] },
+    { zh: rowZh('well', '水井'), cards: ['Well'] },
   ];
   function buildMajors(G, UI) {
     const g = new T.Group();

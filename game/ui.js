@@ -33,6 +33,7 @@
       if (!o || !o.G || !o.G.players) return false;
       G = o.G;
       Object.assign(UI, o.UI || {});
+      if (typeof refreshCardText === 'function') refreshCardText(G);
       return true;
     } catch (e) { return false; }
   }

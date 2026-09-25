@@ -150,3 +150,15 @@ SVG 貼圖讀唔到外部 PNG，所以要嵌入）。有圖嘅卡用插畫，冇
 所有行動格同一個 3:2 大細（`CELL_W × CELL_H`），細板一行 6 格，大板 7 欄 × 6 行，
 兩塊板一樣高。插圖鋪滿成格（有 `resource/action/` 圖就用圖，冇就用繪製場景），
 名同效果寫喺底部嘅深色漸層上面。
+
+## 中文翻譯
+
+遊戲內容嘅中文全部喺 `game/i18n/zh.json`：卡名同卡文（`cards`，用英文卡名做 key）、
+行動格名（`spaces`，用 id）、物資名（`goods`）、屋種（`houses`）、步驟（`steps`）、
+卡類（`cardTypes`）同主要發展分類（`majorRows`）。改完行：
+
+    python3 game/tools/build_translations.py
+
+佢會檢查 JSON 格式再生成 `game/i18n/zh.js`（file:// 讀唔到 JSON，所以要包成 script）。
+存檔入面嘅卡會喺載入時更新做新字眼。`--extract` 會由遊戲資料重新抽一份 zh.json，
+會蓋咗你改過嘅嘢。介面按鈕同提示文字未包喺入面。
