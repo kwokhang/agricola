@@ -133,28 +133,30 @@ const View3D = (function () {
   // worker who has gone out leaves its disc behind, empty and faded.
   function workerToken(pc, present) {
     const g = new T.Group();
-    const base = new T.Mesh(geo('wkBase', () => new T.CylinderGeometry(0.22, 0.24, 0.04, 28)),
-      mat(col('--art-count'), { roughness: 0.35, transparent: !present, opacity: present ? 1 : 0.35 }));
-    base.position.y = 0.02;
-    base.castShadow = present;
-    base.receiveShadow = true;
-    g.add(base);
+    const hex = '#' + pc.getHexString();
     if (!present) {
-      const ring = new T.Mesh(geo('wkRing', () => new T.RingGeometry(0.15, 0.18, 28)),
-        new T.MeshBasicMaterial({ color: pc, transparent: true, opacity: 0.55, depthWrite: false }));
+      const ring = new T.Mesh(geo('wkRing', () => new T.RingGeometry(0.17, 0.215, 32)),
+        new T.MeshBasicMaterial({ color: pc, transparent: true, opacity: 0.5, depthWrite: false }));
       ring.rotation.x = -Math.PI / 2;
-      ring.position.y = 0.042;
+      ring.position.y = 0.004;
       g.add(ring);
       return g;
     }
-    const m = meeple(pc, 0.66);
-    m.material.emissive = pc.clone();
-    m.material.emissiveIntensity = 0.15;
-    m.rotation.x = -Math.PI / 2;
-    m.position.y = 0.08;
-    g.add(m);
+    // A thick coin in the player's colour, its face printed with the same bust as the HUD.
+    const side = mat(pc, { roughness: 0.35 });
+    const coin = new T.Mesh(geo('wkCoin', () => new T.CylinderGeometry(0.22, 0.22, 0.07, 32)), side);
+    coin.position.y = 0.035;
+    coin.castShadow = true; coin.receiveShadow = true;
+    g.add(coin);
+    const face = new T.Mesh(geo('wkFace', () => new T.CircleGeometry(0.22, 32)),
+      printMat(svgTexture('worker:' + hex, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0.6 0.6 22.8 22.8" width="192" height="192">${ART.workerMarkup(hex)}</svg>`, 192, 192),
+        { roughness: 0.35 }));
+    face.rotation.x = -Math.PI / 2;
+    face.position.y = 0.071;
+    g.add(face);
     return g;
   }
+
 
   // Standing upright, feet on the board, so it casts a proper shadow.
   function meeple(colorHex, scale) {

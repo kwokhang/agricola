@@ -739,9 +739,20 @@ const ART = (function () {
     return `<svg class="spaceart" viewBox="0 0 56 42" width="56" height="42" preserveAspectRatio="xMidYMid slice" aria-hidden="true">${f ? f() : SKY() + GROUND()}</svg>`;
   }
 
-  function meeple(colorVar, size) {
-    return `<svg class="meeple" viewBox="0 0 24 24" width="${size || 16}" height="${size || 16}" style="color:${colorVar}" aria-hidden="true">${ICONS.person}</svg>`;
+  // A worker, in the same coin style as the goods: the player's colour with a cream bust
+  // (round head, shoulders), so it reads as a person even at 14 px.
+  function workerMarkup(fill) {
+    return `<circle cx="12" cy="12" r="11.3" fill="${fill}" stroke="#1b130b" stroke-width="1"/>
+      <circle cx="12" cy="12" r="9.8" fill="none" stroke="#fff" stroke-width=".7" opacity=".3"/>
+      <circle cx="12" cy="8.6" r="3.5" fill="#f4ecd8"/>
+      <path d="M5.4 19.6Q5.6 12.9 12 12.9T18.6 19.6Q15.8 21.4 12 21.4T5.4 19.6z" fill="#f4ecd8"/>`;
   }
+
+  function meeple(colorVar, size) {
+    const s = size || 16;
+    return `<svg class="meeple" viewBox="0 0 24 24" width="${s}" height="${s}" aria-hidden="true">${workerMarkup(colorVar)}</svg>`;
+  }
+
 
   // ---------------------------------------------------------------- card faces
   // A printed card, drawn big enough to stay readable as a 3D texture. SVG has no text
@@ -925,5 +936,5 @@ const ART = (function () {
 
   return { ICONS, icon, spaceArt, sceneMarkup, scene, plate, token, board, slot, seal, meeple,
     grassTile, fieldTile, houseTile, stableArt, animalsArt, fenceArt, edgeHit, TW, TH,
-    cardFace, cardBack, cardArt, CARD_W, CARD_H, NAMES, tokenMarkup, vpBadge, vpIcon };
+    cardFace, cardBack, cardArt, CARD_W, CARD_H, NAMES, tokenMarkup, vpBadge, vpIcon, workerMarkup };
 })();

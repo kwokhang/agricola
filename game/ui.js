@@ -68,7 +68,7 @@
         `<span class="mp ${k < p.workersLeft ? '' : 'used'}">${ART.meeple(PCOLOR[i], 14)}</span>`).join('');
       const pts = score(G, p).total;
       return `<div class="pcard ${active ? 'now' : ''}" style="--pc:${PCOLOR[i]}" data-view="${i}" title="睇 ${esc(p.name)} 嘅農場">
-        <span class="av">${ART.meeple('#fff', 20)}</span>
+        <span class="av">${ART.meeple(PCOLOR[i], 34)}</span>
         <span class="bd">
           <span class="nm">${esc(p.name)}${i === G.startPlayer ? `<span class="sp" title="起始玩家">${ART.icon('start', 14)}</span>` : ''}
             ${active ? '<span class="tag">輪到</span>' : ''}</span>
@@ -699,7 +699,7 @@
     const rows = NG.players.slice(0, NG.n).map((q, i) => {
       const taken = NG.players.slice(0, NG.n).filter((_, j) => j !== i).map((o) => o.color);
       return `<div class="ngrow" style="--pc:${q.color}">
-        <span class="av">${ART.meeple('#fff', 20)}</span>
+        <span class="av">${ART.meeple(q.color, 40)}</span>
         <label class="ngname">${NG.n === 1 ? '你嘅名' : `玩家 ${i + 1} 嘅名`}
           <input data-ng-name="${i}" maxlength="10" value="${esc(q.name)}" placeholder="${NG.n === 1 ? '玩家' : `玩家 ${i + 1}`}"></label>
         <div class="sw">${SWATCHES.map(([c, zh]) => `<button data-act="ngColor" data-v="${i}|${c}" title="${zh}"
