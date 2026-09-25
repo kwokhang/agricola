@@ -17,6 +17,8 @@ SRC = os.path.join(ROOT, 'resource')
 OUT = os.path.join(ROOT, 'game', 'cardimages.js')
 KINDS = ['occupation', 'minor', 'minorimprovement', 'major', 'majorimprovement']
 SIZE, QUALITY = 900, 62          # AVIF: about a third the size of a JPEG at this quality
+# Minor improvements only show in a small picture window, so they need less.
+SIZE_BY_KIND = {'minor': 640, 'minorimprovement': 640}
 
 def key(s):
     # files straight from the Draw Things script carry a prefix; ignore it
@@ -69,7 +71,7 @@ def border(path):
     # A frame runs round the picture; a pale sky or a dark floor along one edge is not one.
     return (found if len(found) >= 3 else {}), (w, h)
 
-def encode(path):
+def encode(path, size=None):
     with tempfile.TemporaryDirectory() as tmp:
         src = path
         found, (sw, sh) = border(path)
@@ -84,7 +86,7 @@ def encode(path):
                             path, '--out', src], check=True, capture_output=True)
             print(f'    trimmed border {found} from {os.path.basename(path)}')
         out = os.path.join(tmp, 'x.avif')
-        subprocess.run(['sips', '-Z', str(SIZE), '-s', 'format', 'avif',
+        subprocess.run(['sips', '-Z', str(size or SIZE), '-s', 'format', 'avif',
                         '-s', 'formatOptions', str(QUALITY), src, '--out', out],
                        check=True, capture_output=True)
         return 'data:image/avif;base64,' + base64.b64encode(open(out, 'rb').read()).decode()
@@ -104,7 +106,7 @@ def main():
             if not en:
                 unmatched.append(f'{kind}/{f}')
                 continue
-            found[en] = encode(os.path.join(folder, f))
+            found[en] = encode(os.path.join(folder, f), SIZE_BY_KIND.get(kind))
             print(f'  {kind}/{f} -> {en} ({len(found[en]) * 3 // 4 // 1024} KB)')
     # Action spaces, keyed by space id, matched on the space's English name or its id.
     spaces = {}
