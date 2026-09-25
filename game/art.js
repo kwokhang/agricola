@@ -946,8 +946,98 @@ const ART = (function () {
     return s + '</svg>';
   }
 
+  // ---------------------------------------------------------------- ACE SPEC-style majors
+  // After the Pokémon TCG's ACE SPEC cards: an iridescent foil frame with a scatter of
+  // sparkles, a tall picture window, a bold metallic banner under the art, and a special
+  // rule line at the foot — here, that a major improvement is a shared card, first come.
+  let majStyle = 'ace';
+  function setMajStyle(s) { majStyle = s === 'standard' ? 'standard' : 'ace'; }
+
+  function sparkles(W, Hh, seed) {
+    let r = seed, out = '';
+    const next = () => ((r = (r * 9301 + 49297) % 233280) / 233280);
+    for (let i = 0; i < 26; i++) {
+      const x = next() * W, y = next() * Hh, k = 1.4 + next() * 2.6;
+      // only on the frame band, not over the art or the text
+      if (x > 12 && x < W - 12 && y > 12 && y < Hh - 12) continue;
+      out += `<path d="M${x} ${y - k}L${x + k * .3} ${y - k * .3}L${x + k} ${y}L${x + k * .3} ${y + k * .3}L${x} ${y + k}L${x - k * .3} ${y + k * .3}L${x - k} ${y}L${x - k * .3} ${y - k * .3}z" fill="#fffbe8" opacity="${(.45 + next() * .5).toFixed(2)}"/>`;
+    }
+    return out;
+  }
+
+  function cardFaceAce(c, o) {
+    const W = CARD_W, Hh = CARD_H;
+    const cost = o.cost || {};
+    const kinds = Object.keys(cost);
+    const art = { x: 20, y: 62, w: W - 40, h: 178 };
+    const src = typeof CARD_IMAGES !== 'undefined' && CARD_IMAGES[c.en];
+    const twin = c.en === 'Fireplace' || c.en === 'Cooking Hearth';
+    let s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${Hh}" width="${W}" height="${Hh}"
+      font-family="-apple-system,BlinkMacSystemFont,'PingFang TC','Noto Sans TC',sans-serif">
+      <defs>
+        <linearGradient id="foilA" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#d9b25c"/><stop offset=".22" stop-color="#f3dca0"/>
+          <stop offset=".38" stop-color="#e6a9a0"/><stop offset=".52" stop-color="#a9cfc4"/>
+          <stop offset=".68" stop-color="#f1d690"/><stop offset=".85" stop-color="#c98f52"/>
+          <stop offset="1" stop-color="#e9c77a"/></linearGradient>
+        <linearGradient id="banner" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#fff2c8"/><stop offset=".45" stop-color="#d8a94c"/>
+          <stop offset=".55" stop-color="#b8832c"/><stop offset="1" stop-color="#e8c574"/></linearGradient>
+        <linearGradient id="bevel" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#fff4cf"/><stop offset="1" stop-color="#8a5f22"/></linearGradient>
+        <clipPath id="aceArt"><rect x="${art.x}" y="${art.y}" width="${art.w}" height="${art.h}" rx="5"/></clipPath></defs>
+      <rect x="1" y="1" width="${W - 2}" height="${Hh - 2}" rx="15" fill="url(#foilA)" stroke="#2a150d" stroke-width="2"/>
+      ${sparkles(W, Hh, c.en.length * 131 + 7)}
+      <rect x="9" y="9" width="${W - 18}" height="${Hh - 18}" rx="9" fill="#3a1812" stroke="#2a150d" stroke-width="1.2"/>
+      <rect x="11" y="11" width="${W - 22}" height="${Hh - 22}" rx="8" fill="none" stroke="#f3dca0" stroke-width=".8" opacity=".6"/>`;
+
+    // header: kind in small caps, then the name; cost on the right
+    s += `<text x="22" y="28" font-size="9.5" font-weight="800" fill="#f3dca0" letter-spacing="1.6">MAJOR IMPROVEMENT</text>`;
+    const name = c.zh || c.en;
+    const gemsW = kinds.length ? kinds.length * 32 : 0;
+    const nameSize = Math.min(24, Math.floor((W - 48 - gemsW) / Math.max(1, [...name].reduce((n, ch) => n + wide(ch), 0))));
+    s += `<text x="22" y="${30 + nameSize}" font-size="${nameSize}" font-weight="900" fill="#fff6e0">${name}</text>`;
+    if (kinds.length) kinds.forEach((k, i) => { s += gem(k, cost[k], W - 34 - (kinds.length - 1 - i) * 32, 36); });
+    else s += `<text x="${W - 22}" y="44" text-anchor="end" font-size="13" font-weight="800" fill="#fff6e0">免費</text>`;
+
+    // the picture, in a gold bevel
+    s += `<rect x="${art.x - 3}" y="${art.y - 3}" width="${art.w + 6}" height="${art.h + 6}" rx="7" fill="url(#bevel)"/>
+      <g clip-path="url(#aceArt)">${src
+        ? `<image href="${src}" x="${art.x}" y="${art.y}" width="${art.w}" height="${art.h}" preserveAspectRatio="xMidYMid slice"/>`
+        : fitCard(cardScene(c), art.x, art.y, art.w, art.h)}</g>`;
+    if (c.vp) s += vpBadge(c.vp, art.x + art.w - 20, art.y - 4, 1.05);
+
+    // the banner — this card's ACE SPEC
+    const by = art.y + art.h + 8;
+    s += `<path d="M14 ${by}H${W - 14}L${W - 22} ${by + 14}L${W - 14} ${by + 28}H14L22 ${by + 14}z" fill="url(#banner)" stroke="#5a3510" stroke-width="1.4"/>
+      <text x="${W / 2}" y="${by + 19.5}" text-anchor="middle" font-size="15" font-weight="900" fill="#3a1812" letter-spacing="3">★ 主要發展 ★</text>`;
+
+    // rules
+    const box = { x: 20, y: by + 34, w: W - 40, h: Hh - (by + 34) - 48 };
+    s += `<rect x="${box.x}" y="${box.y}" width="${box.w}" height="${box.h}" rx="6" fill="#f3e8cc"/>`;
+    const fit = fitRules(c.txz || c.tx || '', box.w - 18, box.h - 10);
+    const top = box.y + 5 + (box.h - 10 - fit.lines.length * fit.lh) / 2 + fit.size * 0.95;
+    fit.lines.forEach((ln, i) => {
+      s += `<text x="${box.x + 9}" y="${(top + i * fit.lh).toFixed(1)}" font-size="${fit.size}" fill="#2a1a10">${ln}</text>`;
+    });
+
+    // the special rule at the foot
+    const fy = Hh - 42;
+    s += `<rect x="20" y="${fy}" width="${W - 40}" height="20" rx="4" fill="#1c0d09" stroke="#d8b25a" stroke-width=".8"/>
+      <text x="${W / 2}" y="${fy + 14}" text-anchor="middle" font-size="10.5" font-weight="700" fill="#f3dca0">公共卡：先建先得${twin ? '（全局兩張）' : '（全局一張）'}</text>
+      <text x="22" y="${Hh - 14}" font-size="9" font-style="italic" fill="#f3dca0" opacity=".8">${c.en || ''}</text>`;
+    if (o.note) s += `<text x="${W - 22}" y="${Hh - 14}" text-anchor="end" font-size="10.5" font-weight="800" fill="#fff2c8">${o.note}</text>`;
+    if (o.taken) {
+      s += `<g transform="translate(${W / 2} ${art.y + art.h / 2}) rotate(-12)">
+        <rect x="-128" y="-22" width="256" height="44" rx="9" fill="#15110d" opacity=".85"/>
+        <text y="7" text-anchor="middle" font-size="20" font-weight="800" fill="#fffaf0">已被 ${o.taken} 取得</text></g>`;
+    }
+    return s + '</svg>';
+  }
+
   function cardFace(c, opts) {
     const o = opts || {};
+    if (majStyle === 'ace' && c.type === 'maj') return cardFaceAce(c, o);
     if (cardStyle === 'full' && c.type === 'occ' && typeof CARD_IMAGES !== 'undefined' && CARD_IMAGES[c.en]) return cardFaceFull(c, o);
     const t = TYPE_BAND[c.type] || TYPE_BAND.min;
     const W = CARD_W, Hh = CARD_H, IN = 12;           // inner margin
@@ -1027,5 +1117,5 @@ const ART = (function () {
 
   return { ICONS, icon, spaceArt, sceneMarkup, scene, plate, token, board, slot, seal, meeple,
     grassTile, fieldTile, houseTile, stableArt, animalsArt, fenceArt, edgeHit, TW, TH,
-    cardFace, cardBack, cardArt, CARD_W, CARD_H, NAMES, tokenMarkup, tokenColor, vpBadge, vpIcon, workerMarkup, TYPE_BAND, setCardStyle, getCardStyle: () => cardStyle };
+    cardFace, cardBack, cardArt, CARD_W, CARD_H, NAMES, tokenMarkup, tokenColor, vpBadge, vpIcon, workerMarkup, TYPE_BAND, setCardStyle, getCardStyle: () => cardStyle + majStyle, setMajStyle };
 })();
