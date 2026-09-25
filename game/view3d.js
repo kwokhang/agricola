@@ -816,9 +816,11 @@ const View3D = (function () {
   const BG = { w: CELL_W, h: CELL_H, gap: 8, pad: 14, rows: 3, cols: 6 };
   const BOARD_GAP = 18;
   const SM_W = SM.pad * 2 + SM.cols * SM.w + (SM.cols - 1) * SM.gap;
-  const SM_H = SM.pad * 2 + SM.rows * SM.h + (SM.rows - 1) * SM.gap;
+  // a deeper bottom margin, so the harvest tabs under the last row hang onto the board too
+  const FOOT = 20;
+  const SM_H = SM.pad * 2 + FOOT + SM.rows * SM.h + (SM.rows - 1) * SM.gap;
   const BG_W = BG.pad * 2 + BG.cols * BG.w + (BG.cols - 1) * BG.gap;
-  const BG_H = BG.pad * 2 + BG.rows * BG.h + (BG.rows - 1) * BG.gap;
+  const BG_H = BG.pad * 2 + FOOT + BG.rows * BG.h + (BG.rows - 1) * BG.gap;
   const PX_W = SM_W + BOARD_GAP + BG_W, PX_H = Math.max(SM_H, BG_H);
   const PS = 0.00708;                              // pixels → world units (a cell is ~1.3 wide)
   // The big board, packed: the four accumulation spaces then rounds 1–14, filled top to
@@ -1036,10 +1038,7 @@ const View3D = (function () {
           new T.MeshBasicMaterial({ map: svgTexture('htab2', harvestSealSvg(), HTAB_W * 3, HTAB_H * 3), transparent: true, opacity: done ? 0.45 : 1 }));
         seal.rotation.x = -Math.PI / 2;
         // hanging from the cell's bottom edge, over the gap and the top of the next cell's picture
-        // the bottom row has no cell below, so its tab tucks inside the cell instead of
-        // hanging off the board over the grass
-        const tabY = r === BG.rows - 1 ? cellY(r) + BG.h - HTAB_H / 2 - 3 : cellY(r) + BG.h + HTAB_H / 2 - 5;
-        seal.position.set(bx(cellX(c) + BG.w / 2), BOARD_Y + 0.06, bz(tabY));
+        seal.position.set(bx(cellX(c) + BG.w / 2), BOARD_Y + 0.06, bz(cellY(r) + BG.h + HTAB_H / 2 - 5));
         g.add(seal);
       }
     });
@@ -1980,11 +1979,11 @@ const View3D = (function () {
     const r = rng(303);
     const spots = [];
     const area = (mx1 - mx0) * (mz1 - mz0);
-    for (let i = 0; i < area * 14 && spots.length < 4000; i++) {
+    for (let i = 0; i < area * 7 && spots.length < 2500; i++) {
       const x = mx0 + r() * (mx1 - mx0), z = mz0 + r() * (mz1 - mz0);
       if (holes.some((h) => x > h.min.x && x < h.max.x && z > h.min.z && z < h.max.z)) continue;
       spots.push([x, z]);
-      if (r() < 0.45) spots.push([x + (r() - 0.5) * 0.25, z + (r() - 0.5) * 0.25]);   // clumps
+      if (r() < 0.25) spots.push([x + (r() - 0.5) * 0.25, z + (r() - 0.5) * 0.25]);   // clumps
     }
     const m = new T.MeshToonMaterial({ vertexColors: true, gradientMap: TOON_ROOM, side: T.DoubleSide });
     const inst = new T.InstancedMesh(geo('grassTuft', grassTuftGeometry), m, spots.length);
@@ -1992,7 +1991,7 @@ const View3D = (function () {
     spots.forEach(([x, z], k) => {
       o.position.set(x, -0.07, z);
       o.rotation.set(0, r() * 6.28, 0);
-      const sc = 0.2 + r() * 0.2;
+      const sc = 0.13 + r() * 0.11;
       o.scale.set(sc, sc * (0.8 + r() * 0.6), sc);
       o.updateMatrix();
       inst.setMatrixAt(k, o.matrix);
@@ -2002,6 +2001,21 @@ const View3D = (function () {
     inst.receiveShadow = true;
     inst.userData.sharedGeo = true;             // the tuft geometry is cached; keep it on refit
     return inst;
+  }
+
+  // Grey field stones, low and chunky, a few together.
+  function fieldRock(s, tone) {
+    const g = new T.Group();
+    const cols = ['#8c8a80', '#7a786f', '#9a978b'];
+    [[0, 0, 0, 1], [0.7, 0, 0.25, 0.55], [-0.55, 0, 0.35, 0.4]].slice(0, 1 + (tone % 3)).forEach(([dx, , dz, k], i) => {
+      const m = new T.Mesh(geo('rock', () => new T.DodecahedronGeometry(1, 0)), mat(new T.Color(cols[(tone + i) % 3])));
+      m.scale.set(s * k, s * k * 0.55, s * k * 0.85);
+      m.position.set(dx * s, s * k * 0.2, dz * s);
+      m.rotation.set(i * 0.7, tone + i * 1.3, i * 0.4);
+      m.castShadow = true;
+      g.add(m);
+    });
+    return ink(g);
   }
 
   // Everything that depends on the size of the play area: the meadow, and the trees round it.
@@ -2053,10 +2067,14 @@ const View3D = (function () {
       }
     }
     for (let xx = x0 - pad; xx <= x1 + pad; xx += 2.4 + r()) place(xx, cz + hz + 1.5 + r(), 'bush', 0.9 + r() * 0.5);
-    // a few bushes and rocks at the meadow's rim
-    for (let i = 0; i < 10; i++) {
-      const side = i % 2 ? 1 : -1;
-      place(cx + side * (hx - 0.6) + r() * 0.4, cz - hz + 1 + r() * (hz * 2 - 2), 'bush', 0.6 + r() * 0.4);
+    // a few grey stones in the grass round the edge
+    for (let i = 0; i < 12; i++) {
+      const edge = i % 4;
+      const px = edge < 2 ? cx + (r() - 0.5) * (hx * 2 - 1) : cx + (edge === 2 ? -1 : 1) * (hx - 0.9 - r() * 0.4);
+      const pz = edge < 2 ? cz + (edge === 0 ? -1 : 1) * (hz - 0.9 - r() * 0.4) : cz + (r() - 0.5) * (hz * 2 - 1);
+      const rock = fieldRock(0.1 + r() * 0.12, i);
+      rock.position.set(px, -0.07, pz);
+      g.add(rock);
     }
     return g;
   }
