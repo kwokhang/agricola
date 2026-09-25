@@ -130,6 +130,8 @@ const ART = (function () {
               <ellipse cx="12" cy="15.8" rx="3" ry="1.9" fill="#f2b8a8"/><circle cx="10" cy="11.8" r=".9" fill="#2f5f86"/><circle cx="14" cy="11.8" r=".9" fill="#2f5f86"/>` },
   };
 
+  const tokenColor = (k) => (TOKEN[k] ? TOKEN[k].bg : '#6a583a');
+
   // The coin itself, in a 24 × 24 box.
   function tokenMarkup(k) {
     const t = TOKEN[k];
@@ -739,13 +741,14 @@ const ART = (function () {
     return `<svg class="spaceart" viewBox="0 0 56 42" width="56" height="42" preserveAspectRatio="xMidYMid slice" aria-hidden="true">${f ? f() : SKY() + GROUND()}</svg>`;
   }
 
-  // A worker, in the same coin style as the goods: the player's colour with a cream bust
-  // (round head, shoulders), so it reads as a person even at 14 px.
+  // A worker, in the same coin style as the goods: the player's colour with a cream meeple
+  // — the board-game worker, arms out and feet apart — so it reads as "one of your people".
+  const MEEPLE_PATH = 'M12 4.1a2.9 2.9 0 1 1 0 5.8a2.9 2.9 0 1 1 0-5.8z' +
+    'M12 10.4c-1.9 0-2.7.9-3.2 1.7l-3.5 1.1c-.9.3-.8 1.6.1 1.7l3.1-.1-1.3 5.2c-.2.9.7 1.4 1.4.9L12 18l3.4 3c.7.5 1.6 0 1.4-.9l-1.3-5.2 3.1.1c.9-.1 1-1.4.1-1.7l-3.5-1.1c-.5-.8-1.3-1.7-3.2-1.7z';
   function workerMarkup(fill) {
     return `<circle cx="12" cy="12" r="11.3" fill="${fill}" stroke="#1b130b" stroke-width="1"/>
       <circle cx="12" cy="12" r="9.8" fill="none" stroke="#fff" stroke-width=".7" opacity=".3"/>
-      <circle cx="12" cy="8.6" r="3.5" fill="#f4ecd8"/>
-      <path d="M5.4 19.6Q5.6 12.9 12 12.9T18.6 19.6Q15.8 21.4 12 21.4T5.4 19.6z" fill="#f4ecd8"/>`;
+      <path d="${MEEPLE_PATH}" fill="#f4ecd8" stroke="#1b130b" stroke-width=".5" stroke-opacity=".35"/>`;
   }
 
   function meeple(colorVar, size) {
@@ -936,5 +939,5 @@ const ART = (function () {
 
   return { ICONS, icon, spaceArt, sceneMarkup, scene, plate, token, board, slot, seal, meeple,
     grassTile, fieldTile, houseTile, stableArt, animalsArt, fenceArt, edgeHit, TW, TH,
-    cardFace, cardBack, cardArt, CARD_W, CARD_H, NAMES, tokenMarkup, vpBadge, vpIcon, workerMarkup };
+    cardFace, cardBack, cardArt, CARD_W, CARD_H, NAMES, tokenMarkup, tokenColor, vpBadge, vpIcon, workerMarkup };
 })();

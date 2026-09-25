@@ -551,29 +551,35 @@ const View3D = (function () {
     const g = new T.Group();
     const o = opts || {};
     if (o.base) {
+      // A stack of coins, one per good up to five: the goods' colour on the sides, the top
+      // one printed with its icon — the same object as a worker, just in the goods' colour.
       const r = 0.36 * (o.spread || 1) + 0.12;
-      const rim = new T.Mesh(geo(`pileRim${r.toFixed(2)}`, () => new T.CylinderGeometry(r + 0.03, r + 0.03, 0.03, 28)),
-        mat(o.base === true ? col('--art-ink') : o.base, { roughness: 0.4 }));
-      rim.position.y = 0.012;
-      rim.receiveShadow = true;
-      g.add(rim);
-      // The token's face is printed with the same icon the HUD uses, so a pile reads at a glance.
-      const iconTex = svgTexture('tokenIcon2:' + kind, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -4 32 32" width="192" height="192">
-        <circle cx="12" cy="12" r="15.6" fill="var(--art-count)"/>${ART.tokenMarkup(kind)}</svg>`, 192, 192);
-      const face = new T.Mesh(geo(`pileFace${r.toFixed(2)}`, () => new T.CylinderGeometry(r, r, 0.035, 28)),
-        mat(col('--art-count'), { roughness: 0.45 }));
-      face.position.y = 0.018;
-      face.receiveShadow = true;
+      const t = 0.07;
+      let y = 0;
+      if (o.base !== true) {                     // goods parked for a player sit on their colour
+        const pad = new T.Mesh(geo(`pilePad${r.toFixed(2)}`, () => new T.CylinderGeometry(r + 0.06, r + 0.06, 0.025, 32)),
+          mat(o.base, { roughness: 0.35 }));
+        pad.position.y = 0.0125;
+        pad.receiveShadow = true;
+        g.add(pad);
+        y = 0.025;
+      }
+      const side = mat(new T.Color(ART.tokenColor(kind)), { roughness: 0.4 });
+      const layers = Math.max(1, Math.min(n, 5));
+      for (let k = 0; k < layers; k++) {
+        const c = new T.Mesh(geo(`pileCoin${r.toFixed(2)}`, () => new T.CylinderGeometry(r, r, t * 0.92, 32)), side);
+        c.position.set((k % 2) * 0.012, y + t * k + t / 2, ((k * 7) % 3 - 1) * 0.01);
+        c.castShadow = true; c.receiveShadow = true;
+        g.add(c);
+      }
+      const iconTex = svgTexture('tokenFace:' + kind, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0.6 0.6 22.8 22.8" width="192" height="192">${ART.tokenMarkup(kind)}</svg>`, 192, 192);
+      const face = new T.Mesh(geo(`pileIcon${r.toFixed(2)}`, () => new T.CircleGeometry(r, 32)), printMat(iconTex, { roughness: 0.4 }));
+      face.rotation.x = -Math.PI / 2;
+      face.position.set(((layers - 1) % 2) * 0.012, y + t * layers + 0.001, (((layers - 1) * 7) % 3 - 1) * 0.01);
       g.add(face);
-      // A circle has clean 0–1 UVs, unlike a cylinder cap, so the icon lands dead centre.
-      const icon = new T.Mesh(geo(`pileIcon${r.toFixed(2)}`, () => new T.CircleGeometry(r * 0.96, 32)),
-        printMat(iconTex, { roughness: 0.45 }));
-      icon.rotation.x = -Math.PI / 2;
-      icon.position.y = 0.037;
-      g.add(icon);
-      // the count sits on the token's rim, never over the icon
+      // the count stands beside the stack, never over the icon
       const plate = countPlate(kind, n, 1);
-      plate.position.set(r * 0.8, 0.07, r * 0.72);
+      plate.position.set(r * 0.85, y + t * layers + 0.04, r * 0.8);
       g.add(plate);
       return g;
     }
