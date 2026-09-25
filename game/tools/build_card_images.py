@@ -19,7 +19,9 @@ KINDS = ['occupation', 'minor', 'minorimprovement', 'major', 'majorimprovement']
 SIZE, QUALITY = 900, 62          # AVIF: about a third the size of a JPEG at this quality
 
 def key(s):
-    return re.sub(r'[^a-z0-9]', '', s.lower())
+    # files straight from the Draw Things script carry a prefix; ignore it
+    s = re.sub(r'^agricola_(minor|major|occ|action)_', '', s.lower())
+    return re.sub(r'[^a-z0-9]', '', s)
 
 def card_names():
     text = open(os.path.join(ROOT, 'data.js'), encoding='utf-8').read()

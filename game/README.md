@@ -179,3 +179,13 @@ SVG 貼圖讀唔到外部 PNG，所以要嵌入）。有圖嘅卡用插畫，冇
   右下「公共卡・先建先得」。
 - **其他卡**（冇插畫嘅職業、次要發展）：標準版固定分區。
 所有卡嘅類型都係左下角同一款細標籤。
+
+## 用 Draw Things 批次出次要發展插畫
+
+`game/tools/drawthings_minors.js` 係 Draw Things 腳本，入面有 48 張次要發展嘅畫面描述：
+1. Draw Things 揀好出職業卡用嘅模型／LoRA／sampler。
+2. 腳本面板新增腳本，貼上成個檔，按執行。圖會存喺「圖片」資料夾，
+   檔名 `agricola_minor_<英文卡名>.png`（log 會印出實際路徑）。
+3. 將圖搬入 `resource/minorimprovement/`（前綴唔使改，打包工具會忽略），再行
+   `python3 game/tools/build_card_images.py`。
+想重出某幾張：喺 `ONLY` 寫卡名；想換構圖：改 `SEED_OVERRIDE` 或者嗰張嘅描述。
