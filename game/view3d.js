@@ -673,7 +673,7 @@ const View3D = (function () {
 
   function cardTexture(c, opts) {
     const o = opts || {};
-    const sig = [costText(o.cost), o.taken || '', o.note || '', ART.getCardStyle()].join('|');
+    const sig = [costText(o.cost), o.taken || '', o.note || ''].join('|');
     return svgTexture(cardKey(c, sig), ART.cardFace(c, o), 320, 448);
   }
 

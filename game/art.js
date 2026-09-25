@@ -893,9 +893,7 @@ const ART = (function () {
   // ---------------------------------------------------------------- full-art occupation cards
   // The trading-card "full art" treatment: the painting runs edge to edge and the text floats
   // over it — name and cost across the top, the rules in a smoked-glass panel at the bottom.
-  // Used for occupations that have artwork when the full-art style is switched on.
-  let cardStyle = 'full';
-  function setCardStyle(s) { cardStyle = s === 'standard' ? 'standard' : 'full'; }
+  // Used for every occupation that has artwork.
 
   function cardFaceFull(c, o) {
     const t = TYPE_BAND[c.type] || TYPE_BAND.occ;
@@ -962,8 +960,6 @@ const ART = (function () {
   // After the Pokémon TCG's ACE SPEC cards: an iridescent foil frame with a scatter of
   // sparkles, a tall picture window, a bold metallic banner under the art, and a special
   // rule line at the foot — here, that a major improvement is a shared card, first come.
-  let majStyle = 'ace';
-  function setMajStyle(s) { majStyle = s === 'standard' ? 'standard' : 'ace'; }
 
   function sparkles(W, Hh, seed) {
     let r = seed, out = '';
@@ -1046,8 +1042,8 @@ const ART = (function () {
 
   function cardFace(c, opts) {
     const o = opts || {};
-    if (majStyle === 'ace' && c.type === 'maj') return cardFaceAce(c, o);
-    if (cardStyle === 'full' && c.type === 'occ' && typeof CARD_IMAGES !== 'undefined' && CARD_IMAGES[c.en]) return cardFaceFull(c, o);
+    if (c.type === 'maj') return cardFaceAce(c, o);
+    if (c.type === 'occ' && typeof CARD_IMAGES !== 'undefined' && CARD_IMAGES[c.en]) return cardFaceFull(c, o);
     const t = TYPE_BAND[c.type] || TYPE_BAND.min;
     const W = CARD_W, Hh = CARD_H, IN = 12;           // inner margin
     const cost = o.cost || {};
@@ -1124,5 +1120,5 @@ const ART = (function () {
 
   return { ICONS, icon, spaceArt, sceneMarkup, scene, plate, token, board, slot, seal, meeple,
     grassTile, fieldTile, houseTile, stableArt, animalsArt, fenceArt, edgeHit, TW, TH,
-    cardFace, cardBack, cardArt, CARD_W, CARD_H, NAMES, tokenMarkup, tokenColor, vpBadge, vpIcon, workerMarkup, TYPE_BAND, setCardStyle, getCardStyle: () => cardStyle + majStyle, setMajStyle };
+    cardFace, cardBack, cardArt, CARD_W, CARD_H, NAMES, tokenMarkup, tokenColor, vpBadge, vpIcon, workerMarkup, TYPE_BAND };
 })();
