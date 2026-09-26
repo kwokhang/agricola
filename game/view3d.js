@@ -21,12 +21,12 @@ const View3D = (function () {
   const LAYOUT = {
     board: { x: 0, z: -2.45 },                                  // 8 × 3 spaces, across the top
     majors: { x: 8.5, z: -1.3 },                                 // world; 4 rows by kind, top level with the board
-    seat: (pi, n) => ({ x: n === 1 ? 0 : (pi === 0 ? -2.88 : 2.88), z: 0.95, rot: 0 }),
+    seat: (pi, n) => ({ x: n === 1 ? 0 : (pi === 0 ? -2.95 : 2.95), z: 1.12, rot: 0 }),
     // seat-local, top to bottom: name and workers, resources, the farm, played cards
     plate: { x: -1.5, z: -1.62 },
-    supply: { x: 0, z: -0.65 },
-    farm: { x: 0, z: 1.85 },
-    played: { x: -2.12, z: 4.5 },                               // first card
+    supply: { x: -0.55, z: -0.78 },
+    farm: { x: 0, z: 1.62 },
+    played: { x: -2.12, z: 4.27 },                               // first card
   };
   const MAJ_W = 0.86, MAJ_H = 1.2;
 
@@ -1266,20 +1266,22 @@ const View3D = (function () {
   // ---------------------------------------------------------------- a player's seat
   const nameSvg = (name, sub, colour) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 60"
     width="520" height="120" font-family="-apple-system,BlinkMacSystemFont,'PingFang TC',sans-serif">
-    <rect x="2" y="2" width="256" height="56" rx="12" fill="var(--art-plate)" stroke="${colour}" stroke-width="3.5"/>
-    <text x="18" y="30" font-size="22" font-weight="700" fill="var(--art-ink)">${name}</text>
-    <text x="18" y="49" font-size="14" fill="var(--art-ink)" opacity=".7">${sub}</text></svg>`;
+    <rect x="2" y="2" width="256" height="56" rx="12" fill="${colour}" stroke="#1c1a17" stroke-opacity=".55" stroke-width="2"/>
+    <rect x="6" y="6" width="248" height="48" rx="9" fill="none" stroke="#fff" stroke-opacity=".45" stroke-width="1.2"/>
+    <text x="18" y="30" font-size="22" font-weight="800" fill="#fff">${name}</text>
+    <text x="18" y="49" font-size="14" font-weight="600" fill="#fff" opacity=".88">${sub}</text></svg>`;
 
   // The supply tray: every kind of goods this player owns, as real pieces in a row.
   // The supply mat: one printed card, the same look as the HUD — a cream mat, and for each
   // good its coin, a big count and its name. Empty goods are printed faintly, not hidden,
   // so the row always reads in the same order.
-  function supplySvg(p) {
+  function supplySvg(p, pc) {
     const kinds = RES.concat(ANIM);
     const W = 660, H = 116, cw = W / kinds.length;
     let s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W * 2}" height="${H * 2}"
       font-family="-apple-system,'PingFang TC','Noto Sans TC',sans-serif">
-      <rect x="1" y="1" width="${W - 2}" height="${H - 2}" rx="12" fill="var(--art-plate)" stroke="var(--art-ink)" stroke-width="2"/>`;
+      <rect x="1" y="1" width="${W - 2}" height="${H - 2}" rx="12" fill="var(--art-plate)"/>
+      <rect x="1" y="1" width="${W - 2}" height="${H - 2}" rx="12" fill="${pc}" fill-opacity=".14" stroke="${pc}" stroke-width="5"/>`;
     kinds.forEach((k, i) => {
       const n = ANIM.includes(k) ? animalTotal(p, k) : p.supply[k];
       const x = i * cw;
@@ -1297,8 +1299,9 @@ const View3D = (function () {
     const p = G.players[pi];
     const g = new T.Group();
     const key = RES.map((k) => p.supply[k]).concat(ANIM.map((k) => animalTotal(p, k))).join(',');
-    const tex = svgTexture(`supply:${pi}:${key}`, supplySvg(p), 1320, 232);
-    const mat3 = plateMesh(tex, 5.4, 0.95, 0, 0, 0.04);
+    const pc = '#' + col(pi === 0 ? '--p1' : '--p2').getHexString();
+    const tex = svgTexture(`supply2:${pi}:${pc}:${key}`, supplySvg(p, pc), 1320, 232);
+    const mat3 = plateMesh(tex, 4.3, 0.76, 0, 0, 0.04);
     mat3.castShadow = true;
     g.add(mat3);
     return g;
