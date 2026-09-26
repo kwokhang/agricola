@@ -2018,7 +2018,7 @@ const View3D = (function () {
     if (kind === 'pine') {
       for (let k = 0; k < 3; k++) {
         const c = new T.Mesh(geo('fcone', () => new T.ConeGeometry(1, 1, 8)), mat(new T.Color(greens[k % 2])));
-        c.userData.leaf = { base: new T.Color(greens[k % 2]), round: false, i: k + tone };
+        c.userData.leaf = { base: new T.Color(greens[k % 2]), round: false, pine: true, i: k + tone };
         const sc = (1 - k * 0.25) * h * 0.32;
         c.scale.set(sc, h * 0.34, sc); c.position.y = h * (0.42 + k * 0.2); c.castShadow = true;
         g.add(c);
@@ -2119,7 +2119,7 @@ const View3D = (function () {
       const a = r() * 6.28, rad = h * 0.3;
       const body = new T.Mesh(geo('lantern', () => new T.SphereGeometry(1, 12, 10)),
         new T.MeshBasicMaterial({ color: new T.Color(['#ff6a3a', '#ffb347', '#ff8a4c'][i % 3]) }));
-      body.scale.set(0.2, 0.27, 0.2);
+      body.scale.set(0.24, 0.32, 0.24);
       g.add(body);
       const cord = new T.Mesh(geo('lanternCord', () => new T.CylinderGeometry(0.008, 0.008, 1, 4)), new T.MeshBasicMaterial({ color: '#2a1a10' }));
       cord.scale.y = 0.3; cord.position.y = 0.3;
@@ -2127,6 +2127,218 @@ const View3D = (function () {
       g.position.set(Math.cos(a) * rad * 1.5, h * (0.26 + r() * 0.1), Math.sin(a) * rad * 1.5);
       tree.add(g);
     }
+  }
+
+  // ---------------------------------------------------------------- scenery in the woods
+  // A pond fed by a stream with a rope bridge, a log cabin, a garden pavilion and hills on
+  // the horizon. Each carries its seasonal details: pieces tagged `only` show in just those
+  // seasons (0 sunny, 1 rain, 2 autumn, 3 snow, 4 blossom, 5 festival); `water` and `lit`
+  // materials change colour with the season in seasonTargets().
+  const WATER = ['#5fa3c4', '#557a88', '#6a93a0', '#dcebf2', '#6ab0cc', '#2c4466'];
+  const only = (o, seasons) => { o.userData.only = seasons; o.visible = seasons.includes(seasonIdx); return o; };
+  const natural = (m, base, round) => { m.userData.leaf = { base: new T.Color(base), round: !!round, i: 0 }; return m; };
+  const waterMat = () => new T.MeshToonMaterial({ color: new T.Color(WATER[0]), gradientMap: TOON_ROOM });
+  const glowMat = (c) => new T.MeshBasicMaterial({ color: new T.Color(c) });
+  const flat = (geoKey, make, material, x, y, z, sx, sz) => {
+    const m = new T.Mesh(geo(geoKey, make), material);
+    m.rotation.x = -Math.PI / 2; m.position.set(x, y, z); m.scale.set(sx || 1, sz || 1, 1);
+    m.receiveShadow = true;
+    return m;
+  };
+
+  function pond(rx, rz, r) {
+    const g = new T.Group();
+    const shoreC = '#8b7b52';
+    g.add(natural(flat('disc', () => new T.CircleGeometry(1, 40), mat(shoreC), 0, -0.064, 0, rx + 0.2, rz + 0.2), shoreC));
+    const water = flat('disc', () => new T.CircleGeometry(1, 40), waterMat(), 0, -0.058, 0, rx, rz);
+    water.userData.water = true;
+    g.add(water);
+    for (let i = 0; i < 6; i++) {                           // lily pads, gone under the ice
+      const a = r() * 6.28, d = 0.3 + r() * 0.5;
+      g.add(only(natural(flat('lily', () => new T.CircleGeometry(0.09, 12, 0.3, 5.9), mat('#4f8a3c'),
+        Math.cos(a) * rx * d, -0.05, Math.sin(a) * rz * d), '#4f8a3c'), [0, 1, 2, 4, 5]));
+    }
+    const floaters = (n, colours, seasons, size, glow) => {
+      for (let i = 0; i < n; i++) {
+        const a = r() * 6.28, d = r() * 0.8;
+        const m = glow
+          ? new T.Mesh(geo('pondLantern', () => new T.SphereGeometry(0.07, 10, 8)), glowMat(colours[i % colours.length]))
+          : flat('floatLeaf', () => new T.CircleGeometry(1, 6), mat(colours[i % colours.length]), 0, 0, 0, size, size * 0.6);
+        m.position.set(Math.cos(a) * rx * d, glow ? -0.02 : -0.048, Math.sin(a) * rz * d);
+        if (!glow) m.rotation.z = r() * 6.28;
+        g.add(only(m, seasons));
+      }
+    };
+    floaters(10, ['#c8612c', '#e0a034', '#a8432a'], [2], 0.06);
+    floaters(14, ['#f7c6d3', '#f2a9bf'], [4], 0.04);
+    floaters(5, ['#ffb347', '#ff7a3c'], [5], 0, true);
+    for (let i = 0; i < 7; i++) {                           // reeds at the edge
+      const a = 2.2 + r() * 1.8;
+      const clump = new T.Group();
+      for (let k = 0; k < 4; k++) {
+        const reed = natural(new T.Mesh(geo('reed', () => new T.ConeGeometry(0.018, 0.4, 4)), mat('#6f8a3a')), '#6f8a3a');
+        reed.position.set((k - 1.5) * 0.04, 0.15 + (k % 2) * 0.04, (k % 2) * 0.03);
+        reed.rotation.z = (k - 1.5) * 0.12;
+        clump.add(reed);
+      }
+      clump.position.set(Math.cos(a) * (rx + 0.05), -0.06, Math.sin(a) * (rz + 0.05));
+      g.add(clump);
+    }
+    for (let i = 0; i < 5; i++) {
+      const a = r() * 6.28;
+      const rock = fieldRock(0.1 + r() * 0.08, i);
+      rock.position.set(Math.cos(a) * (rx + 0.15), -0.07, Math.sin(a) * (rz + 0.15));
+      g.add(rock);
+    }
+    return ink(g);
+  }
+
+  // A winding stream: a flat ribbon of water along a curve.
+  function stream(points, width) {
+    const curve = new T.CatmullRomCurve3(points.map(([x, z]) => new T.Vector3(x, -0.058, z)));
+    const n = 40, pos = [], idx = [];
+    for (let i = 0; i <= n; i++) {
+      const t = i / n, p = curve.getPoint(t), d = curve.getTangent(t);
+      const nx = -d.z, nz = d.x, w = width * (0.8 + 0.2 * Math.sin(t * 9));
+      pos.push(p.x + nx * w / 2, p.y, p.z + nz * w / 2, p.x - nx * w / 2, p.y, p.z - nz * w / 2);
+      if (i) { const a = (i - 1) * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
+    }
+    const gg = new T.BufferGeometry();
+    gg.setAttribute('position', new T.Float32BufferAttribute(pos, 3));
+    gg.setIndex(idx);
+    gg.computeVertexNormals();
+    const m = waterMat(); m.side = T.DoubleSide;
+    const water = new T.Mesh(gg, m);
+    water.userData.water = true;
+    water.receiveShadow = true;
+    water.userData.curve = curve;
+    return water;
+  }
+
+  // A little rope bridge: arched planks, four posts, a sagging rope each side.
+  function ropeBridge(len) {
+    const g = new T.Group();
+    const wood = mat('#8a6040'), rope = mat('#c9b27a');
+    const n = 9;
+    for (let i = 0; i < n; i++) {
+      const t = i / (n - 1), x = (t - 0.5) * len;
+      const plank = new T.Mesh(geo('plank', () => new T.BoxGeometry(0.11, 0.03, 0.5)), wood);
+      plank.position.set(x, 0.02 + Math.sin(t * Math.PI) * 0.14, 0);
+      plank.rotation.z = Math.cos(t * Math.PI) * -0.25;
+      plank.castShadow = true;
+      g.add(plank);
+      g.add(only(new T.Mesh(geo('plankSnow', () => new T.BoxGeometry(0.11, 0.015, 0.46)), mat('#f3f6f9'))
+        .translateX(x).translateY(0.045 + Math.sin(t * Math.PI) * 0.14), [3]));
+    }
+    [-1, 1].forEach((ex) => [-1, 1].forEach((ez) => {
+      const post = new T.Mesh(geo('bPost', () => new T.CylinderGeometry(0.03, 0.035, 0.42, 6)), wood);
+      post.position.set(ex * len / 2, 0.16, ez * 0.27); post.castShadow = true;
+      g.add(post);
+    }));
+    [-1, 1].forEach((ez) => {
+      for (let k = 0; k < 2; k++) {                          // each rope in two sagging halves
+        const seg = new T.Mesh(geo('bRope', () => new T.CylinderGeometry(0.008, 0.008, 1, 4)), rope);
+        seg.scale.y = len / 2 * 1.02;
+        seg.rotation.z = Math.PI / 2 + (k ? 0.12 : -0.12);
+        seg.position.set((k ? 1 : -1) * len / 4, 0.3, ez * 0.27);
+        g.add(seg);
+      }
+    });
+    return ink(g);
+  }
+
+  const prism = () => {
+    const sh = new T.Shape();
+    sh.moveTo(-0.78, 0); sh.lineTo(0.78, 0); sh.lineTo(0, 0.55); sh.closePath();
+    const gg = new T.ExtrudeGeometry(sh, { depth: 1.14, bevelEnabled: false });
+    gg.translate(0, 0, -0.57);
+    return gg;
+  };
+  function cabin() {
+    const g = new T.Group();
+    const logs = mat('#9a6a40'), roofM = mat('#7a3b2a'), stone = mat('#7c786e'), dark = mat('#3a2616');
+    const walls = new T.Mesh(geo('cabWalls', () => new T.BoxGeometry(1.3, 0.72, 0.95)), logs);
+    walls.position.y = 0.36; walls.castShadow = true; g.add(walls);
+    for (let k = 1; k < 5; k++) {                            // log courses
+      const line = new T.Mesh(geo('cabLog', () => new T.BoxGeometry(1.32, 0.02, 0.97)), mat('#7c5230'));
+      line.position.y = k * 0.145; g.add(line);
+    }
+    const roof = new T.Mesh(geo('cabRoof', prism), roofM);
+    roof.position.y = 0.72; roof.castShadow = true; g.add(roof);
+    const snow = new T.Mesh(geo('cabRoof', prism), mat('#f3f6f9'));
+    snow.position.y = 0.76; snow.scale.set(1.02, 0.9, 1.02);
+    g.add(only(snow, [3]));
+    const door = new T.Mesh(geo('cabDoor', () => new T.BoxGeometry(0.26, 0.44, 0.02)), dark);
+    door.position.set(-0.28, 0.22, 0.48); g.add(door);
+    [0.18, 0.46].forEach((x) => {
+      const win = new T.Mesh(geo('cabWin', () => new T.BoxGeometry(0.2, 0.18, 0.02)), new T.MeshToonMaterial({ color: '#3a2a1a', gradientMap: TOON_STEPS }));
+      win.position.set(x, 0.42, 0.48);
+      win.userData.lit = true;
+      g.add(win);
+    });
+    const chim = new T.Mesh(geo('cabChim', () => new T.BoxGeometry(0.18, 0.5, 0.18)), stone);
+    chim.position.set(0.42, 1.0, -0.15); chim.castShadow = true; g.add(chim);
+    const smoke = new T.Group();
+    [[0, 1.34, 0.1], [0.08, 1.52, 0.13], [0.2, 1.72, 0.16]].forEach(([x, y, rr]) => {
+      const puff = new T.Mesh(geo('puff', () => new T.SphereGeometry(1, 10, 8)),
+        new T.MeshToonMaterial({ color: '#d8d6d0', gradientMap: TOON_ROOM, transparent: true, opacity: 0.8 }));
+      puff.scale.setScalar(rr); puff.position.set(0.42 + x, y, -0.15);
+      puff.userData.noInk = true;
+      smoke.add(puff);
+    });
+    g.add(only(smoke, [1, 2, 3, 5]));
+    const pile = new T.Group();                              // a woodpile against the side wall
+    for (let k = 0; k < 6; k++) {
+      const log = new T.Mesh(geo('pileLog', () => new T.CylinderGeometry(0.05, 0.05, 0.4, 7)), mat('#8a5a34'));
+      log.rotation.x = Math.PI / 2; log.position.set(0.72, 0.05 + Math.floor(k / 3) * 0.09, (k % 3 - 1) * 0.1 + (k > 2 ? 0.05 : 0));
+      pile.add(log);
+    }
+    g.add(pile);
+    return ink(g);
+  }
+
+  function pavilion() {
+    const g = new T.Group();
+    const white = mat('#efe6d6'), slate = mat('#58707e'), stone = mat('#a39d8f');
+    const floor = new T.Mesh(geo('pavFloor', () => new T.CylinderGeometry(0.78, 0.84, 0.12, 6)), stone);
+    floor.position.y = 0.0; floor.receiveShadow = true; g.add(floor);
+    for (let i = 0; i < 6; i++) {
+      const a = i / 6 * Math.PI * 2;
+      const post = new T.Mesh(geo('pavPost', () => new T.CylinderGeometry(0.035, 0.04, 0.78, 6)), white);
+      post.position.set(Math.cos(a) * 0.66, 0.45, Math.sin(a) * 0.66); post.castShadow = true;
+      g.add(post);
+      if (i % 2 === 0) {
+        const lan = new T.Mesh(geo('pavLantern', () => new T.SphereGeometry(0.075, 10, 8)), glowMat(['#ff6a3a', '#ffb347', '#ff8a4c'][i / 2]));
+        lan.position.set(Math.cos(a + 0.52) * 0.7, 0.68, Math.sin(a + 0.52) * 0.7);
+        g.add(only(lan, [5]));
+      }
+      if (i % 2 === 1) {                                      // flowers garland in blossom time
+        const fl = new T.Mesh(geo('pavFlower', () => new T.SphereGeometry(0.08, 8, 6)), mat('#f2b3c6'));
+        fl.position.set(Math.cos(a) * 0.66, 0.8, Math.sin(a) * 0.66);
+        g.add(only(fl, [4]));
+      }
+    }
+    const rail = new T.Mesh(geo('pavRail', () => new T.TorusGeometry(0.66, 0.02, 4, 6)), white);
+    rail.rotation.x = Math.PI / 2; rail.rotation.z = Math.PI / 6; rail.position.y = 0.3; g.add(rail);
+    const roof = new T.Mesh(geo('pavRoof', () => new T.ConeGeometry(1.0, 0.55, 6)), slate);
+    roof.position.y = 1.1; roof.rotation.y = Math.PI / 6; roof.castShadow = true; g.add(roof);
+    const snow = new T.Mesh(geo('pavRoof', () => new T.ConeGeometry(1.0, 0.55, 6)), mat('#f3f6f9'));
+    snow.position.y = 1.14; snow.rotation.y = Math.PI / 6; snow.scale.set(0.96, 0.9, 0.96);
+    g.add(only(snow, [3]));
+    const fin = new T.Mesh(geo('pavFin', () => new T.SphereGeometry(0.06, 8, 6)), mat('#d8b25a'));
+    fin.position.y = 1.42; g.add(fin);
+    return ink(g);
+  }
+
+  function hills(cx, zFar) {
+    const g = new T.Group();
+    [[-18, 0, 11, 3.6, 7, '#6f9a52'], [-4, -3, 13, 4.4, 8, '#628c49'], [12, 1, 12, 3.8, 7, '#6f9a52'], [26, -2, 10, 3.2, 6, '#5d8646']]
+      .forEach(([x, dz, sx, sy, sz, c]) => {
+        const h = natural(new T.Mesh(geo('hill', () => new T.SphereGeometry(1, 24, 14, 0, Math.PI * 2, 0, Math.PI / 2)), mat(c)), c);
+        h.scale.set(sx, sy, sz); h.position.set(cx + x, -0.1, zFar + dz);
+        g.add(h);
+      });
+    return g;
   }
 
   // Everything that depends on the size of the play area: the meadow, and the trees round it.
@@ -2161,7 +2373,70 @@ const View3D = (function () {
     const r = rng(77);
     const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
     const hx = (x1 - x0) / 2 + pad - 0.1, hz = (z1 - z0) / 2 + pad - 0.1;
+    // Scenery first, so the trees can keep clear of it.
+    const keep = [];
+    const pc = { x: x0 - pad - 1.3, z: z0 + (z1 - z0) * 0.38 };
+    const pnd = pond(0.95, 1.4, r);
+    pnd.position.set(pc.x, 0, pc.z);
+    g.add(pnd);
+    keep.push({ x: pc.x, z: pc.z, r: 1.9 }, { x: pc.x, z: pc.z + 1, r: 1.5 }, { x: pc.x, z: pc.z - 1, r: 1.5 });
+    const brook = stream([[pc.x - 0.5, pc.z + 1.1], [pc.x - 1.8, pc.z + 2.2], [pc.x - 2.6, pc.z + 1.4], [pc.x - 4.5, pc.z + 2.4], [pc.x - 7, pc.z + 1.6]], 0.5);
+    g.add(brook);
+    for (let t = 0; t <= 1; t += 0.06) { const q = brook.userData.curve.getPoint(t); keep.push({ x: q.x, z: q.z, r: 1.0 }); }
+    const bq = brook.userData.curve.getPoint(0.2), bt = brook.userData.curve.getTangent(0.2);
+    const bridge = ropeBridge(1.3);
+    bridge.position.set(bq.x, -0.06, bq.z);
+    bridge.rotation.y = -Math.atan2(-bt.x, -bt.z) + Math.PI / 2 + Math.PI / 2;
+    g.add(bridge);
+    const cab = cabin();
+    const cc = { x: x1 + pad + 0.9, z: z0 + (z1 - z0) * 0.62 };
+    cab.position.set(cc.x, -0.07, cc.z); cab.rotation.y = -0.9;
+    g.add(cab);
+    keep.push({ x: cc.x, z: cc.z, r: 2.1 });
+    const pav = pavilion();
+    const pv = { x: x1 + pad + 0.8, z: z0 + (z1 - z0) * 0.3 };
+    pav.position.set(pv.x, -0.02, pv.z);
+    g.add(pav);
+    keep.push({ x: pv.x, z: pv.z, r: 2.0 });
+    g.add(hills(cx, z0 - 18));
+    // festival garlands: poles along both sides and the far edge, lanterns on a sagging line
+    const garland = (ax, az, bx, bz) => {
+      const gg = new T.Group();
+      gg.userData.festival = true; gg.visible = seasonIdx === 5;
+      const len = Math.hypot(bx - ax, bz - az), n = Math.max(3, Math.round(len / 0.55));
+      [[ax, az], [bx, bz]].forEach(([px, pz]) => {
+        const pole = new T.Mesh(geo('gPole', () => new T.CylinderGeometry(0.035, 0.04, 1.3, 6)), mat('#6b4a2c'));
+        pole.position.set(px, 0.58, pz); pole.castShadow = true; gg.add(pole);
+      });
+      for (let i = 0; i <= n; i++) {
+        const t = i / n, y = 1.18 - Math.sin(t * Math.PI) * 0.35;
+        const px = ax + (bx - ax) * t, pz = az + (bz - az) * t;
+        if (i && i < n) {
+          const lan = new T.Mesh(geo('gLantern', () => new T.SphereGeometry(1, 12, 10)), glowMat(['#ff5a3a', '#ffb347', '#ff8a4c', '#ffd46a'][i % 4]));
+          lan.scale.set(0.12, 0.16, 0.12); lan.position.set(px, y - 0.16, pz);
+          gg.add(lan);
+        }
+        if (i) {
+          const qx = ax + (bx - ax) * (i - 1) / n, qz = az + (bz - az) * (i - 1) / n, qy = 1.18 - Math.sin((i - 1) / n * Math.PI) * 0.35;
+          const seg = new T.Mesh(geo('gLine', () => new T.CylinderGeometry(0.008, 0.008, 1, 4)), mat('#2a1a10'));
+          const dx = px - qx, dy = y - qy, dz = pz - qz, L = Math.hypot(dx, dy, dz);
+          seg.scale.y = L; seg.position.set((px + qx) / 2, (y + qy) / 2, (pz + qz) / 2);
+          seg.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), new T.Vector3(dx / L, dy / L, dz / L));
+          gg.add(seg);
+        }
+      }
+      g.add(ink(gg));
+    };
+    const ex0 = x0 - pad * 0.55, ex1 = x1 + pad * 0.55, ez0 = z0 - pad * 0.55, ez1 = z1 + pad * 0.3;
+    for (let k = 0; k < 3; k++) {
+      const za = ez0 + (ez1 - ez0) * k / 3, zb = ez0 + (ez1 - ez0) * (k + 1) / 3;
+      garland(ex0, za, ex0, zb); garland(ex1, za, ex1, zb);
+    }
+    for (let k = 0; k < 4; k++) garland(ex0 + (ex1 - ex0) * k / 4, ez0, ex0 + (ex1 - ex0) * (k + 1) / 4, ez0);
+    const clear = (px, pz) => !keep.some((k) => Math.hypot(px - k.x, pz - k.z) < k.r);
+
     const place = (px, pz, kind, h) => {
+      if (!clear(px, pz)) return;
       const t = kind === 'bush' ? forestBush(h) : forestTree(kind, h, Math.floor(r() * 3));
       t.position.set(px, -0.08, pz);
       t.rotation.y = r() * 6.28;
@@ -2319,11 +2594,11 @@ const View3D = (function () {
     { sky: ['#5c6b78', '#94a0a6', '#aeb3ab'], fog: '#98a2a3', hemiSky: '#b8c4d0', hemiGround: '#3c5030', hemi: 0.8, sun: 0.5,
       tint: '#bcc6b8', snow: 0, fall: 'rain' },
     { sky: ['#8fb3cf', '#ead3b0', '#f0c089'], fog: '#dac9aa', hemiSky: '#fff0dc', hemiGround: '#6a5530', hemi: 0.9, sun: 1.35,
-      tint: '#e2c27c', glow: '#3c2a0c', snow: 0, round: ['#c8612c', '#e0a034', '#a8432a', '#d88a3a'], fall: 'leaf' },
+      tint: '#e2c27c', glow: '#3c2a0c', snow: 0, round: ['#c8612c', '#e0a034', '#a8432a', '#d88a3a'], pine: ['#b8892e', '#9c7a30', '#c79a3a'], fall: 'leaf' },
     { sky: ['#a9bacb', '#dde5ed', '#f1f3f5'], fog: '#dce3e9', hemiSky: '#eef4ff', hemiGround: '#8a9098', hemi: 1.0, sun: 1.0,
-      tint: '#ffffff', glow: '#6c7074', snow: 0.62, round: ['#e6ecf1', '#d3dce5'], fall: 'snow' },
+      tint: '#ffffff', glow: '#6c7074', snow: 0.62, round: ['#e6ecf1', '#d3dce5'], pine: ['#dfe7ee', '#9fb3a8', '#e9eef2'], fall: 'snow' },
     { sky: ['#a3cbe4', '#f1dfe6', '#f7e8da'], fog: '#e6d9de', hemiSky: '#fff0f6', hemiGround: '#4a6a36', hemi: 0.95, sun: 1.5,
-      tint: '#ffffff', glow: '#1a0e14', snow: 0, round: ['#f2b3c6', '#e896b0', '#f7cfda', '#ea9fb8'], fall: 'petal' },
+      tint: '#ffffff', glow: '#1a0e14', snow: 0, round: ['#f2b3c6', '#e896b0', '#f7cfda', '#ea9fb8'], pine: ['#7cb45a', '#8cc466', '#6aa84e'], fall: 'petal' },
   ];
   // The last round is the harvest festival: a warm dusk, the woods lit gold, fireflies rising.
   SEASONS.push({ sky: ['#3b4a78', '#d98f6a', '#f5c27a'], fog: '#d9a07c', hemiSky: '#ffd6a8', hemiGround: '#3a2c24', hemi: 0.6,
@@ -2331,7 +2606,7 @@ const View3D = (function () {
   const seasonLook = (k) => {
     const d = SEASONS[k];
     return { sky: d.sky.map(C), fog: C(d.fog), hemiSky: C(d.hemiSky), hemiGround: C(d.hemiGround), hemi: d.hemi,
-      sun: d.sun, sunCol: C(d.sunCol || '#fff1d6'), tint: C(d.tint), glow: C(d.glow || '#000000'), snow: d.snow, round: d.round, fall: d.fall };
+      sun: d.sun, sunCol: C(d.sunCol || '#fff1d6'), pine: d.pine, tint: C(d.tint), glow: C(d.glow || '#000000'), snow: d.snow, round: d.round, fall: d.fall };
   };
   let seasonIdx = 0, seasonGoal = seasonLook(0);
   const season = seasonLook(0);             // what is on screen now, eased towards seasonGoal
@@ -2344,16 +2619,24 @@ const View3D = (function () {
       if (!o.material || o.userData.inkline) return;
       if (o.userData.leaf) {
         const L = o.userData.leaf;
-        let c = S.round && L.round ? C(S.round[L.i % S.round.length]) : L.base.clone();
-        if (!(S.round && L.round)) c.multiply(S.tint);
-        if (S.snow && !L.round) c.lerp(WHITE, S.snow * 0.6);
+        const pal = L.round ? S.round : L.pine ? S.pine : null;
+        let c = pal ? C(pal[L.i % pal.length]) : L.base.clone();
+        if (!pal) c.multiply(S.tint);
+        if (S.snow && !pal) c.lerp(WHITE, S.snow * 0.6);
         o.userData.goal = { color: c, emissive: C('#000000') };
+      } else if (o.userData.water) {
+        o.userData.goal = { color: new T.Color(WATER[seasonIdx]), emissive: new T.Color(seasonIdx === 3 ? '#3a4046' : '#000000') };
+      } else if (o.userData.lit) {
+        o.userData.goal = { color: new T.Color('#3a2a1a'), emissive: new T.Color([1, 3, 5].includes(seasonIdx) ? '#ffc25a' : '#000000') };
       } else if (o.userData.surface) {
         o.userData.goal = { color: S.tint.clone(), emissive: S.glow.clone() };
       } else return;
       if (snap) { o.material.color.copy(o.userData.goal.color); o.material.emissive.copy(o.userData.goal.emissive); }
     });
-    group.traverse((o) => { if (o.userData.festival) o.visible = seasonIdx === 5; });
+    group.traverse((o) => {
+      if (o.userData.festival) o.visible = seasonIdx === 5;
+      if (o.userData.only) o.visible = o.userData.only.includes(seasonIdx);
+    });
   }
 
   function setSeason(k) {
@@ -2383,6 +2666,58 @@ const View3D = (function () {
       if (!g || !o.material) return;
       o.material.color.lerp(g.color, a); o.material.emissive.lerp(g.emissive, a);
     });
+  }
+
+  // Fireworks for the harvest festival: bursts of glowing sparks over the far woods.
+  const fireworks = [];
+  let fwTimer = 0;
+  const FW_N = 150;
+  function burst() {
+    if (!weatherBox) return;
+    const [x0, x1, z0, z1] = weatherBox;
+    const r = Math.random;
+    // over the woods on either side, where the HUD does not cover them
+    const cx = r() < 0.5 ? x0 - 0.3 - r() * 1.6 : x1 + r() * 1.2;
+    const cy = 2.8 + r() * 1.2, cz = z0 + (z1 - z0) * (0.25 + r() * 0.6);
+    const pos = new Float32Array(FW_N * 3), vel = new Float32Array(FW_N * 3), colr = new Float32Array(FW_N * 3);
+    const pal = [['#ffd166', '#fff1b8'], ['#ff6b6b', '#ffb4a2'], ['#7bdff2', '#e0fbfc'], ['#c77dff', '#f1c0ff'], ['#9bf6a0', '#f0fff0']][Math.floor(r() * 5)];
+    for (let i = 0; i < FW_N; i++) {
+      const u = r() * 2 - 1, a = r() * 6.28, sp = 1.8 + r() * 0.3, q = Math.sqrt(1 - u * u);
+      pos[i * 3] = cx; pos[i * 3 + 1] = cy; pos[i * 3 + 2] = cz;
+      vel[i * 3] = q * Math.cos(a) * sp; vel[i * 3 + 1] = u * sp; vel[i * 3 + 2] = q * Math.sin(a) * sp;
+      const c = C(pal[i % 2]);
+      colr[i * 3] = c.r; colr[i * 3 + 1] = c.g; colr[i * 3 + 2] = c.b;
+    }
+    const gg = new T.BufferGeometry();
+    gg.setAttribute('position', new T.BufferAttribute(pos, 3));
+    gg.setAttribute('color', new T.BufferAttribute(colr, 3));
+    const m = new T.PointsMaterial({ size: 0.45, map: fallSprite('glow'), vertexColors: true, transparent: true,
+      depthWrite: false, depthTest: false, blending: T.AdditiveBlending, sizeAttenuation: true });
+    const pts = new T.Points(gg, m);
+    pts.frustumCulled = false;
+    pts.renderOrder = 10;
+    pts.userData = { vel, age: 0 };
+    scene.add(pts);
+    fireworks.push(pts);
+  }
+  function stepFireworks(dt) {
+    const s = dt / 1000;
+    if (seasonIdx === 5 && sceneStyle === 'forest') {
+      fwTimer -= dt;
+      if (fwTimer <= 0) { burst(); fwTimer = 450 + Math.random() * 600; }
+    }
+    for (let k = fireworks.length - 1; k >= 0; k--) {
+      const f = fireworks[k], u = f.userData;
+      u.age += s;
+      const pos = f.geometry.attributes.position.array, v = u.vel;
+      for (let i = 0; i < v.length; i += 3) {
+        v[i] *= 0.985; v[i + 2] *= 0.985; v[i + 1] = v[i + 1] * 0.985 - 1.1 * s;
+        pos[i] += v[i] * s; pos[i + 1] += v[i + 1] * s; pos[i + 2] += v[i + 2] * s;
+      }
+      f.geometry.attributes.position.needsUpdate = true;
+      f.material.opacity = Math.max(0, 1 - u.age / 1.8);
+      if (u.age > 1.8) { scene.remove(f); f.geometry.dispose(); f.material.dispose(); fireworks.splice(k, 1); }
+    }
   }
 
   // Falling rain, leaves, snow or petals over the play area.
@@ -2597,6 +2932,7 @@ const View3D = (function () {
     stepCamera(dt);
     easeSeason(dt);
     stepWeather(dt, t);
+    stepFireworks(dt);
     if (handGroup) {
       handY += (handGroup.userData.goalY - handY) * Math.min(1, dt / 110);
       handGroup.position.y = handY;
@@ -2612,7 +2948,7 @@ const View3D = (function () {
     texCache.forEach((tx) => { if (tx.image && tx.image.width) loaded++; });
     return {
       hand: handGroup ? { y: +handY.toFixed(2), goal: handGroup.userData.goalY, n: handGroup.children.length, parent: !!handGroup.parent } : null,
-      meshes, pulsing, pickables: pickables.length, hoverables: hoverables.length,
+      meshes, pulsing, fireworks: fireworks.length, season: seasonIdx, pickables: pickables.length, hoverables: hoverables.length,
       textures: texCache.size, loaded, dist: +camState.dist.toFixed(2), pol: +camState.pol.toFixed(2),
       az: +camState.az.toFixed(2),
       target: [camState.target.x, camState.target.y, camState.target.z].map((n) => +n.toFixed(2)),
