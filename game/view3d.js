@@ -1522,9 +1522,10 @@ const View3D = (function () {
   // The HUD covers these fractions of the screen, in NDC units (the full screen is 2 wide):
   // the dock on the left, the log rail on the right, the bars on top, the hand along the bottom.
   // The bottom margin only matters while the hand is up.
-  // The bottom keeps room for the action bar, and more for the bar plus the hand.
+  // The top holds the status bar, the camera tabs and the action bar under them; the bottom
+  // only the turn tag, or the hand when it is up.
   // Left: only the camera tabs, up in the top band. Right: the resources and log column.
-  const SAFE = { l: 0.06, r: 0.42, t: 0.3, b: 0.3 };
+  const SAFE = { l: 0.06, r: 0.42, t: 0.5, b: 0.1 };
   const SAFE_HAND_B = 0.62;
   let safeB = SAFE.b;
 
@@ -1533,13 +1534,12 @@ const View3D = (function () {
     // The overview is centred: the right column folds to a strip here too, so both sides
     // keep the same margin.
     table: () => ({ az: 0, pol: 0.62, pad: 1.02, boxes: ['board', 'majors', 'farm0', 'farm1'],
-      safe: { l: 0.12, r: 0.12, t: 0.26, b: 0.3 } }),
-    // The board is wide, so its view gets tighter margins: the top-left only has the camera
-    // tabs, and the action bar sits over the empty middle of the board's lower edge.
-    board: () => ({ az: 0, pol: 0.3, pad: 1.03, boxes: ['board'], safe: { l: 0.05, r: 0.1, t: 0.3, b: 0.1 } }),
+      safe: { l: 0.12, r: 0.12, t: 0.48, b: 0.08 } }),
+    // The board is wide, so its view gets tighter side margins.
+    board: () => ({ az: 0, pol: 0.3, pad: 1.03, boxes: ['board'], safe: { l: 0.05, r: 0.1, t: 0.5, b: 0.06 } }),
     farm: (UI) => ({ az: 0, pol: 0.56, pad: 1.04, boxes: ['farm' + UI.view] }),
     cards: (UI) => ({ az: 0, pol: 0.5, pad: 1.02, boxes: ['played' + UI.view] }),
-    majors: () => ({ az: 0, pol: 0.42, pad: 1.0, boxes: ['majors'], safe: { l: 0.04, r: 0.15, t: 0.34, b: 0.3 } }),
+    majors: () => ({ az: 0, pol: 0.42, pad: 1.0, boxes: ['majors'], safe: { l: 0.04, r: 0.15, t: 0.5, b: 0.08 } }),
   };
 
   const focusBoxes = {};
@@ -2027,6 +2027,26 @@ const View3D = (function () {
     return ink(g);
   }
 
+  // Paper lanterns hung in a tree for the harvest festival; hidden the rest of the year.
+  function lanterns(tree, h, r) {
+    const n = 1 + (r() < 0.5 ? 1 : 0);
+    for (let i = 0; i < n; i++) {
+      const g = new T.Group();
+      g.userData.festival = true;
+      g.visible = false;
+      const a = r() * 6.28, rad = h * 0.3;
+      const body = new T.Mesh(geo('lantern', () => new T.SphereGeometry(1, 12, 10)),
+        new T.MeshBasicMaterial({ color: new T.Color(['#ff6a3a', '#ffb347', '#ff8a4c'][i % 3]) }));
+      body.scale.set(0.2, 0.27, 0.2);
+      g.add(body);
+      const cord = new T.Mesh(geo('lanternCord', () => new T.CylinderGeometry(0.008, 0.008, 1, 4)), new T.MeshBasicMaterial({ color: '#2a1a10' }));
+      cord.scale.y = 0.3; cord.position.y = 0.3;
+      g.add(cord);
+      g.position.set(Math.cos(a) * rad * 1.5, h * (0.26 + r() * 0.1), Math.sin(a) * rad * 1.5);
+      tree.add(g);
+    }
+  }
+
   // Everything that depends on the size of the play area: the meadow, and the trees round it.
   // Footprints of everything lying on the meadow (each board, card, farm and tray), a
   // little enlarged, so grass grows round and between them but never through them.
@@ -2042,7 +2062,7 @@ const View3D = (function () {
   }
   function buildClearing(x0, x1, z0, z1) {
     const g = new T.Group();
-    const pad = 1.3;
+    const pad = 0.8;
     const mw = x1 - x0 + pad * 2, mh = z1 - z0 + pad * 2;
     const meadow = new T.Mesh(new T.PlaneGeometry(mw, mh),
       new T.MeshToonMaterial({ map: meadowTexture(mw, mh, pad), transparent: true, gradientMap: TOON_ROOM, depthWrite: false }));
@@ -2058,15 +2078,16 @@ const View3D = (function () {
     // low bushes, far out, so nothing ever stands between you and the table.
     const r = rng(77);
     const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
-    const hx = (x1 - x0) / 2 + pad + 0.3, hz = (z1 - z0) / 2 + pad + 0.3;
+    const hx = (x1 - x0) / 2 + pad - 0.1, hz = (z1 - z0) / 2 + pad - 0.1;
     const place = (px, pz, kind, h) => {
       const t = kind === 'bush' ? forestBush(h) : forestTree(kind, h, Math.floor(r() * 3));
       t.position.set(px, -0.08, pz);
       t.rotation.y = r() * 6.28;
+      if (kind !== 'bush' && r() < 0.7) lanterns(t, h, r);
       g.add(t);
     };
     for (let row = 0; row < 3; row++) {
-      const off = row * 2.1;
+      const off = row * 1.7;
       // far edge and the two sides
       for (let xx = x0 - pad - 3 - off; xx <= x1 + pad + 3 + off; xx += 1.7 + r() * 0.9) {
         place(xx + r() * 0.6, cz - hz - off - r() * 0.8, r() < 0.5 ? 'pine' : 'round', 2.2 + r() * 1.6 + row * 0.5);
@@ -2093,7 +2114,7 @@ const View3D = (function () {
   // redraw the mat (its stitched border depends on its proportions) when that changes.
   let playMat = null, matKey = '';
   function fitMat(box3) {
-    const M = 0.8;
+    const M = sceneStyle === 'forest' ? 0.45 : 0.8;
     const x0 = box3.min.x - M, x1 = box3.max.x + M, z0 = box3.min.z - M, z1 = box3.max.z + M;
     const mw = x1 - x0, mh = z1 - z0;
     const key = [mw, mh, x0, z0].map((v) => v.toFixed(1)).join(',');
@@ -2222,11 +2243,13 @@ const View3D = (function () {
     { sky: ['#a3cbe4', '#f1dfe6', '#f7e8da'], fog: '#e6d9de', hemiSky: '#fff0f6', hemiGround: '#4a6a36', hemi: 0.95, sun: 1.5,
       tint: '#ffffff', glow: '#1a0e14', snow: 0, round: ['#f2b3c6', '#e896b0', '#f7cfda', '#ea9fb8'], fall: 'petal' },
   ];
-  SEASONS.push(SEASONS[0]);                 // the last stretch is sunny again
+  // The last round is the harvest festival: a warm dusk, the woods lit gold, fireflies rising.
+  SEASONS.push({ sky: ['#3b4a78', '#d98f6a', '#f5c27a'], fog: '#d9a07c', hemiSky: '#ffd6a8', hemiGround: '#3a2c24', hemi: 0.6,
+    sun: 0.95, sunCol: '#ffb36b', tint: '#e6bf8c', glow: '#1e0e06', snow: 0, fall: 'glow' });
   const seasonLook = (k) => {
     const d = SEASONS[k];
     return { sky: d.sky.map(C), fog: C(d.fog), hemiSky: C(d.hemiSky), hemiGround: C(d.hemiGround), hemi: d.hemi,
-      sun: d.sun, tint: C(d.tint), glow: C(d.glow || '#000000'), snow: d.snow, round: d.round, fall: d.fall };
+      sun: d.sun, sunCol: C(d.sunCol || '#fff1d6'), tint: C(d.tint), glow: C(d.glow || '#000000'), snow: d.snow, round: d.round, fall: d.fall };
   };
   let seasonIdx = 0, seasonGoal = seasonLook(0);
   const season = seasonLook(0);             // what is on screen now, eased towards seasonGoal
@@ -2248,6 +2271,7 @@ const View3D = (function () {
       } else return;
       if (snap) { o.material.color.copy(o.userData.goal.color); o.material.emissive.copy(o.userData.goal.emissive); }
     });
+    group.traverse((o) => { if (o.userData.festival) o.visible = seasonIdx === 5; });
   }
 
   function setSeason(k) {
@@ -2265,13 +2289,13 @@ const View3D = (function () {
     const S = season, G2 = seasonGoal;
     S.sky.forEach((c, i) => c.lerp(G2.sky[i], a));
     S.fog.lerp(G2.fog, a); S.hemiSky.lerp(G2.hemiSky, a); S.hemiGround.lerp(G2.hemiGround, a);
-    S.hemi += (G2.hemi - S.hemi) * a; S.sun += (G2.sun - S.sun) * a;
+    S.hemi += (G2.hemi - S.hemi) * a; S.sun += (G2.sun - S.sun) * a; S.sunCol.lerp(G2.sunCol, a);
     if (sceneStyle !== 'forest') return;
     if (skyCanvas && scene.background && scene.background.isTexture) { paintSky(S.sky); scene.background.needsUpdate = true; }
     if (scene.fog) scene.fog.color.copy(S.fog);
     const h = scene.userData.hemi;
     if (h) { h.color.copy(S.hemiSky); h.groundColor.copy(S.hemiGround); h.intensity = S.hemi; }
-    if (scene.userData.sun) scene.userData.sun.intensity = S.sun;
+    if (scene.userData.sun) { scene.userData.sun.intensity = S.sun; scene.userData.sun.color.copy(S.sunCol); }
     if (envGroup) envGroup.traverse((o) => {
       const g = o.userData.goal;
       if (!g || !o.material) return;
@@ -2285,11 +2309,14 @@ const View3D = (function () {
     rain: { n: 1400, size: 0.28, speed: 9, sway: 0.05, cols: ['#c8d6e4'] },
     leaf: { n: 280, size: 0.24, speed: 0.55, sway: 0.7, cols: ['#c8612c', '#e0a034', '#a8432a'] },
     snow: { n: 900, size: 0.12, speed: 0.6, sway: 0.35, cols: ['#ffffff'] },
+    glow: { n: 260, size: 0.34, speed: -0.35, sway: 0.5, cols: ['#ffe28a', '#fff2b8', '#ffd060'] },
     petal: { n: 340, size: 0.16, speed: 0.45, sway: 0.6, cols: ['#f7c6d3', '#f2a9bf', '#fde3ea'] },
   };
   function fallSprite(kind) {
     return svgTexture('fall:' + kind, kind === 'rain'
       ? '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="64" height="64"><path d="M17 1L15 31" stroke="#fff" stroke-width="1.6" stroke-linecap="round" opacity=".85"/></svg>'
+      : kind === 'glow'
+        ? '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="64" height="64"><defs><radialGradient id="g"><stop offset="0" stop-color="#fff"/><stop offset=".25" stop-color="#fff" stop-opacity=".9"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient></defs><circle cx="16" cy="16" r="16" fill="url(#g)"/></svg>'
       : kind === 'snow'
         ? '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="64" height="64"><circle cx="16" cy="16" r="9" fill="#fff"/><circle cx="16" cy="16" r="14" fill="#fff" opacity=".25"/></svg>'
         : '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="64" height="64"><path d="M16 3C24 9 25 20 16 29C7 20 8 9 16 3z" fill="#fff"/><path d="M16 6V26" stroke="#000" stroke-opacity=".18" stroke-width="1.2"/></svg>',
@@ -2305,7 +2332,7 @@ const View3D = (function () {
     const mx = 1.5;
     for (let i = 0; i < F.n; i++) {
       pos[i * 3] = x0 - mx + r() * (x1 - x0 + mx * 2);
-      pos[i * 3 + 1] = r() * 7;
+      pos[i * 3 + 1] = kind === 'glow' ? r() * 4 : r() * 7;
       pos[i * 3 + 2] = z0 - mx + r() * (z1 - z0 + mx * 2);
       const c = C(F.cols[i % F.cols.length]);
       colr[i * 3] = c.r; colr[i * 3 + 1] = c.g; colr[i * 3 + 2] = c.b;
@@ -2315,7 +2342,8 @@ const View3D = (function () {
     g.setAttribute('position', new T.BufferAttribute(pos, 3));
     g.setAttribute('color', new T.BufferAttribute(colr, 3));
     const m = new T.PointsMaterial({ size: F.size, map: fallSprite(kind), vertexColors: true, transparent: true,
-      depthWrite: false, sizeAttenuation: true, alphaTest: 0.05 });
+      depthWrite: false, sizeAttenuation: true, alphaTest: 0.02,
+      blending: kind === 'glow' ? T.AdditiveBlending : T.NormalBlending });
     weather = new T.Points(g, m);
     weather.userData = { kind, F, ph, x0: x0 - mx, x1: x1 + mx, z0: z0 - mx, z1: z1 + mx };
     weather.frustumCulled = false;
@@ -2332,8 +2360,10 @@ const View3D = (function () {
       pos[k] += Math.sin(t * 0.0012 + ph[i]) * F.sway * s;
       pos[k + 2] += Math.cos(t * 0.0009 + ph[i]) * F.sway * s * 0.6;
       if (pos[k + 1] < -0.05) { pos[k + 1] = 7; pos[k] = x0 + ((i * 0.618) % 1) * (x1 - x0); }
+      else if (pos[k + 1] > 4) { pos[k + 1] = 0.1; }
     }
     weather.geometry.attributes.position.needsUpdate = true;
+    if (weather.userData.kind === 'glow') weather.material.opacity = 0.65 + 0.35 * Math.sin(t * 0.004);
   }
 
   // ---------------------------------------------------------------- lifecycle

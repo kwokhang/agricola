@@ -95,7 +95,6 @@
           <span class="rk">ROUND<br>回合</span>
           <b class="rn">${G.round}</b><span class="rt">/ 14</span>
           <span class="ph">${esc(phase)}</span>
-          <span class="season" title="季節：每次收成後轉換">${SEASON_ICON[seasonIndex()]} ${SEASON_ZH[seasonIndex()]}</span>
           ${harvestNow ? `<span class="hvb">${ic('grain', 15)} 本回合收成</span>` : ''}
         </div>
         <div class="track">${track}</div>
@@ -865,10 +864,11 @@
   }
 
   // ------------------------------------------------------------ seasons & the harvest notice
-  // The season turns at every harvest: sunny, rain, autumn, snow, blossom, then sunny again.
+  // The season turns at every harvest: sunny, rain, autumn, snow, blossom, and for the last
+  // round the harvest festival at dusk.
   // It only turns once the harvest notice has been read, so the change is part of the harvest.
-  const SEASON_ZH = ['晴朗', '下雨', '秋天', '下雪', '花開', '晴朗'];
-  const SEASON_ICON = ['☀︎', '☂︎', '🍁', '❄︎', '🌸', '☀︎'];
+  const SEASON_ZH = ['晴朗', '下雨', '秋天', '下雪', '花開', '豐收祭'];
+  const SEASON_ICON = ['☀︎', '☂︎', '🍁', '❄︎', '🌸', '🏮'];
   const harvestPending = () => G.phase === 'harvest' && !!G.feeding && !G.over && UI.harvestSeen !== G.round;
   function seasonIndex() {
     let k = HARVEST_ROUNDS.filter((r) => r < G.round).length;
@@ -897,7 +897,8 @@
           <ul class="hvfeed">${feed}</ul></li>
         <li><b>繁殖</b>：同一種動物有至少 2 隻，而且有空位，便多 1 隻。</li>
       </ol>
-      <p class="hvseason">季節轉換：${SEASON_ICON[next - 1]} ${SEASON_ZH[next - 1]} → ${SEASON_ICON[next]} ${SEASON_ZH[next]}</p>
+      <p class="hvseason">${nth === 6 ? '最後一次收成，完成後進入計分'
+        : `季節轉換：${SEASON_ICON[next - 1]} ${SEASON_ZH[next - 1]} → ${SEASON_ICON[next]} ${SEASON_ZH[next]}${next === 5 ? '（最後一回合）' : ''}`}</p>
       <div class="row">${btn('startHarvest', '開始收成')}</div>
     </div>`;
   }
