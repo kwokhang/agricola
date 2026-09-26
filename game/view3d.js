@@ -189,18 +189,30 @@ const View3D = (function () {
       g.add(ring);
       return g;
     }
-    // A thick coin in the player's colour, its face printed with the same bust as the HUD.
-    const side = mat(pc, { roughness: 0.35 });
-    const coin = new T.Mesh(geo('wkCoin', () => new T.CylinderGeometry(0.22, 0.22, 0.07, 32)), side);
-    coin.position.y = 0.035;
-    coin.castShadow = true; coin.receiveShadow = true;
-    g.add(coin);
-    const face = new T.Mesh(geo('wkFace', () => new T.CircleGeometry(0.22, 32)),
-      printMat(svgTexture('worker2:' + hex, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0.6 0.6 22.8 22.8" width="192" height="192">${ART.workerMarkup(hex)}</svg>`, 192, 192),
-        { roughness: 0.35 }));
-    face.rotation.x = -Math.PI / 2;
-    face.position.y = 0.071;
-    g.add(face);
+    // A little farmer in the player's colour: straw hat, shirt and dungarees, a pitchfork at
+    // their side, standing on a disc of the colour so a crowd of them still reads by player.
+    const shirt = mat(pc), dark = mat(pc.clone().lerp(new T.Color('#1c1a17'), 0.45));
+    const skin = mat('#efc49a'), straw = mat('#dcb655'), wood = mat('#7a5534'), iron = mat('#8a8d92');
+    const add = (m, x, y, z) => { m.position.set(x, y, z); m.castShadow = true; g.add(m); return m; };
+    add(new T.Mesh(geo('fmBase', () => new T.CylinderGeometry(0.17, 0.18, 0.035, 24)), shirt), 0, 0.018, 0);
+    [-1, 1].forEach((sd) => add(new T.Mesh(geo('fmLeg', () => new T.CylinderGeometry(0.032, 0.036, 0.16, 8)), dark), sd * 0.04, 0.115, 0));
+    add(new T.Mesh(geo('fmHip', () => new T.CylinderGeometry(0.075, 0.08, 0.07, 10)), dark), 0, 0.215, 0);
+    add(new T.Mesh(geo('fmBody', () => new T.CylinderGeometry(0.068, 0.078, 0.15, 10)), shirt), 0, 0.3, 0);
+    add(new T.Mesh(geo('fmBib', () => new T.BoxGeometry(0.07, 0.07, 0.012)), dark), 0, 0.285, 0.072);
+    [-1, 1].forEach((sd) => {
+      const arm = add(new T.Mesh(geo('fmArm', () => new T.CylinderGeometry(0.022, 0.026, 0.14, 6)), shirt), sd * 0.095, 0.3, 0);
+      arm.rotation.z = sd * 0.25;
+      add(new T.Mesh(geo('fmHand', () => new T.SphereGeometry(0.024, 8, 6)), skin), sd * 0.113, 0.23, 0);
+    });
+    add(new T.Mesh(geo('fmHead', () => new T.SphereGeometry(0.058, 14, 10)), skin), 0, 0.42, 0);
+    add(new T.Mesh(geo('fmBrim', () => new T.CylinderGeometry(0.11, 0.11, 0.012, 18)), straw), 0, 0.458, 0);
+    add(new T.Mesh(geo('fmCrown', () => new T.CylinderGeometry(0.052, 0.06, 0.055, 14)), straw), 0, 0.49, 0);
+    add(new T.Mesh(geo('fmBand', () => new T.CylinderGeometry(0.061, 0.061, 0.016, 14)), dark), 0, 0.472, 0);
+    // pitchfork held upright at the right hand
+    add(new T.Mesh(geo('fmHandle', () => new T.CylinderGeometry(0.01, 0.01, 0.5, 5)), wood), 0.135, 0.3, 0.02);
+    add(new T.Mesh(geo('fmHead2', () => new T.BoxGeometry(0.07, 0.012, 0.012)), iron), 0.135, 0.55, 0.02);
+    [-1, 0, 1].forEach((k) => add(new T.Mesh(geo('fmTine', () => new T.BoxGeometry(0.008, 0.06, 0.008)), iron), 0.135 + k * 0.03, 0.585, 0.02));
+    g.rotation.y = -0.25;
     return ink(g);
   }
 
@@ -1004,7 +1016,7 @@ const View3D = (function () {
         });
         const ax = cx + w * 0.12, az = cz + d * 0.02;    // the middle of the picture, clear of name, rules and goods
         const tok = workerToken(pc, true);
-        tok.scale.setScalar(0.8);
+        tok.scale.setScalar(1.3);
         tok.position.set(ax, BOARD_Y + 0.035, az);
         g.add(tok);
       }
@@ -1279,8 +1291,8 @@ const View3D = (function () {
       <rect x="1" y="1" width="${W - 2}" height="${H - 2}" rx="12" fill="var(--art-plate)"/>
       <rect x="1" y="1" width="${W - 2}" height="${H - 2}" rx="12" fill="${pc}" fill-opacity=".12"/>
       <path d="M1 13a12 12 0 0 1 12-12H${W - 13}a12 12 0 0 1 12 12V${PB_HEAD}H1z" fill="${pc}"/>
-      <text x="16" y="33" font-size="25" font-weight="800" fill="#fff" font-family="'Hiragino Mincho ProN','Songti TC',serif">${p.name}</text>
-      <text x="${16 + [...p.name].length * 25 + 14}" y="32" font-size="15" font-weight="600" fill="#fff" opacity=".9">${sub}</text>
+      <text x="64" y="33" font-size="25" font-weight="800" fill="#fff" font-family="'Hiragino Mincho ProN','Songti TC',serif">${p.name}</text>
+      <text x="${64 + [...p.name].length * 25 + 14}" y="32" font-size="15" font-weight="600" fill="#fff" opacity=".9">${sub}</text>
       <rect x="1" y="1" width="${W - 2}" height="${H - 2}" rx="12" fill="none" stroke="${pc}" stroke-width="5"/>
       <g transform="translate(0 ${top})">`;
     kinds.forEach((k, i) => {
@@ -1311,10 +1323,15 @@ const View3D = (function () {
     g.userData.plate = plate;
     // the family stands on the right of the name band, used workers laid down
     const headZ = -PB_WORLD_D / 2 + (PB_HEAD / PB_H) * PB_WORLD_D / 2;
+    // the family's scarecrow stands in the top-left corner of the band, in their colours
+    const sc = scarecrow(colour);
+    sc.position.set(-PB_WORLD_W / 2 + 0.28, 0.05, headZ + 0.04);
+    sc.rotation.y = 0.25;
+    g.add(sc);
     for (let i = 0; i < p.people; i++) {
       const tok = workerToken(colour, i < p.workersLeft);
-      tok.scale.setScalar(0.82);
-      tok.position.set(PB_WORLD_W / 2 - 0.3 - (p.people - 1 - i) * 0.44, 0.05, headZ);
+      tok.scale.setScalar(1.15);
+      tok.position.set(PB_WORLD_W / 2 - 0.3 - (p.people - 1 - i) * 0.46, 0.05, headZ);
       g.add(tok);
     }
     return g;
@@ -1351,7 +1368,7 @@ const View3D = (function () {
     // Cards already in front of this player, five to a row, on a marked-out patch of felt.
     const playedGroup = new T.Group();
     const at = LAYOUT.played;
-    const zone = playedMat(5.3, 3.0);
+    const zone = playedMat(5.3, 3.0, col(colour));
     zone.position.set(0, 0, at.z + 0.62);
     playedGroup.add(zone);
     p.played.forEach((c, i) => {
@@ -1393,21 +1410,67 @@ const View3D = (function () {
     return g;
   }
 
-  // Where played cards go: a small printed board in the same parchment and gilt as the
-  // action board, on a wooden frame, its name printed faintly in the middle.
-  function playedMat(w, d, label) {
+  // Where played cards go: a cloth in a deep shade of the player's colour with a faint wave
+  // pattern and a double rule, on a lacquered rim of the colour itself; its name faint in the middle.
+  function playedMat(w, d, colour) {
     const g = new T.Group();
-    const wpx = Math.round(w / PS), hpx = Math.round(d / PS);
-    const frame = new T.Mesh(geo(`pmFrame${w}_${d}`, () => new T.BoxGeometry(w, 0.06, d)), mat('#ffffff', { map: frameWood() }));
-    frame.position.y = -0.04;
-    frame.receiveShadow = true;
-    g.add(frame);
-    const svg = boardPrintSvg(wpx, hpx).replace('</svg>', `
-      <text x="${wpx / 2}" y="${hpx / 2 + 14}" text-anchor="middle" font-size="40" font-weight="800" fill="#5a4526" fill-opacity=".28"
-        font-family="'Hiragino Mincho ProN','Songti TC',serif" letter-spacing="10">${label == null ? '已打出的卡' : label}</text></svg>`);
-    const tex = svgTexture(`pmPrint:${wpx}x${hpx}:${label}`, svg, Math.round(wpx * 1.2), Math.round(hpx * 1.2));
-    g.add(plateMesh(tex, w - 0.08, d - 0.08, 0, 0, -0.005));
+    const hex = '#' + colour.getHexString();
+    const deep = '#' + colour.clone().lerp(new T.Color('#2a2018'), 0.62).getHexString();
+    const light = '#' + colour.clone().lerp(new T.Color('#f3e6c8'), 0.4).getHexString();
+    const wpx = Math.round(w / PS / 2), hpx = Math.round(d / PS / 2);
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${wpx} ${hpx}" width="${wpx * 2}" height="${hpx * 2}">
+      <defs><pattern id="wave" width="28" height="14" patternUnits="userSpaceOnUse">
+        <path d="M0 14a14 14 0 0 1 28 0M-14 14a14 14 0 0 1 28 0M14 14a14 14 0 0 1 28 0" fill="none" stroke="${light}" stroke-opacity=".12" stroke-width="1.4"/>
+        <path d="M4 14a10 10 0 0 1 20 0" fill="none" stroke="${light}" stroke-opacity=".08" stroke-width="1.2"/></pattern></defs>
+      <rect width="${wpx}" height="${hpx}" fill="${deep}"/>
+      <rect width="${wpx}" height="${hpx}" fill="url(#wave)"/>
+      <rect x="7" y="7" width="${wpx - 14}" height="${hpx - 14}" rx="8" fill="none" stroke="${light}" stroke-opacity=".75" stroke-width="2.2"/>
+      <rect x="12" y="12" width="${wpx - 24}" height="${hpx - 24}" rx="6" fill="none" stroke="#d8b25a" stroke-opacity=".55" stroke-width="1"/>
+      <text x="${wpx / 2}" y="${hpx / 2 + 8}" text-anchor="middle" font-size="22" font-weight="800" fill="${light}" fill-opacity=".35"
+        font-family="'Hiragino Mincho ProN','Songti TC',serif" letter-spacing="6">已打出的卡</text></svg>`;
+    const rim = new T.Mesh(geo(`pmRim${w}_${d}`, () => new T.BoxGeometry(w, 0.05, d)), mat(colour));
+    rim.position.y = -0.01;
+    rim.receiveShadow = true;
+    g.add(rim);
+    const cloth = new T.Mesh(geo(`pmCloth${w}_${d}`, () => new T.PlaneGeometry(w - 0.1, d - 0.1)),
+      new T.MeshToonMaterial({ map: svgTexture(`pmCloth:${hex}:${wpx}x${hpx}`, svg, wpx * 2, hpx * 2), gradientMap: TOON_ROOM }));
+    cloth.rotation.x = -Math.PI / 2;
+    cloth.position.y = 0.016;
+    cloth.receiveShadow = true;
+    g.add(cloth);
     return g;
+  }
+
+  // A scarecrow in the player's colours: a post and crossbar, a burlap head under a straw
+  // hat, a shirt in the player's colour and straw poking out of the sleeves.
+  function scarecrow(colour) {
+    const g = new T.Group();
+    const wood = mat('#7a5534'), straw = mat('#d9b451'), burlap = mat('#cdb58a');
+    const shirt = mat(colour), dark = mat(colour.clone().lerp(new T.Color('#1c1a17'), 0.35));
+    const post = new T.Mesh(geo('scPost', () => new T.CylinderGeometry(0.025, 0.03, 0.7, 6)), wood);
+    post.position.y = 0.35; g.add(post);
+    const bar = new T.Mesh(geo('scBar', () => new T.CylinderGeometry(0.02, 0.02, 0.5, 6)), wood);
+    bar.rotation.z = Math.PI / 2; bar.position.y = 0.5; g.add(bar);
+    const body = new T.Mesh(geo('scBody', () => new T.CylinderGeometry(0.075, 0.1, 0.24, 8)), shirt);
+    body.position.y = 0.44; g.add(body);
+    [-1, 1].forEach((sd) => {
+      const sleeve = new T.Mesh(geo('scSleeve', () => new T.CylinderGeometry(0.035, 0.045, 0.16, 6)), shirt);
+      sleeve.rotation.z = Math.PI / 2; sleeve.position.set(sd * 0.15, 0.5, 0); g.add(sleeve);
+      const tuft = new T.Mesh(geo('scTuft', () => new T.ConeGeometry(0.04, 0.08, 6)), straw);
+      tuft.rotation.z = -sd * Math.PI / 2; tuft.position.set(sd * 0.255, 0.5, 0); g.add(tuft);
+    });
+    const patch = new T.Mesh(geo('scPatch', () => new T.BoxGeometry(0.05, 0.05, 0.01)), dark);
+    patch.position.set(0.03, 0.42, 0.095); g.add(patch);
+    const head = new T.Mesh(geo('scHead', () => new T.SphereGeometry(0.07, 12, 10)), burlap);
+    head.position.y = 0.62; g.add(head);
+    const brim = new T.Mesh(geo('scBrim', () => new T.CylinderGeometry(0.13, 0.13, 0.012, 16)), straw);
+    brim.position.y = 0.665; g.add(brim);
+    const crown = new T.Mesh(geo('scCrown', () => new T.ConeGeometry(0.07, 0.1, 12)), straw);
+    crown.position.y = 0.72; g.add(crown);
+    const band = new T.Mesh(geo('scBand', () => new T.CylinderGeometry(0.062, 0.066, 0.02, 12)), shirt);
+    band.position.y = 0.68; g.add(band);
+    g.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.raycast = () => {}; } });
+    return ink(g);
   }
 
   // ---------------------------------------------------------------- majors on the table
