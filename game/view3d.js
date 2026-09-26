@@ -1348,10 +1348,6 @@ const View3D = (function () {
     g.add(farm);
 
     const colour = pi === 0 ? '--p1' : '--p2';
-    if (acting) {                 // round the whole column: board, farm and played cards
-      const top = LAYOUT.supply.z - PB_WORLD_D / 2, bottom = LAYOUT.played.z + 0.62 + 1.5;
-      g.add(outline(5.3 + 0.16, bottom - top + 0.16, 0.09, col(colour).getHex(), 0.07).translateZ((top + bottom) / 2));
-    }
 
     // name, family and goods: one board
     const supply = buildSupply(G, pi);
@@ -1368,12 +1364,17 @@ const View3D = (function () {
     // Cards already in front of this player, five to a row, on a marked-out patch of felt.
     const playedGroup = new T.Group();
     const at = LAYOUT.played;
-    const zone = playedMat(5.3, 3.0, col(colour));
-    zone.position.set(0, 0, at.z + 0.62);
+    // five cards to a row inside the mat's double rule; the mat grows a row at a time
+    const PER = 5, IN = 0.26, STEP_X = (5.3 - IN * 2 - MAJ_W) / (PER - 1), STEP_Z = MAJ_H + 0.14;
+    const rows = Math.max(2, Math.ceil(p.played.length / PER));
+    const matD = rows * STEP_Z - 0.14 + IN * 2;
+    const zone = playedMat(5.3, +matD.toFixed(2), col(colour));
+    const matTop = at.z - 0.88;
+    zone.position.set(0, 0, matTop + matD / 2);
     playedGroup.add(zone);
     p.played.forEach((c, i) => {
-      const cx = at.x + (i % 5) * (MAJ_W + 0.2);
-      const cz = at.z + Math.floor(i / 5) * (MAJ_H + 0.12);
+      const cx = -5.3 / 2 + IN + MAJ_W / 2 + (i % PER) * STEP_X;
+      const cz = matTop + IN + MAJ_H / 2 + Math.floor(i / PER) * STEP_Z;
       const m = cardMesh(cardTexture(c, { cost: {} }), MAJ_W, MAJ_H);
       m.position.set(cx, BOARD_Y - 0.02, cz);
       m.rotation.y = ((i * 37) % 11 - 5) * 0.004;
@@ -1402,6 +1403,10 @@ const View3D = (function () {
       if (on.children.length) playedGroup.add(on);
     });
     g.add(playedGroup);
+    if (acting) {                 // round the whole column: board, farm and played cards
+      const top = LAYOUT.supply.z - PB_WORLD_D / 2, bottom = matTop + matD;
+      g.add(outline(5.3 + 0.16, bottom - top + 0.16, 0.09, col(colour).getHex(), 0.07).translateZ((top + bottom) / 2));
+    }
 
     const seat = LAYOUT.seat(pi, G.n);
     g.position.set(seat.x, 0, seat.z);

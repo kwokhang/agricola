@@ -110,7 +110,7 @@
   // On the 3D table these are camera angles; without WebGL they are the old flat pages.
   function renderMainTabs() {
     const tabs = has3d
-      ? [['table', '全景'], ['board', '行動板'], ['farm', '農場'], ['cards', '卡片'], ['majors', '主要發展']]
+      ? [['table', '全景'], ['board', '行動板'], ['majors', '主要發展'], ['farm', '農場'], ['cards', '卡片']]
       : [['board', '行動板'], ['farm', '農場'], ['cards', '卡片']];
     const p = G.players[UI.view];
     const held = p.hand.occ.length + p.hand.min.length;
@@ -1053,7 +1053,7 @@
   }
 
   // Scrolling over the table steps through the views, near to far and back.
-  const VIEW_ORDER = ['table', 'board', 'farm', 'cards', 'majors'];
+  const VIEW_ORDER = ['table', 'board', 'majors', 'farm', 'cards'];   // top of the table to the bottom
   function stepView(dir) {
     if (!G) return;
     const i = Math.max(0, VIEW_ORDER.indexOf(UI.main));
