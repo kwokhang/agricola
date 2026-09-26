@@ -53,7 +53,7 @@
     const names = setup ? setup.map((q) => q.name) : (n === 1 ? ['玩家'] : ['玩家 1', '玩家 2']);
     G = newGame(names);
     G.colors = setup ? setup.map((q) => q.color) : ['#d0582f', '#3a6f9c'];
-    UI.view = 0; UI.lastCurrent = 0; UI.cardTab = 'occ'; UI.main = 'table'; UI.autoKey = ''; UI.finalShown = false;
+    UI.view = 0; UI.lastCurrent = 0; UI.cardTab = 'occ'; UI.main = 'table'; UI.autoKey = ''; UI.finalShown = false; UI.harvestSeen = 0;
     render();
   }
 
@@ -92,6 +92,7 @@
           <span class="rk">ROUND<br>回合</span>
           <b class="rn">${G.round}</b><span class="rt">/ 14</span>
           <span class="ph">${esc(phase)}</span>
+          <span class="season" title="季節：每次收成後轉換">${SEASON_ICON[seasonIndex()]} ${SEASON_ZH[seasonIndex()]}</span>
           ${harvestNow ? `<span class="hvb">${ic('grain', 15)} 本回合收成</span>` : ''}
         </div>
         <div class="track">${track}</div>
@@ -387,7 +388,7 @@
   // ------------------------------------------------------------ dock: prompt
   // Buttons in the action bar come in two weights: the step's main action — finishing it,
   // or doing the one thing the step is for — and quiet ways out (skip, cancel, give up).
-  const MAIN_ACTS = ['confirmFences', 'confirmFeed', 'grow', 'renovate', 'bake', 'final', 'newGame', 'ngStart'];
+  const MAIN_ACTS = ['startHarvest', 'confirmFences', 'confirmFeed', 'grow', 'renovate', 'bake', 'final', 'newGame', 'ngStart'];
   const QUIET_ACTS = ['cancelAction', 'undoFences', 'discardStaged', 'ngCancel', 'closeFinal'];
   function btn(action, label, disabled, extra) {
     let cls = '';
@@ -858,6 +859,44 @@
       <div class="row">${btn('closeScore', '關閉')}</div></div>`;
   }
 
+  // ------------------------------------------------------------ seasons & the harvest notice
+  // The season turns at every harvest: sunny, rain, autumn, snow, blossom, then sunny again.
+  // It only turns once the harvest notice has been read, so the change is part of the harvest.
+  const SEASON_ZH = ['晴朗', '下雨', '秋天', '下雪', '花開', '晴朗'];
+  const SEASON_ICON = ['☀︎', '☂︎', '🍁', '❄︎', '🌸', '☀︎'];
+  const harvestPending = () => G.phase === 'harvest' && !!G.feeding && !G.over && UI.harvestSeen !== G.round;
+  function seasonIndex() {
+    let k = HARVEST_ROUNDS.filter((r) => r < G.round).length;
+    if (G.phase === 'harvest' && !harvestPending()) k++;
+    if (G.over) k = 5;
+    return Math.min(5, k);
+  }
+  function renderHarvestPop() {
+    const box = $('harvestPop');
+    box.hidden = !harvestPending();
+    if (box.hidden) return;
+    const nth = HARVEST_ROUNDS.indexOf(G.round) + 1;
+    const next = Math.min(5, HARVEST_ROUNDS.filter((r) => r < G.round).length + 1);
+    const feed = G.players.map((p, i) => {
+      const need = foodNeeded(G, p), have = p.supply.food;
+      return `<li style="--pc:${PCOLOR[i]}"><b>${esc(p.name)}</b>：需要 ${need} 食物，現有 ${have}${
+        have < need ? `<span class="short">（不足 ${need - have}，可先把作物或動物煮成食物）</span>` : ''}</li>`;
+    }).join('');
+    box.innerHTML = `<div class="sheet">
+      <div class="hvicon">${ic('grain', 44)}</div>
+      <h2>收成</h2>
+      <div class="sub">第 ${G.round} 回合結束・第 ${nth} 次收成（共 6 次）</div>
+      <ol class="hvsteps">
+        <li><b>田地</b>：每塊已播種的田收割 1 個作物（已自動完成）。</li>
+        <li><b>餵食</b>：每名家庭成員需 ${G.n === 1 ? 3 : 2} 食物，本回合出生的新生兒需 1 食物；不足的每 1 食物取 1 個乞討標記（−3 分）。
+          <ul class="hvfeed">${feed}</ul></li>
+        <li><b>繁殖</b>：同一種動物有至少 2 隻，而且有空位，便多 1 隻。</li>
+      </ol>
+      <p class="hvseason">季節轉換：${SEASON_ICON[next - 1]} ${SEASON_ZH[next - 1]} → ${SEASON_ICON[next]} ${SEASON_ZH[next]}</p>
+      <div class="row">${btn('startHarvest', '開始收成')}</div>
+    </div>`;
+  }
+
   // ------------------------------------------------------------ final scores
   // Pops up by itself the moment the game ends; after it is closed, the prompt reopens it.
   function renderFinal() {
@@ -959,7 +998,8 @@
     $('turnTag').textContent = who < 0 ? '' : `${G.players[who].name} 的回合`;
     renderStatus(); renderMainTabs();
     renderBoard(); renderFarm(); renderCards();
-    renderPrompt(); renderFree(); renderRes(); renderModal(); renderDrawer(); renderRail(); renderFinal(); renderScoreSheet();
+    renderPrompt(); renderFree(); renderRes(); renderModal(); renderDrawer(); renderRail(); renderFinal(); renderScoreSheet(); renderHarvestPop();
+    UI.season = seasonIndex();
     document.body.classList.toggle('side-strip', has3d && ['board', 'table', 'majors'].includes(UI.main));
     if (has3d) { showTip(null); View3D.sync(G, UI); }
     placeActionBar();
@@ -1048,6 +1088,7 @@
       case 'closeScore': UI.scoreOpen = false; break;
       case 'scoreTab': UI.scoreTab = v; break;
       case 'closeFinal': UI.finalOpen = false; break;
+      case 'startHarvest': UI.harvestSeen = G.round; break;
       case 'buildKind': UI.buildKind = v; break;
       case 'sowKind': UI.sowKind = v; break;
       case 'sowBean': sowBeanfield(G); break;

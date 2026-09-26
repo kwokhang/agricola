@@ -455,6 +455,17 @@
 
   /* ---------- final scores ---------- */
   .final { z-index: 70; }
+  .round .season { font-size: 13px; font-weight: 700; padding: 2px 9px; border-radius: 999px;
+    border: 1px solid var(--line, rgba(255,255,255,.18)); color: var(--ink, #efe8d8); white-space: nowrap; }
+  .harvest .sheet { max-width: min(520px, 92vw); }
+  .harvest .hvicon { text-align: center; margin-bottom: 2px; }
+  .harvest .hvsteps { margin: 6px 0 10px 20px; padding: 0; font-size: 14px; line-height: 1.6; }
+  .harvest .hvsteps > li { margin-bottom: 6px; }
+  .harvest .hvfeed { list-style: none; margin: 4px 0 0; padding: 0; }
+  .harvest .hvfeed li { border-left: 4px solid var(--pc); padding: 1px 8px; margin: 3px 0; font-size: 13.5px; }
+  .harvest .short { color: #e07a5f; }
+  .harvest .hvseason { text-align: center; font-weight: 700; margin: 4px 0 12px; }
+  .harvest .row { justify-content: center; }
   .final .sheet {
     width: min(680px, 94vw); max-height: 88vh; overflow: auto; padding: 18px 20px 16px;
     background: var(--panel); border: 2px solid var(--accent); border-radius: 16px;
@@ -649,6 +660,7 @@
 </aside>
 <div class="modal" id="modal" hidden></div>
 <div class="modal final" id="final" hidden></div>
+<div class="modal final harvest" id="harvestPop" hidden></div>
 <div class="modal final" id="newgame" hidden></div>
 <div class="modal final" id="scoresheet" hidden></div>
 

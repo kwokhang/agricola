@@ -1909,14 +1909,19 @@ const View3D = (function () {
     return tex;
   }
 
-  function skyTexture() {
-    const cv = document.createElement('canvas');
-    cv.width = 16; cv.height = 512;
-    const x = cv.getContext('2d');
+  let skyCanvas = null;
+  function paintSky(cols) {
+    const x = skyCanvas.getContext('2d');
     const g = x.createLinearGradient(0, 0, 0, 512);
-    g.addColorStop(0, '#8fbfd9'); g.addColorStop(0.55, '#cfe3dc'); g.addColorStop(1, '#f1e2bd');
+    g.addColorStop(0, '#' + cols[0].getHexString()); g.addColorStop(0.55, '#' + cols[1].getHexString());
+    g.addColorStop(1, '#' + cols[2].getHexString());
     x.fillStyle = g; x.fillRect(0, 0, 16, 512);
-    const tex = new T.CanvasTexture(cv);
+  }
+  function skyTexture() {
+    skyCanvas = document.createElement('canvas');
+    skyCanvas.width = 16; skyCanvas.height = 512;
+    paintSky(season.sky);
+    const tex = new T.CanvasTexture(skyCanvas);
     tex.colorSpace = T.SRGBColorSpace;
     return tex;
   }
@@ -1931,6 +1936,7 @@ const View3D = (function () {
     if (kind === 'pine') {
       for (let k = 0; k < 3; k++) {
         const c = new T.Mesh(geo('fcone', () => new T.ConeGeometry(1, 1, 8)), mat(new T.Color(greens[k % 2])));
+        c.userData.leaf = { base: new T.Color(greens[k % 2]), round: false, i: k + tone };
         const sc = (1 - k * 0.25) * h * 0.32;
         c.scale.set(sc, h * 0.34, sc); c.position.y = h * (0.42 + k * 0.2); c.castShadow = true;
         g.add(c);
@@ -1938,6 +1944,7 @@ const View3D = (function () {
     } else {
       [[0, 0.62, 0, 0.36], [-0.18, 0.52, 0.08, 0.26], [0.2, 0.55, -0.06, 0.27], [0.02, 0.8, 0.02, 0.24]].forEach(([dx, dy, dz, rr], k) => {
         const b = new T.Mesh(geo('fball', () => new T.SphereGeometry(1, 12, 10)), mat(new T.Color(greens[k % 2])));
+        b.userData.leaf = { base: new T.Color(greens[k % 2]), round: true, i: k + tone };
         b.scale.setScalar(rr * h); b.position.set(dx * h, dy * h, dz * h); b.castShadow = true;
         g.add(b);
       });
@@ -1949,6 +1956,7 @@ const View3D = (function () {
     const g = new T.Group();
     [[0, 0.22, 0, 0.3], [0.26, 0.16, 0.06, 0.22], [-0.24, 0.16, -0.04, 0.22]].forEach(([dx, dy, dz, rr], k) => {
       const b = new T.Mesh(geo('fball', () => new T.SphereGeometry(1, 12, 10)), mat(new T.Color(k ? '#4f7a3a' : '#5f8c44')));
+      b.userData.leaf = { base: new T.Color(k ? '#4f7a3a' : '#5f8c44'), round: true, i: k };
       b.scale.setScalar(rr * s); b.position.set(dx * s, dy * s, dz * s); b.castShadow = true;
       g.add(b);
     });
@@ -2000,6 +2008,7 @@ const View3D = (function () {
     });
     inst.receiveShadow = true;
     inst.userData.sharedGeo = true;             // the tuft geometry is cached; keep it on refit
+    inst.userData.surface = true;
     return inst;
   }
 
@@ -2040,6 +2049,7 @@ const View3D = (function () {
     meadow.rotation.x = -Math.PI / 2;
     meadow.position.set((x0 + x1) / 2, -0.07, (z0 + z1) / 2);
     meadow.receiveShadow = true;
+    meadow.userData.surface = true;
     g.add(meadow);
     // tufts over the meadow, kept a little off the edge and clear of the boards
     g.add(grassField(x0 - pad * 0.85, x1 + pad * 0.85, z0 - pad * 0.85, z1 + pad * 0.85, grassHoles()));
@@ -2101,6 +2111,8 @@ const View3D = (function () {
     if (sceneStyle === 'forest') {
       playMat = buildClearing(x0, x1, z0, z1);
       envGroup.add(playMat);
+      seasonTargets(playMat, true);
+      placeWeather(x0, x1, z0, z1);
       if (scene.userData.lamp) scene.userData.lamp.intensity = 0.6;
       return;
     }
@@ -2133,6 +2145,7 @@ const View3D = (function () {
       const floor = forestFloorTexture();
       floor.repeat.set(14, 14);
       const ground = new T.Mesh(new T.PlaneGeometry(140, 140), roomMat('#ffffff', floor));
+      ground.userData.surface = true;
       ground.rotation.x = -Math.PI / 2;
       ground.position.set(0, -0.09, 0);
       ground.receiveShadow = true;
@@ -2141,8 +2154,9 @@ const View3D = (function () {
       scene.add(envGroup);
       if (scene.background && scene.background.isTexture) scene.background.dispose();
       scene.background = skyTexture();
-      scene.fog = new T.Fog(new T.Color('#c9dccf'), 30, 70);
-      if (scene.userData.hemi) { scene.userData.hemi.color.set('#dfefff'); scene.userData.hemi.groundColor.set('#4a6a36'); scene.userData.hemi.intensity = 0.9; }
+      scene.fog = new T.Fog(season.fog.clone(), 30, 70);
+      if (scene.userData.hemi) { scene.userData.hemi.color.copy(season.hemiSky); scene.userData.hemi.groundColor.copy(season.hemiGround); scene.userData.hemi.intensity = season.hemi; }
+      seasonTargets(envGroup, true);
       return;
     }
     if (scene.userData.hemi) { scene.userData.hemi.color.set('#ffffff'); scene.userData.hemi.groundColor.set('#6d5a3a'); scene.userData.hemi.intensity = 0.3; }
@@ -2189,6 +2203,137 @@ const View3D = (function () {
     const tex = pmrem.fromScene(env, 0.035).texture;
     pmrem.dispose();
     return tex;
+  }
+
+  // ---------------------------------------------------------------- seasons & weather
+  // The meadow turns with the harvests: sunny → rain → autumn → snow → blossom → sunny.
+  // Each look is a set of colours (sky, fog, light, leaves, ground) and something falling
+  // from the sky. A change eases over a couple of seconds rather than cutting.
+  const C = (h) => new T.Color(h);
+  const SEASONS = [
+    { sky: ['#8fbfd9', '#cfe3dc', '#f1e2bd'], fog: '#c9dccf', hemiSky: '#dfefff', hemiGround: '#4a6a36', hemi: 0.9, sun: 1.5,
+      tint: '#ffffff', snow: 0, fall: null },
+    { sky: ['#5c6b78', '#94a0a6', '#aeb3ab'], fog: '#98a2a3', hemiSky: '#b8c4d0', hemiGround: '#3c5030', hemi: 0.8, sun: 0.5,
+      tint: '#bcc6b8', snow: 0, fall: 'rain' },
+    { sky: ['#8fb3cf', '#ead3b0', '#f0c089'], fog: '#dac9aa', hemiSky: '#fff0dc', hemiGround: '#6a5530', hemi: 0.9, sun: 1.35,
+      tint: '#e2c27c', glow: '#3c2a0c', snow: 0, round: ['#c8612c', '#e0a034', '#a8432a', '#d88a3a'], fall: 'leaf' },
+    { sky: ['#a9bacb', '#dde5ed', '#f1f3f5'], fog: '#dce3e9', hemiSky: '#eef4ff', hemiGround: '#8a9098', hemi: 1.0, sun: 1.0,
+      tint: '#ffffff', glow: '#6c7074', snow: 0.62, round: ['#e6ecf1', '#d3dce5'], fall: 'snow' },
+    { sky: ['#a3cbe4', '#f1dfe6', '#f7e8da'], fog: '#e6d9de', hemiSky: '#fff0f6', hemiGround: '#4a6a36', hemi: 0.95, sun: 1.5,
+      tint: '#ffffff', glow: '#1a0e14', snow: 0, round: ['#f2b3c6', '#e896b0', '#f7cfda', '#ea9fb8'], fall: 'petal' },
+  ];
+  SEASONS.push(SEASONS[0]);                 // the last stretch is sunny again
+  const seasonLook = (k) => {
+    const d = SEASONS[k];
+    return { sky: d.sky.map(C), fog: C(d.fog), hemiSky: C(d.hemiSky), hemiGround: C(d.hemiGround), hemi: d.hemi,
+      sun: d.sun, tint: C(d.tint), glow: C(d.glow || '#000000'), snow: d.snow, round: d.round, fall: d.fall };
+  };
+  let seasonIdx = 0, seasonGoal = seasonLook(0);
+  const season = seasonLook(0);             // what is on screen now, eased towards seasonGoal
+  const WHITE = C('#f3f6f9');
+
+  // Work out each tagged material's colour for the goal season; snap = set it straight away.
+  function seasonTargets(group, snap) {
+    const S = seasonGoal;
+    group.traverse((o) => {
+      if (!o.material || o.userData.inkline) return;
+      if (o.userData.leaf) {
+        const L = o.userData.leaf;
+        let c = S.round && L.round ? C(S.round[L.i % S.round.length]) : L.base.clone();
+        if (!(S.round && L.round)) c.multiply(S.tint);
+        if (S.snow && !L.round) c.lerp(WHITE, S.snow * 0.6);
+        o.userData.goal = { color: c, emissive: C('#000000') };
+      } else if (o.userData.surface) {
+        o.userData.goal = { color: S.tint.clone(), emissive: S.glow.clone() };
+      } else return;
+      if (snap) { o.material.color.copy(o.userData.goal.color); o.material.emissive.copy(o.userData.goal.emissive); }
+    });
+  }
+
+  function setSeason(k) {
+    k = Math.max(0, Math.min(SEASONS.length - 1, k | 0));
+    if (k === seasonIdx) return;
+    seasonIdx = k;
+    seasonGoal = seasonLook(k);
+    season.fall = seasonGoal.fall;
+    if (envGroup) seasonTargets(envGroup, false);
+    if (weatherBox) placeWeather(...weatherBox);
+  }
+
+  function easeSeason(dt) {
+    const a = Math.min(1, dt / 700);
+    const S = season, G2 = seasonGoal;
+    S.sky.forEach((c, i) => c.lerp(G2.sky[i], a));
+    S.fog.lerp(G2.fog, a); S.hemiSky.lerp(G2.hemiSky, a); S.hemiGround.lerp(G2.hemiGround, a);
+    S.hemi += (G2.hemi - S.hemi) * a; S.sun += (G2.sun - S.sun) * a;
+    if (sceneStyle !== 'forest') return;
+    if (skyCanvas && scene.background && scene.background.isTexture) { paintSky(S.sky); scene.background.needsUpdate = true; }
+    if (scene.fog) scene.fog.color.copy(S.fog);
+    const h = scene.userData.hemi;
+    if (h) { h.color.copy(S.hemiSky); h.groundColor.copy(S.hemiGround); h.intensity = S.hemi; }
+    if (scene.userData.sun) scene.userData.sun.intensity = S.sun;
+    if (envGroup) envGroup.traverse((o) => {
+      const g = o.userData.goal;
+      if (!g || !o.material) return;
+      o.material.color.lerp(g.color, a); o.material.emissive.lerp(g.emissive, a);
+    });
+  }
+
+  // Falling rain, leaves, snow or petals over the play area.
+  let weather = null, weatherBox = null;
+  const FALL = {
+    rain: { n: 1400, size: 0.28, speed: 9, sway: 0.05, cols: ['#c8d6e4'] },
+    leaf: { n: 280, size: 0.24, speed: 0.55, sway: 0.7, cols: ['#c8612c', '#e0a034', '#a8432a'] },
+    snow: { n: 900, size: 0.12, speed: 0.6, sway: 0.35, cols: ['#ffffff'] },
+    petal: { n: 340, size: 0.16, speed: 0.45, sway: 0.6, cols: ['#f7c6d3', '#f2a9bf', '#fde3ea'] },
+  };
+  function fallSprite(kind) {
+    return svgTexture('fall:' + kind, kind === 'rain'
+      ? '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="64" height="64"><path d="M17 1L15 31" stroke="#fff" stroke-width="1.6" stroke-linecap="round" opacity=".85"/></svg>'
+      : kind === 'snow'
+        ? '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="64" height="64"><circle cx="16" cy="16" r="9" fill="#fff"/><circle cx="16" cy="16" r="14" fill="#fff" opacity=".25"/></svg>'
+        : '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="64" height="64"><path d="M16 3C24 9 25 20 16 29C7 20 8 9 16 3z" fill="#fff"/><path d="M16 6V26" stroke="#000" stroke-opacity=".18" stroke-width="1.2"/></svg>',
+      64, 64);
+  }
+  function placeWeather(x0, x1, z0, z1) {
+    weatherBox = [x0, x1, z0, z1];
+    if (weather) { scene.remove(weather); weather.geometry.dispose(); weather.material.dispose(); weather = null; }
+    const kind = season.fall;
+    if (!kind || sceneStyle !== 'forest') return;
+    const F = FALL[kind], r = rng(911);
+    const pos = new Float32Array(F.n * 3), colr = new Float32Array(F.n * 3), ph = new Float32Array(F.n);
+    const mx = 1.5;
+    for (let i = 0; i < F.n; i++) {
+      pos[i * 3] = x0 - mx + r() * (x1 - x0 + mx * 2);
+      pos[i * 3 + 1] = r() * 7;
+      pos[i * 3 + 2] = z0 - mx + r() * (z1 - z0 + mx * 2);
+      const c = C(F.cols[i % F.cols.length]);
+      colr[i * 3] = c.r; colr[i * 3 + 1] = c.g; colr[i * 3 + 2] = c.b;
+      ph[i] = r() * 6.28;
+    }
+    const g = new T.BufferGeometry();
+    g.setAttribute('position', new T.BufferAttribute(pos, 3));
+    g.setAttribute('color', new T.BufferAttribute(colr, 3));
+    const m = new T.PointsMaterial({ size: F.size, map: fallSprite(kind), vertexColors: true, transparent: true,
+      depthWrite: false, sizeAttenuation: true, alphaTest: 0.05 });
+    weather = new T.Points(g, m);
+    weather.userData = { kind, F, ph, x0: x0 - mx, x1: x1 + mx, z0: z0 - mx, z1: z1 + mx };
+    weather.frustumCulled = false;
+    scene.add(weather);
+  }
+  function stepWeather(dt, t) {
+    if (!weather) return;
+    const { F, ph, x0, x1 } = weather.userData;
+    const pos = weather.geometry.attributes.position.array;
+    const s = dt / 1000;
+    for (let i = 0; i < ph.length; i++) {
+      const k = i * 3;
+      pos[k + 1] -= F.speed * s * (0.8 + (i % 5) * 0.08);
+      pos[k] += Math.sin(t * 0.0012 + ph[i]) * F.sway * s;
+      pos[k + 2] += Math.cos(t * 0.0009 + ph[i]) * F.sway * s * 0.6;
+      if (pos[k + 1] < -0.05) { pos[k + 1] = 7; pos[k] = x0 + ((i * 0.618) % 1) * (x1 - x0); }
+    }
+    weather.geometry.attributes.position.needsUpdate = true;
   }
 
   // ---------------------------------------------------------------- lifecycle
@@ -2286,6 +2431,7 @@ const View3D = (function () {
     if (!ready) return;
     const sameView = lastUI && lastUI.main === UI.main && lastUI.view === UI.view;
     lastG = G; lastUI = Object.assign({}, UI);
+    if (UI.season != null) setSeason(UI.season);
 
     pickables = []; hoverables = [];
     hovered = null;
@@ -2337,6 +2483,8 @@ const View3D = (function () {
     const pulse = 0.62 + 0.33 * Math.sin(t * 0.005);
     if (tableGroup) tableGroup.traverse((o) => { if (o.userData.pulse && o.material) o.material.opacity = pulse; });
     stepCamera(dt);
+    easeSeason(dt);
+    stepWeather(dt, t);
     if (handGroup) {
       handY += (handGroup.userData.goalY - handY) * Math.min(1, dt / 110);
       handGroup.position.y = handY;
@@ -2380,5 +2528,5 @@ const View3D = (function () {
     };
   }
 
-  return { init, sync, setScene, resize: onResize, resetCamera, focus, debug, locate, isReady: () => ready };
+  return { init, sync, setScene, setSeason, resize: onResize, resetCamera, focus, debug, locate, isReady: () => ready };
 })();
