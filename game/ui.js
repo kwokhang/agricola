@@ -8,6 +8,9 @@
 
   const PCOLOR = ['var(--p1)', 'var(--p2)'];
   const ic = (k, s) => ART.icon(k, s || 17);
+  // Four corner brackets pointing out (enter) or in (exit).
+  const FS_ENTER = '<svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 7V3h4M13 3h4v4M17 13v4h-4M7 17H3v-4"/></svg>';
+  const FS_EXIT = '<svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 3v4H3M17 7h-4V3M13 17v-4h4M3 13h4v4"/></svg>';
   const costHtml = (cost) => {
     if (!cost || !Object.keys(cost).length) return '<span class="free">免費</span>';
     return Object.keys(cost).map((k) =>
@@ -98,7 +101,9 @@
         <div class="track">${track}</div>
       </div>
       <div class="menu"><button data-act="scoreSheet" class="menubtn">${ART.vpIcon(14)} 計分</button>
-        <button id="menuBtn" class="menubtn">☰ 選單</button></div>`;
+        <button id="menuBtn" class="menubtn">☰ 選單</button>
+        <button data-act="fullscreen" class="menubtn fs" title="${document.fullscreenElement ? '離開全螢幕（Esc）' : '全螢幕'}">${
+          document.fullscreenElement ? FS_EXIT : FS_ENTER}</button></div>`;
     $('menuBtn').addEventListener('click', () => openDrawer($('drawer').hidden));
   }
 
@@ -976,6 +981,8 @@
     return null;                       // bake, growth, renovate: all done from the dock
   }
 
+  document.addEventListener('fullscreenchange', () => { if (G) renderStatus(); });
+
   function render() {
     if (!G) return;
     // The board follows whoever is acting; you can still peek at the other farm within a turn.
@@ -1089,6 +1096,10 @@
       case 'scoreTab': UI.scoreTab = v; break;
       case 'closeFinal': UI.finalOpen = false; break;
       case 'startHarvest': UI.harvestSeen = G.round; break;
+      case 'fullscreen':
+        if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+        else if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {});
+        break;
       case 'buildKind': UI.buildKind = v; break;
       case 'sowKind': UI.sowKind = v; break;
       case 'sowBean': sowBeanfield(G); break;
