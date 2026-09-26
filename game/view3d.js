@@ -20,8 +20,8 @@ const View3D = (function () {
   // supply tray and played cards in a column below.
   const LAYOUT = {
     board: { x: 0, z: -2.45 },                                  // 8 × 3 spaces, across the top
-    majors: { x: 8.5, z: -1.3 },                                 // world; 4 rows by kind, top level with the board
-    seat: (pi, n) => ({ x: n === 1 ? 0 : (pi === 0 ? -2.95 : 2.95), z: 1.12, rot: 0 }),
+    majors: { x: 0, z: -0.1 },                                   // world; one row between the board and the farms
+    seat: (pi, n) => ({ x: n === 1 ? 0 : (pi === 0 ? -2.95 : 2.95), z: 2.25, rot: 0 }),
     // seat-local, top to bottom: the player board (name, family, goods), the farm, played cards
     // all three the farm's width (SEAT_W) and stacked edge to edge, so they read as one column
     supply: { x: 0, z: -0.68 },
@@ -1486,19 +1486,26 @@ const View3D = (function () {
     const p = G.players[G.current];
     const kinds = playableNow(G);
     const mine = UI.view === G.current && !G.choice;
-    // One row per kind, identical cards side by side, a printed label on the felt at the left.
+    // One row across the table, grouped by kind (cooking, baking, workshops, well) with a
+    // wider gap between the groups.
     const rowOf = {};
     MAJOR_ROWS.forEach((r, ri) => r.cards.forEach((en) => { rowOf[en] = ri; }));
-    const used = MAJOR_ROWS.map(() => 0);
-    const colW = MAJ_W + 0.1, rowH = MAJ_H + 0.12;
-    const x0 = -1.5 * colW, z0 = -1.5 * rowH;
-    G.majors.forEach((c) => {
+    const kindOf = (c) => (rowOf[c.en] != null ? rowOf[c.en] : MAJOR_ROWS.length - 1);
+    const cards = G.majors.slice().sort((a, b) => kindOf(a) - kindOf(b));
+    const GAP = 0.12, KIND_GAP = 0.34;
+    const xs = [];
+    let x = 0;
+    cards.forEach((c, i) => {
+      if (i) x += MAJ_W + (kindOf(c) !== kindOf(cards[i - 1]) ? KIND_GAP : GAP);
+      xs.push(x);
+    });
+    const shift = x / 2;
+    cards.forEach((c, i) => {
       const owner = c.taken != null ? G.players[c.taken] : null;
       const cost = cardCost(G, p, c);
-      const ri = rowOf[c.en] != null ? rowOf[c.en] : MAJOR_ROWS.length - 1;
       const m = cardMesh(cardTexture(c, { cost, taken: owner ? owner.name : '' }), MAJ_W, MAJ_H);
-      const cx = x0 + (used[ri]++) * colW;
-      const cz = z0 + ri * rowH;
+      const cx = xs[i] - shift;
+      const cz = 0;
       m.position.set(cx, BOARD_Y - 0.02, cz);
       m.userData.hover = { kind: 'card', uid: c.uid };
       g.add(m);
@@ -1609,7 +1616,7 @@ const View3D = (function () {
     board: () => ({ az: 0, pol: 0.3, pad: 1.03, boxes: ['board'], safe: { l: 0.05, r: 0.1, t: 0.5, b: 0.06 } }),
     farm: (UI) => ({ az: 0, pol: 0.56, pad: 1.04, boxes: ['farm' + UI.view] }),
     cards: (UI) => ({ az: 0, pol: 0.5, pad: 1.02, boxes: ['played' + UI.view] }),
-    majors: () => ({ az: 0, pol: 0.42, pad: 1.0, boxes: ['majors'], safe: { l: 0.04, r: 0.15, t: 0.5, b: 0.08 } }),
+    majors: () => ({ az: 0, pol: 0.36, pad: 1.03, boxes: ['majors'], safe: { l: 0.05, r: 0.1, t: 0.5, b: 0.08 } }),
   };
 
   const focusBoxes = {};
