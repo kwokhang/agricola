@@ -22,10 +22,11 @@ const View3D = (function () {
     board: { x: 0, z: -2.45 },                                  // 8 × 3 spaces, across the top
     majors: { x: 8.5, z: -1.3 },                                 // world; 4 rows by kind, top level with the board
     seat: (pi, n) => ({ x: n === 1 ? 0 : (pi === 0 ? -2.88 : 2.88), z: 0.95, rot: 0 }),
-    farm: { x: 0, z: 0 },                                       // seat-local
-    plate: { x: -1.5, z: 1.98 },                                // seat-local
-    supply: { x: 0, z: 2.95 },                                  // seat-local
-    played: { x: -2.12, z: 4.3 },                               // seat-local, first card
+    // seat-local, top to bottom: name and workers, resources, the farm, played cards
+    plate: { x: -1.5, z: -1.62 },
+    supply: { x: 0, z: -0.65 },
+    farm: { x: 0, z: 1.85 },
+    played: { x: -2.12, z: 4.5 },                               // first card
   };
   const MAJ_W = 0.86, MAJ_H = 1.2;
 
@@ -1344,10 +1345,8 @@ const View3D = (function () {
     // Cards already in front of this player, five to a row, on a marked-out patch of felt.
     const playedGroup = new T.Group();
     const at = LAYOUT.played;
-    const zone = new T.Mesh(geo('playedZone', () => new T.PlaneGeometry(5.5, 2.9)),
-      new T.MeshBasicMaterial({ map: svgTexture('zone', ZONE_SVG, 440, 232), transparent: true, depthWrite: false }));
-    zone.rotation.x = -Math.PI / 2;
-    zone.position.set(0, 0.002, at.z + 0.62);
+    const zone = playedMat(5.6, 3.0);
+    zone.position.set(0, 0, at.z + 0.62);
     playedGroup.add(zone);
     p.played.forEach((c, i) => {
       const cx = at.x + (i % 5) * (MAJ_W + 0.2);
@@ -1388,11 +1387,22 @@ const View3D = (function () {
     return g;
   }
 
-  const ZONE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 550 290" width="440" height="232">
-    <rect x="6" y="6" width="538" height="278" rx="22" fill="#fff" fill-opacity=".05"
-      stroke="#fff" stroke-opacity=".35" stroke-width="4" stroke-dasharray="18 12"/>
-    <text x="275" y="160" text-anchor="middle" font-size="34" font-weight="700" fill="#fff" fill-opacity=".22"
-      font-family="-apple-system,'PingFang TC',sans-serif" letter-spacing="6">已打出的卡 · PLAYED</text></svg>`;
+  // Where played cards go: a small printed board in the same parchment and gilt as the
+  // action board, on a wooden frame, its name printed faintly in the middle.
+  function playedMat(w, d) {
+    const g = new T.Group();
+    const wpx = Math.round(w / PS), hpx = Math.round(d / PS);
+    const frame = new T.Mesh(geo(`pmFrame${w}_${d}`, () => new T.BoxGeometry(w, 0.06, d)), mat('#ffffff', { map: frameWood() }));
+    frame.position.y = -0.04;
+    frame.receiveShadow = true;
+    g.add(frame);
+    const svg = boardPrintSvg(wpx, hpx).replace('</svg>', `
+      <text x="${wpx / 2}" y="${hpx / 2 + 14}" text-anchor="middle" font-size="40" font-weight="800" fill="#5a4526" fill-opacity=".28"
+        font-family="'Hiragino Mincho ProN','Songti TC',serif" letter-spacing="10">已打出的卡</text></svg>`);
+    const tex = svgTexture(`pmPrint:${wpx}x${hpx}`, svg, Math.round(wpx * 1.2), Math.round(hpx * 1.2));
+    g.add(plateMesh(tex, w - 0.08, d - 0.08, 0, 0, -0.005));
+    return g;
+  }
 
   // ---------------------------------------------------------------- majors on the table
   const rowZh = (k, d) => (typeof ZH !== 'undefined' && ZH.majorRows && ZH.majorRows[k]) || d;
