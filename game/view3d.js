@@ -21,7 +21,7 @@ const View3D = (function () {
   const LAYOUT = {
     board: { x: 0, z: -2.45 },                                  // 8 × 3 spaces, across the top
     majors: { x: 8.5, z: -1.3 },                                 // world; 4 rows by kind, top level with the board
-    seat: (pi, n) => ({ x: n === 1 ? 0 : (pi === 0 ? -3.18 : 3.18), z: 1.3, rot: 0 }),
+    seat: (pi, n) => ({ x: n === 1 ? 0 : (pi === 0 ? -2.88 : 2.88), z: 0.95, rot: 0 }),
     // seat-local, top to bottom: name and workers, resources, the farm, played cards
     plate: { x: -1.5, z: -1.62 },
     supply: { x: 0, z: -0.65 },
@@ -1334,6 +1334,9 @@ const View3D = (function () {
       tok.position.set(LAYOUT.plate.x + 1.4 + i * 0.52, 0.0, LAYOUT.plate.z);
       g.add(tok);
     }
+    if (acting) {
+      g.add(outline(5.6, 3.6, 0.09, col(colour).getHex(), 0.07).translateX(LAYOUT.farm.x).translateZ(LAYOUT.farm.z));
+    }
 
     const supply = buildSupply(G, pi);
     supply.position.set(LAYOUT.supply.x, 0, LAYOUT.supply.z);
@@ -1377,50 +1380,10 @@ const View3D = (function () {
     });
     g.add(playedGroup);
 
-    // One mat under everything this player owns, in their colour, so the whole column reads
-    // as theirs; while it is their turn a glowing line runs round it.
-    const own = boxOf(g);
-    const mw = own.max.x - own.min.x + 0.4, md = own.max.z - own.min.z + 0.4;
-    const mcx = (own.min.x + own.max.x) / 2, mcz = (own.min.z + own.max.z) / 2;
-    const seatMat = playerMat(mw, md, col(colour));
-    seatMat.position.set(mcx, 0, mcz);
-    g.add(seatMat);
-    if (acting) g.add(outline(mw + 0.14, md + 0.14, 0.0, col(colour).getHex(), 0.08).translateX(mcx).translateZ(mcz));
-
     const seat = LAYOUT.seat(pi, G.n);
     g.position.set(seat.x, 0, seat.z);
     g.rotation.y = seat.rot;
     g.userData.parts = { farm, played: playedGroup };
-    return g;
-  }
-
-  // A player's own ground: a cloth mat in a deep shade of their colour with a faint wave
-  // pattern and a double rule, on a lacquered rim of the colour itself.
-  function playerMat(w, d, colour) {
-    const g = new T.Group();
-    const hex = '#' + colour.getHexString();
-    const deep = '#' + colour.clone().lerp(new T.Color('#2a2018'), 0.68).getHexString();
-    const light = '#' + colour.clone().lerp(new T.Color('#f3e6c8'), 0.35).getHexString();
-    const wpx = Math.round(w / PS / 2), hpx = Math.round(d / PS / 2);
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${wpx} ${hpx}" width="${wpx * 2}" height="${hpx * 2}">
-      <defs><pattern id="wave" width="28" height="14" patternUnits="userSpaceOnUse">
-        <path d="M0 14a14 14 0 0 1 28 0M-14 14a14 14 0 0 1 28 0M14 14a14 14 0 0 1 28 0" fill="none" stroke="${light}" stroke-opacity=".10" stroke-width="1.4"/>
-        <path d="M4 14a10 10 0 0 1 20 0" fill="none" stroke="${light}" stroke-opacity=".07" stroke-width="1.2"/></pattern></defs>
-      <rect width="${wpx}" height="${hpx}" fill="${deep}"/>
-      <rect width="${wpx}" height="${hpx}" fill="url(#wave)"/>
-      <rect x="7" y="7" width="${wpx - 14}" height="${hpx - 14}" rx="8" fill="none" stroke="${light}" stroke-opacity=".75" stroke-width="2.2"/>
-      <rect x="12" y="12" width="${wpx - 24}" height="${hpx - 24}" rx="6" fill="none" stroke="#d8b25a" stroke-opacity=".55" stroke-width="1"/></svg>`;
-    const rim = new T.Mesh(geo(`pmatRim${w.toFixed(2)}_${d.toFixed(2)}`, () => new T.BoxGeometry(w + 0.12, 0.03, d + 0.12)),
-      mat(colour));
-    rim.position.y = -0.06;
-    rim.receiveShadow = true;
-    g.add(rim);
-    const cloth = new T.Mesh(geo(`pmatTop${w.toFixed(2)}_${d.toFixed(2)}`, () => new T.PlaneGeometry(w, d)),
-      new T.MeshToonMaterial({ map: svgTexture(`pmat:${hex}:${wpx}x${hpx}`, svg, wpx * 2, hpx * 2), gradientMap: TOON_ROOM }));
-    cloth.rotation.x = -Math.PI / 2;
-    cloth.position.y = -0.044;
-    cloth.receiveShadow = true;
-    g.add(cloth);
     return g;
   }
 
@@ -1430,14 +1393,14 @@ const View3D = (function () {
     const g = new T.Group();
     const wpx = Math.round(w / PS), hpx = Math.round(d / PS);
     const frame = new T.Mesh(geo(`pmFrame${w}_${d}`, () => new T.BoxGeometry(w, 0.06, d)), mat('#ffffff', { map: frameWood() }));
-    frame.position.y = -0.005;
+    frame.position.y = -0.04;
     frame.receiveShadow = true;
     g.add(frame);
     const svg = boardPrintSvg(wpx, hpx).replace('</svg>', `
       <text x="${wpx / 2}" y="${hpx / 2 + 14}" text-anchor="middle" font-size="40" font-weight="800" fill="#5a4526" fill-opacity=".28"
         font-family="'Hiragino Mincho ProN','Songti TC',serif" letter-spacing="10">已打出的卡</text></svg>`);
     const tex = svgTexture(`pmPrint:${wpx}x${hpx}`, svg, Math.round(wpx * 1.2), Math.round(hpx * 1.2));
-    g.add(plateMesh(tex, w - 0.08, d - 0.08, 0, 0, 0.03));
+    g.add(plateMesh(tex, w - 0.08, d - 0.08, 0, 0, -0.005));
     return g;
   }
 
