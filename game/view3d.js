@@ -22,11 +22,11 @@ const View3D = (function () {
     board: { x: 0, z: -2.45 },                                  // 8 × 3 spaces, across the top
     majors: { x: 8.5, z: -1.3 },                                 // world; 4 rows by kind, top level with the board
     seat: (pi, n) => ({ x: n === 1 ? 0 : (pi === 0 ? -2.95 : 2.95), z: 1.12, rot: 0 }),
-    // seat-local, top to bottom: name and workers, resources, the farm, played cards
-    plate: { x: -1.5, z: -1.62 },
-    supply: { x: -0.55, z: -0.78 },
+    // seat-local, top to bottom: the player board (name, family, goods), the farm, played cards
+    // all three the farm's width (SEAT_W) and stacked edge to edge, so they read as one column
+    supply: { x: 0, z: -0.68 },
     farm: { x: 0, z: 1.62 },
-    played: { x: -2.12, z: 4.27 },                               // first card
+    played: { x: -2.12, z: 4.15 },                               // first card
   };
   const MAJ_W = 0.86, MAJ_H = 1.2;
 
@@ -884,10 +884,10 @@ const View3D = (function () {
     <rect width="${w}" height="${h}" fill="#6b4a1e" opacity=".05"/>
     <rect x="5" y="5" width="${w - 10}" height="${h - 10}" rx="9" fill="none" stroke="#5a4526"
       stroke-width="2.4" stroke-dasharray="9 6" opacity=".55"/>
-    <text x="${w / 2}" y="${h / 2 - 2}" text-anchor="middle" font-size="19" font-weight="700"
-      fill="var(--art-ink)" opacity=".55">Round ${round}</text>
-    <text x="${w / 2}" y="${h / 2 + 20}" text-anchor="middle" font-size="13"
-      fill="var(--art-ink)" opacity=".4">Stage ${stage}</text></svg>`;
+    <text x="${w / 2}" y="${h / 2 + 2}" text-anchor="middle" font-size="22" font-weight="800"
+      fill="var(--art-ink)" opacity=".55" font-family="'Hiragino Mincho ProN','Songti TC',serif">第 ${round} 回合</text>
+    <text x="${w / 2}" y="${h / 2 + 22}" text-anchor="middle" font-size="12.5" letter-spacing="2"
+      fill="var(--art-ink)" opacity=".42" font-family="'Hiragino Mincho ProN','Songti TC',serif">第 ${stage} 階段</text></svg>`;
 
   // Harvest is a marker between rounds, not a place to stand: a small ribbon with notched
   // ends, printed flat, so it never reads as another action space.
@@ -1026,7 +1026,7 @@ const View3D = (function () {
       if (G.spaces[id].revealed) {
         addSpace(spaceDef(id), cellX(c), cellY(r), BG.w, BG.h);
       } else {
-        const tex = svgTexture(`slot:${n}`, slotSvg(BG.w, BG.h, n, STAGE_OF[id]), BG.w * 2, BG.h * 2);
+        const tex = svgTexture(`slot2:${n}`, slotSvg(BG.w, BG.h, n, STAGE_OF[id]), BG.w * 2, BG.h * 2);
         const slot = plateMesh(tex, BG.w * PS, BG.h * PS, bx(cellX(c) + BG.w / 2), bz(cellY(r) + BG.h / 2), BOARD_Y + 0.005);
         slot.userData.hover = { kind: 'slot', round: n };
         hoverables.push(slot);
@@ -1264,24 +1264,25 @@ const View3D = (function () {
   }
 
   // ---------------------------------------------------------------- a player's seat
-  const nameSvg = (name, sub, colour) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 60"
-    width="520" height="120" font-family="-apple-system,BlinkMacSystemFont,'PingFang TC',sans-serif">
-    <rect x="2" y="2" width="256" height="56" rx="12" fill="${colour}" stroke="#1c1a17" stroke-opacity=".55" stroke-width="2"/>
-    <rect x="6" y="6" width="248" height="48" rx="9" fill="none" stroke="#fff" stroke-opacity=".45" stroke-width="1.2"/>
-    <text x="18" y="30" font-size="22" font-weight="800" fill="#fff">${name}</text>
-    <text x="18" y="49" font-size="14" font-weight="600" fill="#fff" opacity=".88">${sub}</text></svg>`;
-
   // The supply tray: every kind of goods this player owns, as real pieces in a row.
   // The supply mat: one printed card, the same look as the HUD — a cream mat, and for each
   // good its coin, a big count and its name. Empty goods are printed faintly, not hidden,
   // so the row always reads in the same order.
-  function supplySvg(p, pc) {
+  // The player's own board: a band in their colour with name and household, the family
+  // standing on its right, and the goods they hold printed underneath.
+  const PB_W = 660, PB_HEAD = 50, PB_H = PB_HEAD + 112;
+  function supplySvg(p, pc, sub) {
     const kinds = RES.concat(ANIM);
-    const W = 660, H = 116, cw = W / kinds.length;
+    const W = PB_W, H = PB_H, cw = W / kinds.length, top = PB_HEAD - 4;
     let s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W * 2}" height="${H * 2}"
       font-family="-apple-system,'PingFang TC','Noto Sans TC',sans-serif">
       <rect x="1" y="1" width="${W - 2}" height="${H - 2}" rx="12" fill="var(--art-plate)"/>
-      <rect x="1" y="1" width="${W - 2}" height="${H - 2}" rx="12" fill="${pc}" fill-opacity=".14" stroke="${pc}" stroke-width="5"/>`;
+      <rect x="1" y="1" width="${W - 2}" height="${H - 2}" rx="12" fill="${pc}" fill-opacity=".12"/>
+      <path d="M1 13a12 12 0 0 1 12-12H${W - 13}a12 12 0 0 1 12 12V${PB_HEAD}H1z" fill="${pc}"/>
+      <text x="16" y="33" font-size="25" font-weight="800" fill="#fff" font-family="'Hiragino Mincho ProN','Songti TC',serif">${p.name}</text>
+      <text x="${16 + [...p.name].length * 25 + 14}" y="32" font-size="15" font-weight="600" fill="#fff" opacity=".9">${sub}</text>
+      <rect x="1" y="1" width="${W - 2}" height="${H - 2}" rx="12" fill="none" stroke="${pc}" stroke-width="5"/>
+      <g transform="translate(0 ${top})">`;
     kinds.forEach((k, i) => {
       const n = ANIM.includes(k) ? animalTotal(p, k) : p.supply[k];
       const x = i * cw;
@@ -1292,18 +1293,30 @@ const View3D = (function () {
         <text x="${x + cw / 2}" y="78" text-anchor="middle" font-size="30" font-weight="800" fill="var(--art-ink)">${n}</text>
         <text x="${x + cw / 2}" y="101" text-anchor="middle" font-size="15" font-weight="600" fill="var(--art-ink)" opacity=".75">${ART.NAMES[k]}</text></g>`;
     });
-    return s + '</svg>';
+    return s + '</g></svg>';
   }
 
+  const PB_WORLD_W = 5.3, PB_WORLD_D = PB_WORLD_W * PB_H / PB_W;
   function buildSupply(G, pi) {
     const p = G.players[pi];
     const g = new T.Group();
+    const colour = col(pi === 0 ? '--p1' : '--p2');
+    const pc = '#' + colour.getHexString();
+    const sub = `${HOUSE_ZH[p.house]} ${roomCount(p)} 間 · 田 ${fieldCount(p)} · 家庭 ${p.people} 人`;
     const key = RES.map((k) => p.supply[k]).concat(ANIM.map((k) => animalTotal(p, k))).join(',');
-    const pc = '#' + col(pi === 0 ? '--p1' : '--p2').getHexString();
-    const tex = svgTexture(`supply2:${pi}:${pc}:${key}`, supplySvg(p, pc), 1320, 232);
-    const mat3 = plateMesh(tex, 4.3, 0.76, 0, 0, 0.04);
-    mat3.castShadow = true;
-    g.add(mat3);
+    const tex = svgTexture(`pboard:${pi}:${pc}:${p.name}:${sub}:${key}`, supplySvg(p, pc, sub), PB_W * 2, PB_H * 2);
+    const plate = plateMesh(tex, PB_WORLD_W, PB_WORLD_D, 0, 0, 0.04);
+    plate.castShadow = true;
+    g.add(plate);
+    g.userData.plate = plate;
+    // the family stands on the right of the name band, used workers laid down
+    const headZ = -PB_WORLD_D / 2 + (PB_HEAD / PB_H) * PB_WORLD_D / 2;
+    for (let i = 0; i < p.people; i++) {
+      const tok = workerToken(colour, i < p.workersLeft);
+      tok.scale.setScalar(0.82);
+      tok.position.set(PB_WORLD_W / 2 - 0.3 - (p.people - 1 - i) * 0.44, 0.05, headZ);
+      g.add(tok);
+    }
     return g;
   }
 
@@ -1317,38 +1330,28 @@ const View3D = (function () {
     farm.position.set(LAYOUT.farm.x, 0, LAYOUT.farm.z);
     g.add(farm);
 
-    // Name plate at the near edge of the farm, plus the family still to be placed.
     const colour = pi === 0 ? '--p1' : '--p2';
-    const sub = `${HOUSE_ZH[p.house]} ${roomCount(p)} 間 · 田 ${fieldCount(p)} · 家庭 ${p.people} 人`;
-    const plate = new T.Mesh(geo('nameplate', () => new T.PlaneGeometry(1.9, 0.44)),
-      printMat(svgTexture(`name:${pi}:${p.name}:${sub}:${col(colour).getHexString()}`, nameSvg(p.name, sub, `var(${colour})`), 520, 120), { transparent: true }));
-    plate.rotation.x = -Math.PI / 2;
-    plate.position.set(LAYOUT.plate.x, 0.075, LAYOUT.plate.z);
+    if (acting) {                 // round the whole column: board, farm and played cards
+      const top = LAYOUT.supply.z - PB_WORLD_D / 2, bottom = LAYOUT.played.z + 0.62 + 1.5;
+      g.add(outline(5.3 + 0.16, bottom - top + 0.16, 0.09, col(colour).getHex(), 0.07).translateZ((top + bottom) / 2));
+    }
+
+    // name, family and goods: one board
+    const supply = buildSupply(G, pi);
+    supply.position.set(LAYOUT.supply.x, 0, LAYOUT.supply.z);
+    const plate = supply.userData.plate;
     plate.userData.hover = { kind: 'seat', pi };
     if (pi !== UI.view) {
       plate.userData.pick = { type: 'seat', pi };
       pickables.push(plate);
     }
-    g.add(plate);
     hoverables.push(plate);
-
-    for (let i = 0; i < p.people; i++) {
-      const tok = workerToken(col(colour), i < p.workersLeft);
-      tok.position.set(LAYOUT.plate.x + 1.4 + i * 0.52, 0.0, LAYOUT.plate.z);
-      g.add(tok);
-    }
-    if (acting) {
-      g.add(outline(5.6, 3.6, 0.09, col(colour).getHex(), 0.07).translateX(LAYOUT.farm.x).translateZ(LAYOUT.farm.z));
-    }
-
-    const supply = buildSupply(G, pi);
-    supply.position.set(LAYOUT.supply.x, 0, LAYOUT.supply.z);
     g.add(supply);
 
     // Cards already in front of this player, five to a row, on a marked-out patch of felt.
     const playedGroup = new T.Group();
     const at = LAYOUT.played;
-    const zone = playedMat(5.6, 3.0);
+    const zone = playedMat(5.3, 3.0);
     zone.position.set(0, 0, at.z + 0.62);
     playedGroup.add(zone);
     p.played.forEach((c, i) => {
@@ -1392,7 +1395,7 @@ const View3D = (function () {
 
   // Where played cards go: a small printed board in the same parchment and gilt as the
   // action board, on a wooden frame, its name printed faintly in the middle.
-  function playedMat(w, d) {
+  function playedMat(w, d, label) {
     const g = new T.Group();
     const wpx = Math.round(w / PS), hpx = Math.round(d / PS);
     const frame = new T.Mesh(geo(`pmFrame${w}_${d}`, () => new T.BoxGeometry(w, 0.06, d)), mat('#ffffff', { map: frameWood() }));
@@ -1401,8 +1404,8 @@ const View3D = (function () {
     g.add(frame);
     const svg = boardPrintSvg(wpx, hpx).replace('</svg>', `
       <text x="${wpx / 2}" y="${hpx / 2 + 14}" text-anchor="middle" font-size="40" font-weight="800" fill="#5a4526" fill-opacity=".28"
-        font-family="'Hiragino Mincho ProN','Songti TC',serif" letter-spacing="10">已打出的卡</text></svg>`);
-    const tex = svgTexture(`pmPrint:${wpx}x${hpx}`, svg, Math.round(wpx * 1.2), Math.round(hpx * 1.2));
+        font-family="'Hiragino Mincho ProN','Songti TC',serif" letter-spacing="10">${label == null ? '已打出的卡' : label}</text></svg>`);
+    const tex = svgTexture(`pmPrint:${wpx}x${hpx}:${label}`, svg, Math.round(wpx * 1.2), Math.round(hpx * 1.2));
     g.add(plateMesh(tex, w - 0.08, d - 0.08, 0, 0, -0.005));
     return g;
   }
@@ -1426,15 +1429,6 @@ const View3D = (function () {
     const used = MAJOR_ROWS.map(() => 0);
     const colW = MAJ_W + 0.1, rowH = MAJ_H + 0.12;
     const x0 = -1.5 * colW, z0 = -1.5 * rowH;
-    MAJOR_ROWS.forEach((r, ri) => {
-      const lbl = new T.Mesh(geo('majLabel', () => new T.PlaneGeometry(0.9, 0.34)),
-        new T.MeshBasicMaterial({ map: svgTexture('majrow:' + r.zh, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 90 34" width="270" height="102">
-          <text x="86" y="23" text-anchor="end" font-size="17" font-weight="800" fill="#efe8d8" fill-opacity=".55"
-            font-family="-apple-system,'PingFang TC',sans-serif" letter-spacing="1">${r.zh}</text></svg>`, 270, 102), transparent: true, depthWrite: false }));
-      lbl.rotation.x = -Math.PI / 2;
-      lbl.position.set(x0 - MAJ_W / 2 - 0.5, 0.002, z0 + ri * rowH);
-      g.add(lbl);
-    });
     G.majors.forEach((c) => {
       const owner = c.taken != null ? G.players[c.taken] : null;
       const cost = cardCost(G, p, c);
