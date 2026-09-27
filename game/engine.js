@@ -504,6 +504,10 @@ function canPlace(G, spaceId) {
   if (!sp || !sp.revealed) return false;
   if (G.phase !== 'work' || G.pending || G.staging || G.choice) return false;
   if (G.players[G.current].workersLeft < 1) return false;
+  // Family growth comes first on these spaces ("afterward also" a minor improvement), so a
+  // player who cannot grow (5 people already, or no free room for the basic one) cannot take them.
+  const first = (spaceDef(spaceId).steps || [])[0];
+  if ((first === 'growth' || first === 'growthAny') && !canGrow(G, first === 'growthAny')) return false;
   if (sp.occupiedBy === null) return true;
   // Sleeping Corner lets you share a family growth space with one other player's person.
   const ctx = { G, p: G.players[G.current], spaceId, share: false };
@@ -1144,8 +1148,9 @@ function startHarvest(G) {
   G.phase = 'harvest';
   logEvent(G, '=== 收成 ===');
 
+  // p.used is left alone: keys carry the round number, and wiping it here would hand the
+  // once-per-round cards (Plow Driver, Groom, ...) a second use during the harvest.
   for (const p of G.players) {
-    p.used = {};
     fire('beforeField', { G, p });
 
     // 1. Field phase: every sown field yields exactly 1 good.

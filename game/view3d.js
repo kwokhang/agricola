@@ -968,8 +968,10 @@ const View3D = (function () {
     const p = G.players[UI.view] || G.players[0];
     const canPick = !G.choice && !G.staging && !currentStep(G) && !G.feeding && !G.over;
 
-    g.add(boardSlab(SM_W, SM_H, SM_W / 2, SM_H / 2));
-    g.add(boardSlab(BG_W, BG_H, SM_W + BOARD_GAP + BG_W / 2, BG_H / 2));
+    // The two slabs frame the camera: they never change, unlike the workers and goods on top.
+    g.userData.slabs = [boardSlab(SM_W, SM_H, SM_W / 2, SM_H / 2),
+      boardSlab(BG_W, BG_H, SM_W + BOARD_GAP + BG_W / 2, BG_H / 2)];
+    g.userData.slabs.forEach((sl) => g.add(sl));
 
     // Every printed space: the art, then anything sitting on top of it.
     const addSpace = (def, xpx, ypx, wpx, hpx) => {
@@ -1530,7 +1532,9 @@ const View3D = (function () {
   // It only slides up when you can play a card or asked to see it; otherwise it is gone.
   const CARD_STEPS = ['playOcc', 'playMinor', 'playImprovement', 'playAny'];
   function handShown(G, UI) {
-    if (UI.handPinned || UI.main === 'cards') return true;
+    if (UI.main === 'cards') return true;
+    if (UI.handHidden) return false;
+    if (UI.handPinned) return true;
     return !G.choice && !G.over && UI.view === G.current && CARD_STEPS.includes(currentStep(G));
   }
 
@@ -1617,8 +1621,10 @@ const View3D = (function () {
     // keep the same margin.
     table: () => ({ az: 0, pol: 0.62, pad: 1.02, boxes: ['board', 'majors', 'farm0', 'farm1'],
       safe: { l: 0.12, r: 0.12, t: 0.48, b: 0.08 } }),
-    // The board is wide, so its view gets tighter side margins.
-    board: () => ({ az: 0, pol: 0.3, pad: 1.03, boxes: ['board'], safe: { l: 0.05, r: 0.1, t: 0.5, b: 0.06 } }),
+    // The board fills the width, from the left edge of the screen to the folded right column
+    // (84px wide plus its 12px inset), and sits in the vertical middle.
+    board: () => ({ az: 0, pol: 0.3, pad: 1, boxes: ['board'], widthOnly: true,
+      safe: { l: 0, r: 2 * 96 / Math.max(host.clientWidth, 1), t: 0, b: 0 } }),
     farm: (UI) => ({ az: 0, pol: 0.56, pad: 1.04, boxes: ['farm' + UI.view] }),
     cards: (UI) => ({ az: 0, pol: 0.5, pad: 1.02, boxes: ['played' + UI.view] }),
     majors: () => ({ az: 0, pol: 0.36, pad: 1.03, boxes: ['majors'], safe: { l: 0.05, r: 0.1, t: 0.5, b: 0.08 } }),
@@ -1629,7 +1635,7 @@ const View3D = (function () {
 
   // Frame a box inside the free middle of the screen: project its corners, then slide the
   // target and pull the camera back until the whole thing clears the HUD on every side.
-  function fitGoal(box3, pad, safe) {
+  function fitGoal(box3, pad, safe, widthOnly) {
     const corners = [];
     for (const x of [box3.min.x, box3.max.x])
       for (const y of [box3.min.y, box3.max.y])
@@ -1672,7 +1678,8 @@ const View3D = (function () {
       camGoal.target.addScaledVector(right, dx * dist * half * fitCam.aspect);
       camGoal.target.addScaledVector(fwd, -dy * dist * half * 0.95);
 
-      const need = Math.max((maxX - minX) / availW, (maxY - minY) / availH) * pad;
+      const need = (widthOnly ? (maxX - minX) / availW
+        : Math.max((maxX - minX) / availW, (maxY - minY) / availH)) * pad;
       camGoal.dist = Math.max(4, Math.min(44, dist * need));
     }
   }
@@ -1695,7 +1702,7 @@ const View3D = (function () {
     camGoal.pol = f.pol;
     camGoal.target.set(c.x, 0, c.z);
     camGoal.dist = Math.max(box3.getSize(new T.Vector3()).length(), 6);
-    fitGoal(box3, f.pad, f.safe);
+    fitGoal(box3, f.pad, f.safe, f.widthOnly);
     camTween = snap ? 1 : 0;
     if (snap) {
       camState.az = camGoal.az; camState.pol = camGoal.pol;
@@ -1706,7 +1713,7 @@ const View3D = (function () {
 
   function stepCamera(dt) {
     if (camTween >= 1) return false;
-    camTween = Math.min(1, camTween + dt / 620);
+    camTween = Math.min(1, camTween + dt / 950);
     const e = camTween < 0.5 ? 4 * camTween ** 3 : 1 - ((-2 * camTween + 2) ** 3) / 2;
     // Take the short way round when swapping to the other side of the table.
     let d = camGoal.az - camState.az;
@@ -1716,6 +1723,11 @@ const View3D = (function () {
     camState.pol += (camGoal.pol - camState.pol) * e * 0.35;
     camState.dist += (camGoal.dist - camState.dist) * e * 0.35;
     camState.target.lerp(camGoal.target, e * 0.35);
+    // Land exactly on the goal, or the next refit would carry on from wherever it stopped.
+    if (camTween >= 1) {
+      camState.az = camGoal.az; camState.pol = camGoal.pol;
+      camState.dist = camGoal.dist; camState.target.copy(camGoal.target);
+    }
     applyCamera();
     return true;
   }
@@ -2535,6 +2547,7 @@ const View3D = (function () {
       scene.fog = new T.Fog(season.fog.clone(), 30, 70);
       if (scene.userData.hemi) { scene.userData.hemi.color.copy(season.hemiSky); scene.userData.hemi.groundColor.copy(season.hemiGround); scene.userData.hemi.intensity = season.hemi; }
       seasonTargets(envGroup, true);
+      seasonLeft = Math.max(seasonLeft, 1);   // one pass to set the sun and sky for this look
       return;
     }
     if (scene.userData.hemi) { scene.userData.hemi.color.set('#ffffff'); scene.userData.hemi.groundColor.set('#6d5a3a'); scene.userData.hemi.intensity = 0.3; }
@@ -2608,7 +2621,7 @@ const View3D = (function () {
     return { sky: d.sky.map(C), fog: C(d.fog), hemiSky: C(d.hemiSky), hemiGround: C(d.hemiGround), hemi: d.hemi,
       sun: d.sun, sunCol: C(d.sunCol || '#fff1d6'), pine: d.pine, tint: C(d.tint), glow: C(d.glow || '#000000'), snow: d.snow, round: d.round, fall: d.fall };
   };
-  let seasonIdx = 0, seasonGoal = seasonLook(0);
+  let seasonIdx = 0, seasonGoal = seasonLook(0), seasonLeft = 0;   // ms of easing still to do
   const season = seasonLook(0);             // what is on screen now, eased towards seasonGoal
   const WHITE = C('#f3f6f9');
 
@@ -2644,13 +2657,18 @@ const View3D = (function () {
     if (k === seasonIdx) return;
     seasonIdx = k;
     seasonGoal = seasonLook(k);
+    seasonLeft = 6000;
     season.fall = seasonGoal.fall;
     if (envGroup) seasonTargets(envGroup, false);
     if (weatherBox) placeWeather(...weatherBox);
   }
 
+  // Once the look has arrived there is nothing to ease: repainting the sky canvas and walking
+  // every tree each frame was most of the per-frame cost, so it stops.
   function easeSeason(dt) {
-    const a = Math.min(1, dt / 700);
+    if (seasonLeft <= 0) return;
+    seasonLeft -= dt;
+    const a = seasonLeft <= 0 ? 1 : Math.min(1, dt / 1400);
     const S = season, G2 = seasonGoal;
     S.sky.forEach((c, i) => c.lerp(G2.sky[i], a));
     S.fog.lerp(G2.fog, a); S.hemiSky.lerp(G2.hemiSky, a); S.hemiGround.lerp(G2.hemiGround, a);
@@ -2682,7 +2700,7 @@ const View3D = (function () {
     const pos = new Float32Array(FW_N * 3), vel = new Float32Array(FW_N * 3), colr = new Float32Array(FW_N * 3);
     const pal = [['#ffd166', '#fff1b8'], ['#ff6b6b', '#ffb4a2'], ['#7bdff2', '#e0fbfc'], ['#c77dff', '#f1c0ff'], ['#9bf6a0', '#f0fff0']][Math.floor(r() * 5)];
     for (let i = 0; i < FW_N; i++) {
-      const u = r() * 2 - 1, a = r() * 6.28, sp = 1.8 + r() * 0.3, q = Math.sqrt(1 - u * u);
+      const u = r() * 2 - 1, a = r() * 6.28, sp = 1.3 + r() * 0.25, q = Math.sqrt(1 - u * u);
       pos[i * 3] = cx; pos[i * 3 + 1] = cy; pos[i * 3 + 2] = cz;
       vel[i * 3] = q * Math.cos(a) * sp; vel[i * 3 + 1] = u * sp; vel[i * 3 + 2] = q * Math.sin(a) * sp;
       const c = C(pal[i % 2]);
@@ -2704,30 +2722,31 @@ const View3D = (function () {
     const s = dt / 1000;
     if (seasonIdx === 5 && sceneStyle === 'forest') {
       fwTimer -= dt;
-      if (fwTimer <= 0) { burst(); fwTimer = 450 + Math.random() * 600; }
+      if (fwTimer <= 0) { burst(); fwTimer = 1100 + Math.random() * 1300; }
     }
     for (let k = fireworks.length - 1; k >= 0; k--) {
       const f = fireworks[k], u = f.userData;
       u.age += s;
       const pos = f.geometry.attributes.position.array, v = u.vel;
       for (let i = 0; i < v.length; i += 3) {
-        v[i] *= 0.985; v[i + 2] *= 0.985; v[i + 1] = v[i + 1] * 0.985 - 1.1 * s;
+        const drag = Math.pow(0.4, s);    // the same slowing whatever the frame rate
+        v[i] *= drag; v[i + 2] *= drag; v[i + 1] = v[i + 1] * drag - 0.7 * s;
         pos[i] += v[i] * s; pos[i + 1] += v[i + 1] * s; pos[i + 2] += v[i + 2] * s;
       }
       f.geometry.attributes.position.needsUpdate = true;
-      f.material.opacity = Math.max(0, 1 - u.age / 1.8);
-      if (u.age > 1.8) { scene.remove(f); f.geometry.dispose(); f.material.dispose(); fireworks.splice(k, 1); }
+      f.material.opacity = Math.max(0, 1 - u.age / 2.6);
+      if (u.age > 2.6) { scene.remove(f); f.geometry.dispose(); f.material.dispose(); fireworks.splice(k, 1); }
     }
   }
 
   // Falling rain, leaves, snow or petals over the play area.
   let weather = null, weatherBox = null;
   const FALL = {
-    rain: { n: 1400, size: 0.28, speed: 9, sway: 0.05, cols: ['#c8d6e4'] },
-    leaf: { n: 280, size: 0.24, speed: 0.55, sway: 0.7, cols: ['#c8612c', '#e0a034', '#a8432a'] },
-    snow: { n: 900, size: 0.12, speed: 0.6, sway: 0.35, cols: ['#ffffff'] },
-    glow: { n: 260, size: 0.34, speed: -0.35, sway: 0.5, cols: ['#ffe28a', '#fff2b8', '#ffd060'] },
-    petal: { n: 340, size: 0.16, speed: 0.45, sway: 0.6, cols: ['#f7c6d3', '#f2a9bf', '#fde3ea'] },
+    rain: { n: 1200, size: 0.28, speed: 5.5, sway: 0.03, cols: ['#c8d6e4'] },
+    leaf: { n: 280, size: 0.24, speed: 0.32, sway: 0.45, cols: ['#c8612c', '#e0a034', '#a8432a'] },
+    snow: { n: 900, size: 0.12, speed: 0.32, sway: 0.22, cols: ['#ffffff'] },
+    glow: { n: 260, size: 0.34, speed: -0.2, sway: 0.3, cols: ['#ffe28a', '#fff2b8', '#ffd060'] },
+    petal: { n: 340, size: 0.16, speed: 0.26, sway: 0.38, cols: ['#f7c6d3', '#f2a9bf', '#fde3ea'] },
   };
   function fallSprite(kind) {
     return svgTexture('fall:' + kind, kind === 'rain'
@@ -2766,21 +2785,28 @@ const View3D = (function () {
     weather.frustumCulled = false;
     scene.add(weather);
   }
+  // Each particle falls at its own steady speed and sways on its own slow sine. It used to
+  // wrap every particle above 4 back down to the ground, meant only for rising fireflies: rain,
+  // leaves and snow above that height blinked out and popped up at the bottom. Now falling ones
+  // go back to the top and rising ones to the bottom, and all of them wrap sideways too, so none
+  // drift off the table.
   function stepWeather(dt, t) {
     if (!weather) return;
-    const { F, ph, x0, x1 } = weather.userData;
+    const { F, ph, x0, x1, z0, z1, kind } = weather.userData;
     const pos = weather.geometry.attributes.position.array;
-    const s = dt / 1000;
+    const s = dt / 1000, top = kind === 'glow' ? 4 : 7, w = x1 - x0, d = z1 - z0;
     for (let i = 0; i < ph.length; i++) {
       const k = i * 3;
       pos[k + 1] -= F.speed * s * (0.8 + (i % 5) * 0.08);
-      pos[k] += Math.sin(t * 0.0012 + ph[i]) * F.sway * s;
-      pos[k + 2] += Math.cos(t * 0.0009 + ph[i]) * F.sway * s * 0.6;
-      if (pos[k + 1] < -0.05) { pos[k + 1] = 7; pos[k] = x0 + ((i * 0.618) % 1) * (x1 - x0); }
-      else if (pos[k + 1] > 4) { pos[k + 1] = 0.1; }
+      pos[k] += Math.sin(t * 0.0006 + ph[i]) * F.sway * s;
+      pos[k + 2] += Math.cos(t * 0.00045 + ph[i]) * F.sway * s * 0.6;
+      if (pos[k + 1] < -0.05) pos[k + 1] += top + 0.05;
+      else if (pos[k + 1] > top) pos[k + 1] -= top;
+      if (pos[k] < x0) pos[k] += w; else if (pos[k] > x1) pos[k] -= w;
+      if (pos[k + 2] < z0) pos[k + 2] += d; else if (pos[k + 2] > z1) pos[k + 2] -= d;
     }
     weather.geometry.attributes.position.needsUpdate = true;
-    if (weather.userData.kind === 'glow') weather.material.opacity = 0.65 + 0.35 * Math.sin(t * 0.004);
+    if (kind === 'glow') weather.material.opacity = 0.65 + 0.35 * Math.sin(t * 0.002);
   }
 
   // ---------------------------------------------------------------- lifecycle
@@ -2876,7 +2902,6 @@ const View3D = (function () {
 
   function sync(G, UI) {
     if (!ready) return;
-    const sameView = lastUI && lastUI.main === UI.main && lastUI.view === UI.view;
     lastG = G; lastUI = Object.assign({}, UI);
     if (UI.season != null) setSeason(UI.season);
 
@@ -2896,15 +2921,16 @@ const View3D = (function () {
       return s;
     });
     root.add(tableGroup);
+    pulsers = [];
+    tableGroup.traverse((o) => { if (o.userData.pulse && o.material) pulsers.push(o); });
     fitMat(boxOf(tableGroup));
 
     handGroup = buildHand(G, UI);
     camera.add(handGroup);
     const handUp = handShown(G, UI);
-    const handChanged = handUp !== (safeB === SAFE_HAND_B);
     safeB = handUp ? SAFE_HAND_B : SAFE.b;
 
-    focusBoxes.board = boxOf(board);
+    focusBoxes.board = board.userData.slabs.reduce((b, sl) => b.union(boxOf(sl)), new T.Box3());
     focusBoxes.majors = boxOf(majors);
     seats.forEach((s, i) => {
       focusBoxes['seat' + i] = boxOf(s);
@@ -2915,26 +2941,31 @@ const View3D = (function () {
     });
 
     resize();
-    focus(UI.main, UI, sameView && !handChanged);
+    // Never snap here: when only the pieces changed, a snap shows as a jump. A new view, or a
+    // box that grew, glides; an unchanged goal just stays put. Window resizes still snap.
+    focus(UI.main, UI, false);
   }
 
   let t0 = null;
+  let pulsers = [];                        // the highlight outlines, gathered once per sync
   function animate(t) {
     requestAnimationFrame(animate);
     // The first call comes straight from init with no timestamp; wait for a real frame.
     if (!ready || t === undefined) return;
     if (t0 === null) t0 = t;
     const dt = Math.min(t - t0, 100);     // a background tab must not make everything jump
-    if (dt < 16) return;
+    // Cap at about 60 fps. The old cut-off of 16 ms dropped every frame that came a fraction
+    // early on a 60 Hz screen, so the picture ran at an uneven 30-60 fps.
+    if (dt < 12) return;
     t0 = t;
-    const pulse = 0.62 + 0.33 * Math.sin(t * 0.005);
-    if (tableGroup) tableGroup.traverse((o) => { if (o.userData.pulse && o.material) o.material.opacity = pulse; });
+    const pulse = 0.62 + 0.33 * Math.sin(t * 0.0028);
+    for (const o of pulsers) o.material.opacity = pulse;
     stepCamera(dt);
     easeSeason(dt);
     stepWeather(dt, t);
     stepFireworks(dt);
     if (handGroup) {
-      handY += (handGroup.userData.goalY - handY) * Math.min(1, dt / 110);
+      handY += (handGroup.userData.goalY - handY) * Math.min(1, dt / 180);
       handGroup.position.y = handY;
     }
     renderer.render(scene, camera);

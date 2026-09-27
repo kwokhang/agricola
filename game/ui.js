@@ -115,9 +115,16 @@
     const p = G.players[UI.view];
     const held = p.hand.occ.length + p.hand.min.length;
     $('mainTabs').innerHTML = tabs.map(([k, l]) =>
-      `<button data-main="${k}" class="${UI.main === k ? 'sel' : ''}">${esc(l)}</button>`).join('')
-      + (has3d ? `<button data-act="hand" class="${UI.handPinned ? 'sel' : ''}"
-          title="手牌平時收起，需要打出卡牌時會自動展開；按此按鈕可保持展開">${UI.handPinned ? '▼ 收起' : '▲ 展開'}手牌 ${held}</button>` : '');
+      `<button data-main="${k}" class="${UI.main === k ? 'sel' : ''}">${esc(l)}</button>`).join('');
+
+    // The hand toggle lives in the bottom-right corner, next to where the fan rises, so it can
+    // be opened or put away at any time. The cards view always shows the hand, so it hides there.
+    const hb = $('handBtn');
+    hb.hidden = !has3d || UI.main === 'cards';
+    const up = handUp();
+    hb.classList.toggle('sel', up);
+    hb.title = up ? '收起手牌' : '展開手牌（需要打出卡牌時會自動展開）';
+    hb.innerHTML = `${up ? '▼ 收起' : '▲ 展開'}手牌 <b>${held}</b>`;
 
     $('playerTabs').innerHTML = G.n < 2 ? '' : '查看：' + G.players.map((q, i) =>
       `<button data-view="${i}" class="${i === UI.view ? 'sel' : ''}">${ART.meeple(PCOLOR[i], 14)} ${esc(q.name)}</button>`).join('');
@@ -570,7 +577,9 @@
   // Mirrors view3d's rule for when the hand is up, so the bar can sit just above it.
   function handUp() {
     if (!has3d) return false;
-    if (UI.handPinned || UI.main === 'cards') return true;
+    if (UI.main === 'cards') return true;
+    if (UI.handHidden) return false;
+    if (UI.handPinned) return true;
     return !G.choice && !G.over && UI.view === G.current
       && ['playOcc', 'playMinor', 'playImprovement', 'playAny'].includes(currentStep(G));
   }
@@ -627,6 +636,27 @@
   }
 
   // ------------------------------------------------------------ right rail: log
+  // Small pictures of the viewed player's played cards, so they stay in sight on every view.
+  // Hovering one shows the full card; clicking opens the cards view.
+  function renderMinis() {
+    const el = $('minis');
+    const p = G.players[UI.view];
+    el.hidden = !has3d || UI.main === 'cards' || !p.played.length;
+    const key = el.hidden ? '' : UI.view + ':' + p.played.map((c) => c.uid).join(',');
+    if (key === el.dataset.key) return;       // the pictures are big data URIs: only rebuild on change
+    el.dataset.key = key;
+    if (el.hidden) { el.innerHTML = ''; return; }
+    el.style.setProperty('--pc', PCOLOR[UI.view]);
+    el.innerHTML = `<div class="mh">${esc(p.name)} 已打出 <span>${p.played.length} 張</span></div>
+      <div class="mg">${p.played.map((c) => {
+        const band = ART.TYPE_BAND[c.type];
+        const img = typeof CARD_IMAGES !== 'undefined' && CARD_IMAGES[c.en];
+        const bg = img ? `url('${img}')` : band.tint;
+        return `<button class="mc" data-main="cards" data-mini="${c.uid}" title="${esc(c.zh)}"
+          style="--f:${band.frame};--t:${bg}">${img ? '' : esc(c.zh.slice(0, 2))}</button>`;
+      }).join('')}</div>`;
+  }
+
   function renderRail() {
     const el = $('railLog');
     if (!el) return;
@@ -995,6 +1025,7 @@
     const want = wantTab();
     const key = [want, G.current, G.round, G.pending ? G.pending.i : -1, G.staging && !G.staging.moving ? 1 : 0].join('|');
     if (want && key !== UI.autoKey) UI.main = want;
+    if (key !== UI.autoKey) UI.handHidden = false;     // a new step may open the hand again
     UI.autoKey = key;
 
     if (UI.undo && !inAction()) UI.undo = null;
@@ -1006,7 +1037,7 @@
     $('turnTag').textContent = who < 0 ? '' : `${G.players[who].name} 的回合`;
     renderStatus(); renderMainTabs();
     renderBoard(); renderFarm(); renderCards();
-    renderPrompt(); renderFree(); renderRes(); renderModal(); renderDrawer(); renderRail(); renderFinal(); renderScoreSheet(); renderHarvestPop();
+    renderPrompt(); renderFree(); renderRes(); renderModal(); renderDrawer(); renderRail(); renderFinal(); renderScoreSheet(); renderHarvestPop(); renderMinis();
     UI.season = seasonIndex();
     document.body.classList.toggle('side-strip', has3d && ['board', 'table', 'majors'].includes(UI.main));
     if (has3d) { showTip(null); View3D.sync(G, UI); }
@@ -1069,6 +1100,13 @@
     if (on) renderDrawer();
   };
 
+  // Hovering a small picture bottom left shows the full card, like hovering it on the table.
+  $('minis').addEventListener('mouseover', (ev) => {
+    const t = ev.target.closest('[data-mini]');
+    if (t) showTip({ kind: 'card', uid: t.dataset.mini });
+  });
+  $('minis').addEventListener('mouseleave', () => showTip(null));
+
   document.addEventListener('click', (ev) => {
     const t = ev.target.closest('[data-space],[data-tile],[data-edge],[data-act],[data-view],[data-main],[data-ctab],[data-free],[data-choice],[data-dtab]');
     if (!t || !G) return;
@@ -1089,7 +1127,13 @@
       case 'allres': UI.allres = !UI.allres; break;
       case 'resView': UI.resView = +v; renderRes(); save(); return;
       case 'cancelAction': cancelAction(); break;
-      case 'hand': UI.handPinned = !UI.handPinned; break;
+      // Follows what is on screen: an open hand (pinned or opened by a play step) closes and stays
+      // closed until the next step; a closed one opens and stays open.
+      case 'hand': {
+        const up = handUp();
+        UI.handPinned = !up; UI.handHidden = up;
+        break;
+      }
       case 'log': UI.logOpen = !UI.logOpen; renderRail(); save(); return;
       case 'final': UI.finalOpen = true; break;
       case 'scoreSheet': UI.scoreOpen = true; break;

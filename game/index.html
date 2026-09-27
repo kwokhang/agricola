@@ -207,6 +207,34 @@
   .tip .parked { color: var(--accent); font-weight: 600; }
   @keyframes pvIn { from { opacity: 0; transform: translate(-50%, -46%) scale(.96); } }
 
+  /* ---------- bottom left: the viewed player's played cards, as small pictures ---------- */
+  .minis {
+    position: fixed; z-index: 3; left: 12px; bottom: 16px; max-width: min(340px, 30vw);
+    padding: 6px 8px 8px; border-radius: 10px; border-left: 4px solid var(--pc, var(--accent));
+  }
+  .minis .mh { display: flex; align-items: baseline; gap: 6px; font-size: 12px; font-weight: 800; margin-bottom: 5px; }
+  .minis .mh span { color: var(--muted); font-weight: 600; }
+  .minis .mg { display: flex; flex-wrap: wrap; gap: 4px; }
+  .minis .mc {
+    width: 30px; height: 42px; padding: 0; border-radius: 4px; overflow: hidden; cursor: pointer;
+    border: 2px solid var(--f); background: var(--t) center / cover no-repeat;
+    display: grid; place-items: center; font-size: 10px; font-weight: 800; color: var(--art-ink);
+  }
+  .minis .mc:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,.4); }
+  body.hand-up .minis { display: none; }
+
+  /* ---------- bottom right: the hand toggle ---------- */
+  .handbtn {
+    position: fixed; z-index: 7; right: 12px; bottom: 16px; padding: 8px 16px; border-radius: 999px;
+    font-size: 14px; font-weight: 800; box-shadow: 0 6px 18px rgba(0,0,0,.35);
+  }
+  .handbtn b { margin-left: 4px; padding: 0 7px; border-radius: 999px; font-size: 12px;
+    background: color-mix(in srgb, var(--accent) 30%, transparent); }
+  .handbtn.sel { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .handbtn.sel b { background: color-mix(in srgb, var(--accent-ink) 20%, transparent); }
+  /* keep the right column clear of it */
+  body .side { max-height: calc(100vh - 148px); }
+
   /* ---------- this table wants a landscape desktop ---------- */
   .gate {
     position: fixed; inset: 0; z-index: 90; display: grid; place-items: center;
@@ -622,6 +650,12 @@
     <div class="log" id="railLog" hidden></div>
   </aside>
 </div>
+
+<!-- Bottom right: open or put away the hand, at any time. -->
+<button class="handbtn" id="handBtn" data-act="hand" hidden></button>
+
+<!-- Bottom left: small pictures of the cards the viewed player has played. -->
+<div class="minis glass" id="minis" hidden></div>
 
 <div class="tip glass" id="tip" hidden></div>
 <div class="preview" id="preview" hidden></div>

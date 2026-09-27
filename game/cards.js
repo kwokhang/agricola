@@ -197,7 +197,7 @@ const CARD_FX = {
 
   'Plow Driver': {
     free(x, c) {
-      if (!x.acting || x.p.house !== 'stone' || x.G.pending) return;
+      if (!x.acting || x.G.phase !== 'work' || x.p.house !== 'stone' || x.G.pending) return;
       offer(x, c, 'plowdriver', '犁田手：1 食物犁 1 塊田',
         x.p.supply.food >= 1 && !usedThisRound(x.G, x.p, 'plowdriver'));
     },
@@ -261,7 +261,7 @@ const CARD_FX = {
   'Groom': {
     onPlay(x) { gain(x.G, x.p, { wood: 1 }, '馬廄僮僕：'); },
     free(x, c) {
-      if (!x.acting || x.p.house !== 'stone' || x.G.pending) return;
+      if (!x.acting || x.G.phase !== 'work' || x.p.house !== 'stone' || x.G.pending) return;
       offer(x, c, 'groom', '馬廄僮僕：1 木材建 1 個馬廄',
         x.p.supply.wood >= 1 && stableCount(x.p) < 4 && !usedThisRound(x.G, x.p, 'groom'));
     },
@@ -338,7 +338,7 @@ const CARD_FX = {
 
   'Childless': {
     free(x, c) {
-      if (!x.acting) return;
+      if (!x.acting || x.G.phase !== 'work') return;
       const ok = roomCount(x.p) >= 3 && x.p.people === 2 && !usedThisRound(x.G, x.p, 'childless');
       offer(x, c, 'childless:grain', '無子嗣者：1 食物 + 1 穀物', ok);
       offer(x, c, 'childless:veg', '無子嗣者：1 食物 + 1 蔬菜', ok);
@@ -358,7 +358,7 @@ const CARD_FX = {
 
   'Scholar': {
     free(x, c) {
-      if (!x.acting || x.p.house !== 'stone' || x.G.pending) return;
+      if (!x.acting || x.G.phase !== 'work' || x.p.house !== 'stone' || x.G.pending) return;
       offer(x, c, 'scholar', '學者：打 1 張職業（1 食物）或次要發展', !usedThisRound(x.G, x.p, 'scholar'));
     },
     doFree(x) {
