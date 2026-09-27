@@ -1,0 +1,471 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>卡圖揀選</title>
+<!-- Local tool: compare Draw Things candidates in the real card layout, pick one, crop it or reject
+     it with a note, then copy the decisions as text. Data comes from build_picker.py. -->
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #1c1a17; --panel: #26231e; --panel2: #302c25; --ink: #efe8d8; --muted: #a39e88;
+    --line: #423d33; --accent: #d9a441; --accent-ink: #1c1a17; --ok: #7fb069; --bad: #d0582f;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--bg); color: var(--ink); overflow: hidden;
+    font: 14px/1.5 -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", sans-serif; }
+  button { font: inherit; color: var(--ink); background: var(--panel2); border: 1px solid var(--line);
+    border-radius: 8px; padding: 5px 12px; cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
+  button.danger.on { background: var(--bad); border-color: var(--bad); color: #fff; }
+  textarea { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line);
+    border-radius: 8px; padding: 8px 10px; width: 100%; resize: vertical; }
+  kbd { font: 11px ui-monospace, monospace; background: var(--panel2); border: 1px solid var(--line);
+    border-radius: 4px; padding: 0 4px; }
+
+  .app { display: grid; grid-template-columns: 240px 1fr; grid-template-rows: auto 1fr; height: 100%; }
+  header { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--panel); }
+  header h1 { font-size: 16px; margin: 0; }
+  header .prog { color: var(--muted); }
+  header .sp { flex: 1; }
+  .filters button.sel { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+  nav { overflow-y: auto; border-right: 1px solid var(--line); background: var(--panel); padding: 6px; }
+  nav .it { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; border: 0;
+    background: none; padding: 5px 8px; border-radius: 6px; }
+  nav .it.cur { background: var(--panel2); outline: 1px solid var(--accent); }
+  nav .it .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--line); flex: none; }
+  nav .it.picked .dot { background: var(--ok); }
+  nav .it.rejected .dot { background: var(--bad); }
+  nav .it.applied .dot { background: #5b8fc7; }
+  nav .it .en { color: var(--muted); font-size: 11.5px; margin-left: auto; }
+  nav .kind { font-size: 11px; letter-spacing: .12em; color: var(--muted); padding: 10px 8px 2px; }
+
+  main { overflow-y: auto; padding: 16px 20px 40px; }
+  .head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .head h2 { margin: 0; font-size: 22px; }
+  .head .en { color: var(--muted); }
+  .rules { color: var(--muted); max-width: 900px; margin: 4px 0 14px; }
+  .hint { color: var(--muted); font-size: 12.5px; margin-bottom: 10px; }
+
+  .cands { display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-start; }
+  .cand { background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 10px;
+    display: flex; flex-direction: column; gap: 8px; flex: none; }
+  .cand.sel { border-color: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 35%, transparent); }
+  .cand.cur-img { opacity: .85; }
+  .cand .face { cursor: grab; touch-action: none; user-select: none; border-radius: 12px; overflow: hidden; }
+  .cand .face:active { cursor: grabbing; }
+  .cand .face svg { display: block; }
+  .cand .row { display: flex; align-items: center; gap: 8px; }
+  .cand .lab { font-weight: 800; }
+  .cand .zoom { flex: 1; }
+  .cand .raw { width: 100%; border-radius: 6px; display: block; cursor: zoom-in; }
+  .cand .crop { font: 11px ui-monospace, monospace; color: var(--muted); }
+  .cand .small { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; }
+  .cand .small svg { display: block; border-radius: 2px; }
+
+  .decide { margin-top: 18px; max-width: 900px; display: grid; gap: 8px; }
+  .decide .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .status { font-weight: 700; }
+  .status.picked { color: var(--ok); }
+  .status.rejected { color: var(--bad); }
+
+  .out { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: grid; place-items: center; z-index: 10; }
+  .out[hidden] { display: none; }
+  .out .box { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px;
+    width: min(900px, 94vw); display: grid; gap: 10px; }
+  .out textarea { height: 60vh; font: 12px/1.45 ui-monospace, monospace; }
+  .zoomview { position: fixed; inset: 0; background: rgba(0,0,0,.85); display: grid; place-items: center; z-index: 11; cursor: zoom-out; }
+  .zoomview[hidden] { display: none; }
+  .zoomview img { max-width: 94vw; max-height: 94vh; }
+  .empty { padding: 40px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>卡圖揀選</h1>
+    <span class="prog" id="prog"></span>
+    <span class="filters" id="filters"></span>
+    <span class="sp"></span>
+    <span class="hint"><kbd>←</kbd><kbd>→</kbd> 換卡　<kbd>1</kbd>–<kbd>9</kbd> 選圖　<kbd>X</kbd> 否決　<kbd>0</kbd> 重設裁切</span>
+    <button class="primary" id="export">輸出結果文字</button>
+  </header>
+  <nav id="nav"></nav>
+  <main id="main"></main>
+</div>
+<div class="out" id="out" hidden>
+  <div class="box">
+    <div class="row" style="display:flex;gap:8px;align-items:center">
+      <b>貼返俾 Claude</b><span class="sp" style="flex:1"></span>
+      <button class="primary" id="copy">複製</button><button id="closeOut">關閉</button>
+    </div>
+    <textarea id="outText" readonly></textarea>
+  </div>
+</div>
+<div class="zoomview" id="zoomview" hidden><img id="zoomimg" alt=""></div>
+
+<script src="picker_data.js"></script>
+<script src="../../data.js"></script>
+<script src="../cards.js"></script>
+<script src="../engine.js"></script>
+<script>var CARD_IMAGES = {}, ACTION_IMAGES = {};</script>
+<script src="../art.js"></script>
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const KIND_ZH = { occ: '職業', minor: '次要發展', major: '主要發展', action: '行動格' };
+
+  if (typeof PICKER === 'undefined' || !PICKER.groups.length) {
+    $('main').innerHTML = '<div class="empty">未有候選圖。先行 <code>python3 game/tools/build_picker.py</code>，再重新載入。</div>';
+    return;
+  }
+  // The game's theme colours, so the faces look exactly as they do in play.
+  const st = document.createElement('style');
+  st.textContent = PICKER.rootCss;
+  document.head.appendChild(st);
+
+  // A throwaway game, only for the printed cost and the action-space rules text.
+  const G = newGame(['A', 'B'], 1);
+  const P0 = G.players[0];
+
+  const groups = PICKER.groups;
+  const gid = (g) => g.kind + ':' + g.id;
+
+  // ---------------------------------------------------------------- saved decisions
+  // decisions[gid] = { pick: label | null, rejected: bool, comment: '', crops: { label: {cx, cy, z} } }
+  const KEY = 'agricola-picker-v1';
+  let D = {};
+  try { D = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { D = {}; }
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(D)); } catch (e) { /* private window */ } };
+  const dec = (g) => (D[gid(g)] = D[gid(g)] || { pick: null, rejected: false, comment: '', crops: {} });
+  const touch = (g) => { dec(g).t = Date.now(); save(); };
+  // A decision apply_picks.py has already carried out is dropped: the picture in use is now the
+  // result, and exporting it again would crop a kept picture twice.
+  const APPLIED = PICKER.applied || {};
+  for (const k of Object.keys(D)) {
+    const d = D[k];
+    if (APPLIED[k] && (d.pick || !d.rejected) && (d.t || 0) <= APPLIED[k]) delete D[k];
+  }
+  save();
+  const state = (g) => {
+    const d = D[gid(g)];
+    if (!d || (!d.pick && !d.rejected)) return APPLIED[gid(g)] ? 'applied' : '';
+    return d.rejected ? 'rejected' : 'picked';
+  };
+  const decided = (g) => ['picked', 'rejected'].includes(state(g));
+
+  let cur = 0, filter = 'all';
+  const natural = {};     // src -> [w, h]
+
+  function cardOf(g) {
+    if (g.kind === 'action') return null;
+    return CARDS.find((c) => c.en === g.id);
+  }
+  function options(g) {
+    return g.candidates.concat(g.current ? [Object.assign({ isCurrent: true }, g.current)] : []);
+  }
+
+  // ---------------------------------------------------------------- faces
+  // The card is drawn by the game's own art code with this candidate as its picture; the
+  // picture's <image> element then gets the chosen crop.
+  const FACE_W = 270;
+  function faceSvg(g, src) {
+    if (g.kind === 'action') return actionTile(g, src);
+    const c = cardOf(g);
+    CARD_IMAGES[c.en] = src;
+    return ART.cardFace(c, { cost: cardCost(G, P0, c) });
+  }
+
+  // Same drawing as view3d's spaceTexture: name across the top, rules along the bottom.
+  function actionTile(g, src) {
+    const def = spaceDef(g.id), w = 186, h = 124;
+    const notes = spaceNotes(G, P0, def);
+    const nb = notes.length ? 10 + notes.length * 11.5 : 0;
+    const room = w - 14 - (def.accum ? 58 : 0);
+    const en = def.zh.length * 15 + def.en.length * 5.2 + 8 < room ? def.en : '';
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}"
+      font-family="-apple-system,BlinkMacSystemFont,'PingFang TC','Noto Sans TC',sans-serif">
+      <defs>
+        <clipPath id="tc"><rect width="${w}" height="${h}"/></clipPath>
+        <linearGradient id="ft" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1c1a17" stop-opacity=".78"/>
+          <stop offset=".55" stop-color="#1c1a17" stop-opacity=".45"/><stop offset="1" stop-color="#1c1a17" stop-opacity="0"/></linearGradient>
+        <linearGradient id="fb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1c1a17" stop-opacity="0"/>
+          <stop offset=".45" stop-color="#1c1a17" stop-opacity=".6"/><stop offset="1" stop-color="#1c1a17" stop-opacity=".82"/></linearGradient>
+        <filter id="sh" x="-10%" y="-30%" width="120%" height="160%"><feDropShadow dx="0" dy="0.8" stdDeviation="0.9" flood-color="#000" flood-opacity=".75"/></filter></defs>
+      <rect width="${w}" height="${h}" fill="var(--art-boardface)"/>
+      <g clip-path="url(#tc)"><image href="${src}" x="0" y="0" width="${w}" height="${h}" preserveAspectRatio="xMidYMid slice"/></g>
+      <rect width="${w}" height="34" fill="url(#ft)"/>
+      ${nb ? `<rect y="${h - nb - 14}" width="${w}" height="${nb + 14}" fill="url(#fb)"/>` : ''}
+      <g filter="url(#sh)">
+        <text x="8" y="19" font-size="15" font-weight="800" fill="#fff6e0">${def.zh}${en ? `<tspan dx="5" font-size="8.5" font-weight="600" fill-opacity=".75">${en}</tspan>` : ''}</text>
+        ${notes.map((t, k) => `<text x="8" y="${h - nb + 12 + k * 11.5}" font-size="9.5" font-weight="600" fill="#f3ead2">${t}</text>`).join('')}
+      </g>
+      <rect x="1" y="1" width="${w - 2}" height="${h - 2}" fill="none" stroke="#1c1a17" stroke-width="2.5"/></svg>`;
+  }
+
+  // ---------------------------------------------------------------- crop maths
+  // A crop is the part of the source picture that shows in the card's picture frame, as
+  // fractions of the source: x, y, w, h. It always has the frame's shape. z = 1 is what the
+  // game does by itself (fill the frame, occupations keep the top, the rest the middle).
+  function baseCrop(frameAspect, srcAspect, alignTop) {
+    if (srcAspect > frameAspect) {
+      const w = frameAspect / srcAspect;
+      return { w, h: 1, x: (1 - w) / 2, y: 0 };
+    }
+    const h = srcAspect / frameAspect;
+    return { w: 1, h, x: 0, y: alignTop ? 0 : (1 - h) / 2 };
+  }
+  function cropFor(g, opt, frame) {
+    const n = natural[opt.src] || (dec(g).sizes || {})[opt.label];
+    if (!n) return null;
+    const fa = frame.w / frame.h, sa = n[0] / n[1];
+    const base = baseCrop(fa, sa, g.kind === 'occ');
+    const s = dec(g).crops[opt.label];
+    if (!s) return Object.assign({ z: 1, def: true }, base);
+    const w = base.w / s.z, h = base.h / s.z;
+    return { w, h, x: Math.min(Math.max(0, s.cx - w / 2), 1 - w), y: Math.min(Math.max(0, s.cy - h / 2), 1 - h), z: s.z };
+  }
+  function applyCrop(svg, g, opt) {
+    const img = svg.querySelector('image');
+    if (!img) return;
+    if (!img.dataset.fx) {
+      img.dataset.fx = img.getAttribute('x'); img.dataset.fy = img.getAttribute('y');
+      img.dataset.fw = img.getAttribute('width'); img.dataset.fh = img.getAttribute('height');
+    }
+    const frame = { x: +img.dataset.fx, y: +img.dataset.fy, w: +img.dataset.fw, h: +img.dataset.fh };
+    const c = cropFor(g, opt, frame);
+    if (!c) return;
+    const W = frame.w / c.w, H = frame.h / c.h;
+    img.setAttribute('preserveAspectRatio', 'none');
+    img.setAttribute('x', frame.x - c.x * W); img.setAttribute('y', frame.y - c.y * H);
+    img.setAttribute('width', W); img.setAttribute('height', H);
+    return { frame, c };
+  }
+  const f3 = (v) => v.toFixed(3);
+  const cropText = (c) => c ? `x=${f3(c.x)} y=${f3(c.y)} w=${f3(c.w)} h=${f3(c.h)}${c.def ? '（預設）' : ''}` : '';
+
+  // ---------------------------------------------------------------- render
+  function visible() {
+    return groups.map((g, i) => ({ g, i })).filter(({ g }) =>
+      filter === 'all' || (filter === 'todo' && !decided(g)) || state(g) === filter);
+  }
+
+  function renderHeader() {
+    const done = groups.filter(decided).length;
+    const picked = groups.filter((g) => state(g) === 'picked').length;
+    const applied = groups.filter((g) => state(g) === 'applied').length;
+    $('prog').textContent = `已決定 ${done}/${groups.length}（選 ${picked}，否決 ${done - picked}）　已套用 ${applied}`;
+    const fs = [['all', '全部'], ['todo', '未決定'], ['picked', '已選'], ['rejected', '否決'], ['applied', '已套用']];
+    $('filters').innerHTML = fs.map(([k, l]) => `<button data-filter="${k}" class="${filter === k ? 'sel' : ''}">${l}</button>`).join(' ');
+  }
+
+  function renderNav() {
+    let html = '', last = '';
+    for (const { g, i } of visible()) {
+      if (g.kind !== last) { html += `<div class="kind">${KIND_ZH[g.kind]}</div>`; last = g.kind; }
+      const c = cardOf(g), name = c ? c.zh : spaceDef(g.id).zh, en = c ? c.en : spaceDef(g.id).en;
+      html += `<button class="it ${state(g)} ${i === cur ? 'cur' : ''}" data-go="${i}"><span class="dot"></span>${esc(name)}<span class="en">${esc(en)}</span></button>`;
+    }
+    $('nav').innerHTML = html || '<div class="empty">沒有。</div>';
+    const el = $('nav').querySelector('.cur');
+    if (el) el.scrollIntoView({ block: 'nearest' });
+  }
+
+  function renderMain() {
+    const g = groups[cur], d = dec(g), c = cardOf(g);
+    const def = c ? null : spaceDef(g.id);
+    const opts = options(g);
+    const faceW = g.kind === 'action' ? 330 : FACE_W;
+    $('main').innerHTML = `
+      <div class="head"><h2>${esc(c ? c.zh : def.zh)}</h2><span class="en">${esc(c ? c.en : def.en)} · ${KIND_ZH[g.kind]}</span></div>
+      <div class="rules">${esc(c ? (c.txz || c.txt || '') : spaceNotes(G, P0, def).join('　'))}</div>
+      <div class="hint">喺卡面上拖曳移動、滾輪或拉桿縮放，就係裁切。撳下面原圖可以放大睇。</div>
+      <div class="cands">${opts.map((o, k) => `
+        <div class="cand ${d.pick === o.label && !d.rejected ? 'sel' : ''} ${o.isCurrent ? 'cur-img' : ''}" data-k="${k}" style="width:${faceW + 24}px">
+          <div class="face" data-k="${k}" style="width:${faceW}px"></div>
+          ${g.kind === 'action' ? `<div class="small"><span>遊戲中大約大小</span><div class="face1x" data-k1="${k}"></div></div>` : ''}
+          <div class="row"><span class="lab">${k + 1}. ${esc(o.label)}</span>
+            <input class="zoom" type="range" min="1" max="3" step="0.01" data-zoom="${k}" value="${(d.crops[o.label] || {}).z || 1}">
+            <button data-reset="${k}" title="重設裁切 (0)">↺</button></div>
+          <div class="crop" data-crop="${k}"></div>
+          <button class="${d.pick === o.label && !d.rejected ? 'primary' : ''}" data-pick="${k}">${o.isCurrent ? '保留現用' : '選呢張'}</button>
+          <img class="raw" src="${o.src}" data-raw="${k}" alt="">
+        </div>`).join('')}
+      </div>
+      <div class="decide">
+        <div class="row"><span class="status ${state(g)}">${d.rejected ? '✗ 全部否決' : d.pick ? `✓ 已選 ${esc(d.pick)}` : APPLIED[gid(g)] ? '已套用（現用就係上次揀嘅結果）' : '未決定'}</span>
+          <button class="danger ${d.rejected ? 'on' : ''}" data-reject>✗ 全部否決（X）</button>
+          <button data-clear>清除決定</button>
+          <span style="flex:1"></span>
+          <button data-prev>← 上一張</button><button data-next>下一張 →</button></div>
+        <textarea id="comment" rows="3" placeholder="備註：否決原因、想點改 prompt、揀咗但想修咩……">${esc(d.comment || '')}</textarea>
+      </div>`;
+
+    opts.forEach((o, k) => {
+      const host = $('main').querySelector(`.face[data-k="${k}"]`);
+      host.innerHTML = faceSvg(g, o.src);
+      const svg = host.querySelector('svg');
+      svg.setAttribute('width', '100%'); svg.removeAttribute('height');
+      const draw = () => {
+        if (!svg.isConnected) return;             // the page moved on before the picture loaded
+        const r = applyCrop(svg, g, o);
+        const lab = $('main').querySelector(`[data-crop="${k}"]`);
+        if (lab) lab.textContent = r ? cropText(r.c) : '';
+      };
+      if (natural[o.src]) draw();
+      else {
+        const im = new Image();
+        im.onload = () => { natural[o.src] = [im.naturalWidth, im.naturalHeight]; draw(); if (svg1 && svg1.isConnected) applyCrop(svg1, g, o); };
+        im.src = o.src;
+      }
+      // Action tiles are small on the table: a second copy at about their size in play, with the
+      // same crop, shows whether the picture still reads there.
+      const small = $('main').querySelector(`.face1x[data-k1="${k}"]`);
+      let svg1 = null;
+      if (small) {
+        small.innerHTML = faceSvg(g, o.src);
+        svg1 = small.querySelector('svg');
+        svg1.setAttribute('width', '150'); svg1.removeAttribute('height');
+      }
+      const drawBoth = () => { draw(); if (svg1 && svg1.isConnected) applyCrop(svg1, g, o); };
+      if (svg1 && natural[o.src]) applyCrop(svg1, g, o);
+      wireDrag(host, svg, g, o, k, drawBoth);
+    });
+    $('comment').addEventListener('input', (e) => { dec(g).comment = e.target.value; touch(g); });
+  }
+
+  // Drag the picture inside its frame; the wheel zooms.
+  function wireDrag(host, svg, g, o, k, draw) {
+    let start = null;
+    const setCrop = (cx, cy, z) => {
+      dec(g).crops[o.label] = { cx: Math.min(1, Math.max(0, cx)), cy: Math.min(1, Math.max(0, cy)), z: Math.min(3, Math.max(1, z)) };
+      // keep the picture's size with the crop, so the export still works after a reload
+      (dec(g).sizes = dec(g).sizes || {})[o.label] = natural[o.src];
+      touch(g); draw();
+      const r = $('main').querySelector(`[data-zoom="${k}"]`); if (r) r.value = dec(g).crops[o.label].z;
+    };
+    const now = () => { const img = svg.querySelector('image'); const fr = { w: +img.dataset.fw, h: +img.dataset.fh }; return { c: cropFor(g, o, fr), fr }; };
+    host.addEventListener('pointerdown', (e) => {
+      const { c } = now(); if (!c) return;
+      host.setPointerCapture(e.pointerId);
+      start = { x: e.clientX, y: e.clientY, cx: c.x + c.w / 2, cy: c.y + c.h / 2, z: c.z, scale: host.getBoundingClientRect().width };
+    });
+    host.addEventListener('pointermove', (e) => {
+      if (!start) return;
+      const { c, fr } = now();
+      // one frame-width of drag moves the crop by its own width
+      const pxPerFrame = start.scale * (fr.w / svg.viewBox.baseVal.width);
+      setCrop(start.cx - (e.clientX - start.x) / pxPerFrame * c.w,
+        start.cy - (e.clientY - start.y) / (pxPerFrame * fr.h / fr.w) * c.h, start.z);
+    });
+    const end = () => { start = null; };
+    host.addEventListener('pointerup', end); host.addEventListener('pointercancel', end);
+    host.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const { c } = now(); if (!c) return;
+      setCrop(c.x + c.w / 2, c.y + c.h / 2, c.z * (e.deltaY < 0 ? 1.06 : 1 / 1.06));
+    }, { passive: false });
+    host.parentElement.querySelector(`[data-zoom="${k}"]`).addEventListener('input', (e) => {
+      const { c } = now(); if (!c) return;
+      setCrop(c.x + c.w / 2, c.y + c.h / 2, +e.target.value);
+    });
+  }
+
+  function render() { renderHeader(); renderNav(); renderMain(); }
+
+  // ---------------------------------------------------------------- actions
+  function go(i) { if (i < 0 || i >= groups.length) return; cur = i; render(); $('main').scrollTop = 0; }
+  function step(dir) {
+    const vis = visible().map((v) => v.i);
+    if (!vis.length) return;
+    const at = vis.indexOf(cur);
+    go(vis[at < 0 ? 0 : Math.min(vis.length - 1, Math.max(0, at + dir))]);
+  }
+  function pick(k) {
+    const g = groups[cur], o = options(g)[k];
+    if (!o) return;
+    const d = dec(g); d.pick = o.label; d.rejected = false; touch(g); render();
+  }
+  function reject() { const g = groups[cur], d = dec(g); d.rejected = !d.rejected; if (d.rejected) d.pick = null; touch(g); render(); $('comment').focus(); }
+  function resetCrop(k) { const g = groups[cur], o = options(g)[k]; if (o) { delete dec(g).crops[o.label]; touch(g); renderMain(); } }
+
+  // ---------------------------------------------------------------- export
+  function exportText() {
+    const lines = [`卡圖揀選結果（${new Date().toLocaleString('zh-HK')}）`, `候選資料夾：${PICKER.dir}`, ''];
+    const json = [];
+    for (const g of groups) {
+      const d = D[gid(g)];
+      if (!d || (!d.pick && !d.rejected && !d.comment)) continue;
+      const c = cardOf(g), name = c ? `${c.en}（${c.zh}）` : `${spaceDef(g.id).en}（${spaceDef(g.id).zh}）`;
+      const row = { kind: g.kind, id: g.id };
+      let line = `[${g.kind}] ${name}：`;
+      if (d.rejected) { line += '否決'; row.decision = 'reject'; }
+      else if (d.pick) {
+        const o = options(g).find((x) => x.label === d.pick);
+        const img = document.createElement('div');   // measure the frame the card gives this picture
+        img.innerHTML = faceSvg(g, o.src);
+        const el = img.querySelector('image');
+        const fr = { w: +el.getAttribute('width'), h: +el.getAttribute('height') };
+        const cr = cropFor(g, o, fr);
+        line += o.isCurrent ? '保留現用' : `選 ${o.label}`;
+        line += `　檔案 ${o.path}`;
+        if (cr) line += `　裁切 ${cropText(cr)}`;
+        if (!o.isCurrent && g.current) row.replaces = g.current.path;
+        Object.assign(row, { decision: o.isCurrent ? 'keep' : 'pick', label: o.label, file: o.path,
+          crop: cr && !cr.def ? { x: +f3(cr.x), y: +f3(cr.y), w: +f3(cr.w), h: +f3(cr.h) } : null });
+      } else { line += '未決定'; row.decision = 'none'; }
+      if (d.comment) { line += `\n    備註：${d.comment.replace(/\n/g, ' / ')}`; row.comment = d.comment; }
+      lines.push(line);
+      json.push(row);
+    }
+    const todo = groups.filter((g) => !state(g)).map((g) => (cardOf(g) || spaceDef(g.id)).en);   // applied ones are done
+    if (todo.length) lines.push('', `未決定（${todo.length}）：${todo.join('、')}`);
+    lines.push('', '```json', JSON.stringify(json), '```');
+    return lines.join('\n');
+  }
+
+  // ---------------------------------------------------------------- input
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-go],[data-filter],[data-pick],[data-reset],[data-reject],[data-clear],[data-prev],[data-next],[data-raw]');
+    if (!t) return;
+    if (t.dataset.go != null) return go(+t.dataset.go);
+    if (t.dataset.filter) { filter = t.dataset.filter; return render(); }
+    if (t.dataset.pick != null) return pick(+t.dataset.pick);
+    if (t.dataset.reset != null) return resetCrop(+t.dataset.reset);
+    if (t.hasAttribute('data-reject')) return reject();
+    if (t.hasAttribute('data-clear')) { delete D[gid(groups[cur])]; save(); return render(); }
+    if (t.hasAttribute('data-prev')) return step(-1);
+    if (t.hasAttribute('data-next')) return step(1);
+    if (t.dataset.raw != null) { $('zoomimg').src = t.src; $('zoomview').hidden = false; }
+  });
+  $('zoomview').addEventListener('click', () => { $('zoomview').hidden = true; });
+  $('export').addEventListener('click', () => { $('outText').value = exportText(); $('out').hidden = false; $('outText').select(); });
+  $('closeOut').addEventListener('click', () => { $('out').hidden = true; });
+  $('copy').addEventListener('click', async () => {
+    const txt = $('outText').value;
+    try { await navigator.clipboard.writeText(txt); } catch (e) { $('outText').select(); document.execCommand('copy'); }
+    $('copy').textContent = '已複製 ✓'; setTimeout(() => { $('copy').textContent = '複製'; }, 1500);
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') { if (e.key === 'Escape') e.target.blur(); return; }
+    if (!$('out').hidden || !$('zoomview').hidden) { if (e.key === 'Escape') { $('out').hidden = true; $('zoomview').hidden = true; } return; }
+    if (e.key === 'ArrowRight' || e.key === 'j') step(1);
+    else if (e.key === 'ArrowLeft' || e.key === 'k') step(-1);
+    else if (/^[1-9]$/.test(e.key)) pick(+e.key - 1);
+    else if (e.key === 'x' || e.key === 'X') reject();
+    else if (e.key === '0') { const opts = options(groups[cur]); opts.forEach((_, k) => resetCrop(k)); }
+    else return;
+    e.preventDefault();
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

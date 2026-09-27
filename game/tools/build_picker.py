@@ -1,0 +1,111 @@
+#!/usr/bin/env python3
+"""Collect the Draw Things candidates for game/tools/picker.html.
+
+A page opened from file:// cannot list a folder, so this script does it: it scans the
+Pictures folder for  agricola_<kind>_<name>_a<N>.png , groups the attempts by card, adds the
+picture the game uses now (from resource/) for comparison, and writes game/tools/picker_data.js.
+
+Run from anywhere, then open game/tools/picker.html:
+    python3 game/tools/build_picker.py            # occupations, minors, majors, action spaces
+    python3 game/tools/build_picker.py --dir ~/Downloads
+"""
+import argparse, json, os, re, sys, urllib.parse
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.normpath(os.path.join(HERE, '..', '..'))
+sys.path.insert(0, HERE)
+from build_card_images import card_names, key  # noqa: E402  same name matching as the game build
+
+OUT = os.path.join(HERE, 'picker_data.js')
+RES = {'occ': 'occupation', 'major': 'majorimprovement', 'minor': 'minorimprovement', 'action': 'action'}
+PAT = re.compile(r'^agricola_(occ|major|minor|action)_([a-z0-9]+?)(?:_a(\d+))?\.(png|jpe?g|webp)$')
+
+
+def url(path):
+    return 'file://' + urllib.parse.quote(os.path.abspath(path))
+
+
+def space_ids():
+    """key of an action space's English name or id -> space id, as build_card_images.py matches."""
+    eng = open(os.path.join(ROOT, 'game', 'engine.js'), encoding='utf-8').read()
+    out = {}
+    for sid, en in re.findall(r"id:\s*'([a-z_0-9]+)',[^}]*?en:\s*'([^']+)'", eng):
+        for k in {key(en), key(sid)}:
+            out[k] = sid
+            out.setdefault(k.rstrip('s'), sid)
+            out.setdefault(k.replace('or', 'our'), sid)
+    for k, sid in {'daylabour': 'day_laborer', 'daylabor': 'day_laborer'}.items():
+        out.setdefault(k, sid)
+    return out
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--dir', default=os.path.expanduser('~/Pictures'))
+    args = ap.parse_args()
+    kinds = ['occ', 'minor', 'major', 'action']
+
+    names, spaces = card_names(), space_ids()
+    groups = {}
+    for f in sorted(os.listdir(args.dir)):
+        m = PAT.match(f)
+        if not m or m.group(1) not in kinds:
+            continue
+        kind, slug, n = m.group(1), m.group(2), m.group(3)
+        ident = spaces.get(key(slug)) if kind == 'action' else names.get(key(slug))
+        if not ident:
+            print('  no card for', f, file=sys.stderr)
+            continue
+        g = groups.setdefault((kind, ident), {'kind': kind, 'id': ident, 'slug': slug, 'candidates': []})
+        g['candidates'].append({'label': 'a' + n if n else 'new', 'src': url(os.path.join(args.dir, f)),
+                                'path': os.path.join(args.dir, f),
+                                'mtime': int(os.path.getmtime(os.path.join(args.dir, f)))})
+
+    # Every minor improvement is listed too, with the picture in use, to review or crop.
+    for f in sorted(os.listdir(os.path.join(ROOT, 'resource', 'minorimprovement'))):
+        en = names.get(key(os.path.splitext(f)[0]))
+        if en:
+            groups.setdefault(('minor', en), {'kind': 'minor', 'id': en, 'slug': key(en), 'candidates': []})
+
+    # Every action space is listed even without new attempts, so the pictures in use can be
+    # reviewed, cropped or rejected too.
+    if 'action' in kinds:
+        eng = open(os.path.join(ROOT, 'game', 'engine.js'), encoding='utf-8').read()
+        for sid in re.findall(r"\{ id: '([a-z_0-9]+)',", eng):
+            groups.setdefault(('action', sid), {'kind': 'action', 'id': sid, 'slug': key(sid), 'candidates': []})
+
+    # The picture in use now, if there is one, so a new attempt can lose to it.
+    for (kind, ident), g in groups.items():
+        folder = os.path.join(ROOT, 'resource', RES[kind])
+        for f in sorted(os.listdir(folder)) if os.path.isdir(folder) else []:
+            base, ext = os.path.splitext(f)
+            if ext.lower() not in ('.png', '.jpg', '.jpeg', '.webp'):
+                continue
+            hit = spaces.get(key(base)) if kind == 'action' else names.get(key(base))
+            if hit == ident:
+                p = os.path.join(folder, f)
+                g['current'] = {'label': '現用', 'src': url(p), 'path': os.path.relpath(p, ROOT)}
+                break
+        g['candidates'].sort(key=lambda c: c['label'])
+
+    # Theme colours, so the card faces render exactly as in the game.
+    html = open(os.path.join(ROOT, 'game', 'index.html'), encoding='utf-8').read()
+    root = re.search(r':root\s*\{[^}]*--art-ink[^}]*\}', html).group(0)
+
+    order = {'occ': 0, 'minor': 1, 'major': 2, 'action': 3}
+    try:
+        applied = json.load(open(os.path.join(HERE, 'picker_applied.json'), encoding='utf-8'))
+    except (OSError, ValueError):
+        applied = {}
+    data = {'built': os.path.getmtime(args.dir), 'dir': args.dir, 'rootCss': root, 'applied': applied,
+            'groups': sorted(groups.values(), key=lambda g: (order[g['kind']], g['id']))}
+    with open(OUT, 'w', encoding='utf-8') as fh:
+        fh.write('// Generated by tools/build_picker.py — do not edit by hand.\n')
+        fh.write('const PICKER = ' + json.dumps(data, ensure_ascii=False, indent=1) + ';\n')
+    n = sum(len(g['candidates']) for g in groups.values())
+    print(f'wrote {OUT}: {len(groups)} cards, {n} candidates')
+    print('open  file://' + urllib.parse.quote(os.path.join(HERE, 'picker.html')))
+
+
+if __name__ == '__main__':
+    main()
