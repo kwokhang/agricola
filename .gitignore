@@ -2,3 +2,4 @@ node_modules/
 .DS_Store
 game/tools/picker_data.js
 game/tools/picker_applied.json
+public/

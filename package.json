@@ -1,0 +1,11 @@
+{
+  "name": "agricola",
+  "private": true,
+  "description": "Agricola (2016 Revised Edition) — 1–2 player browser game",
+  "scripts": {
+    "build": "node game/tools/build_public.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
+}

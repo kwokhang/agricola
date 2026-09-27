@@ -208,3 +208,15 @@ SVG 貼圖讀唔到外部 PNG，所以要嵌入）。有圖嘅卡用插畫，冇
 寫喺 `cards.js` 嘅 `CARD_REQ`，出處同卡文一樣係 e2crawfo/agricola；小溪嗰個來源冇寫，
 按印刷卡補咗「你有工人在捕魚」。條件未達成嘅卡唔可以打出、冇金框，卡面規則頂部印
 「【條件】…」，大卡預覽寫「條件未達成：…」。
+
+## 放上網（public/）
+
+```sh
+npm install        # 第一次：裝 esbuild
+npm run build      # 出 public/
+```
+
+`game/tools/build_public.mjs` 將遊戲砌成一個可以直接放上任何靜態網站嘅 `public/` 資料夾：
+`index.html`（冇註解、CSS 壓縮）、`app.js`（`data.js` 同全部遊戲 code 按載入次序合併、包成一個 IIFE、壓縮）、
+`three.min.js`、`cardimages.js`（15 MB 卡圖，分開放等瀏覽器獨立 cache）、`favicon.svg`。
+`public/` 唔入 git，每次改完重新 build。
