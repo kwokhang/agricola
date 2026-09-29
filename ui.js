@@ -27,7 +27,11 @@
   };
 
   // ------------------------------------------------------------ persistence
+  // First visit: a placeholder game sits behind the new-game dialog until the player starts
+  // one. It is never saved, so closing the page before that brings the dialog back.
+  let firstRun = false;
   function save() {
+    if (firstRun) return;
     try { localStorage.setItem(SAVE_KEY, JSON.stringify({ G, UI })); } catch (e) { /* private window */ }
   }
   function load() {
@@ -775,7 +779,8 @@
   // ------------------------------------------------------------ new game setup
   // One button: how many play, and each player's name and colour (no two alike).
   const NG = { n: 2, players: [] };
-  function openNewGame() {
+  function openNewGame(firstVisit) {
+    NG.first = !!firstVisit;
     const cur = G ? G.players.map((p, i) => ({ name: p.name, color: (G.colors || [])[i] })) : [];
     NG.n = G ? G.n : 2;
     NG.players = [0, 1].map((i) => ({
@@ -801,11 +806,11 @@
       </div>`;
     }).join('');
     box.innerHTML = `<div class="sheet ng">
-      <h2>新遊戲</h2><div class="sub">目前的進度將被取代。</div>
+      <h2>新遊戲</h2><div class="sub">${NG.first ? '選擇人數、名稱和顏色，即可開始。' : '目前的進度將被取代。'}</div>
       <div class="ngcount">玩家人數
         ${[1, 2].map((n) => `<button data-act="ngCount" data-v="${n}" class="${NG.n === n ? 'sel' : ''}">${n} 人</button>`).join('')}</div>
       ${rows}
-      <div class="row">${btn('ngCancel', '取消')}${btn('ngStart', '開始遊戲', false, 'class="primary"')}</div></div>`;
+      <div class="row">${NG.first ? '' : btn('ngCancel', '取消')}${btn('ngStart', '開始遊戲', false, 'class="primary"')}</div></div>`;
   }
 
   function startFromSetup() {
@@ -815,6 +820,7 @@
     }));
     $('newgame').hidden = true;
     UI.finalOpen = false;
+    firstRun = false;
     start(NG.n, setup);
   }
 
@@ -1161,7 +1167,7 @@
       case 'newGame': openDrawer(false); openNewGame(); return;
       case 'ngCount': NG.n = +v; renderNewGame(); return;
       case 'ngColor': { const [i, c] = v.split('|'); NG.players[+i].color = c; renderNewGame(); return; }
-      case 'ngCancel': $('newgame').hidden = true; return;
+      case 'ngCancel': if (!NG.first) $('newgame').hidden = true; return;
       case 'ngStart': startFromSetup(); return;
       default: return;
     }
@@ -1207,6 +1213,6 @@
   side.addEventListener('mouseenter', () => clearTimeout(closeTimer));
   checkSize();
 
-  if (!load()) start(2);
-  render();
+  if (load()) render();
+  else { firstRun = true; start(2); openNewGame(true); }
 })();
