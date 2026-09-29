@@ -1,5 +1,5 @@
 // Draw Things script, round 7: five more occupations to redo.
-// Run it through the API server:  python3 game/tools/drawthings_api.py game/tools/drawthings_round7.js
+// Run it through the API server:  python3 tools/drawthings_api.py tools/drawthings_round7.js
 //
 // Two different prompts per card, one picture each. a51 uses the idea that won round 6 (Cottager,
 // Frame Builder): a low camera angle, in the middle of the job, with a helper. a52 is a second

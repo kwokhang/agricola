@@ -1,5 +1,5 @@
 // Agricola (Revised Edition, 2016) — 1–2 player game engine
-// Pure state + rules. No DOM. Card texts come from ../data.js (CARDS);
+// Pure state + rules. No DOM. Card texts come from data.js (CARDS);
 // card effects come from cards.js (CARD_FX / CARD_CHOICE), which loads first.
 
 const ROWS = 3, COLS = 5, TILES = ROWS * COLS;

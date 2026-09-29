@@ -1,5 +1,5 @@
 // Draw Things script, round 4: what the 13:32 pick still rejected.
-// Run it through the API server:  python3 game/tools/drawthings_api.py game/tools/drawthings_round4.js
+// Run it through the API server:  python3 tools/drawthings_api.py tools/drawthings_round4.js
 //
 //   Conjurer           doves are enough: no rabbit
 //   Rough Caster       the action made no sense (trowel stuck in the wall, board held any way):

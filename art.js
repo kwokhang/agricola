@@ -46,26 +46,34 @@ const ART = (function () {
       <g fill="none" stroke="${ink}" stroke-width=".9" opacity=".45"><path d="M9.6 13.4h4.8M10.2 16.4h3.6"/></g>
       <g fill="var(--art-reed)" stroke="${ink}" stroke-width="1"><path d="M12 8.8c-.6-2.4-2.4-3.6-4.2-3.8 0 2.2 1.4 3.8 3 4.4z"/><path d="M12.4 8.8c.6-2.6 2.2-4 4.2-4.2-.2 2.4-1.6 3.8-3.2 4.4z"/></g>`,
 
-    sheep: `<g stroke="${ink}" stroke-width="1.1" stroke-linejoin="round">
-      <path d="M8 18.4v2.2M12.6 18.8v2M16 18v2.2" stroke-linecap="round"/>
-      <path d="M6.4 12.6a2.6 2.6 0 0 1 2-3.4 3 3 0 0 1 4.4-1.6 2.8 2.8 0 0 1 4.2 1.6 2.6 2.6 0 0 1 1.6 3.8 2.9 2.9 0 0 1-2.6 4H9.2a2.9 2.9 0 0 1-2.8-4.4z" fill="var(--art-sheep)"/>
-      <ellipse cx="17.6" cy="10.4" rx="2.6" ry="2.2" fill="var(--art-sheep-face)"/>
-      <path d="M19.6 8.8c1-.4 1.8 0 1.8 1s-.9 1.4-1.7 1.2" fill="var(--art-sheep-face)"/></g>`,
+    // Side views facing right, the same outlines as the coin tokens below. Legs are drawn
+    // first and run up under the body, so they join it instead of floating.
+    sheep: `<g stroke="${ink}" stroke-linejoin="round">
+      <path d="M9 13v6.4M14 13v6.4" stroke-width="1.6" stroke-linecap="round"/>
+      <g fill="var(--art-sheep)" stroke-width="2.2"><circle cx="7.4" cy="11.8" r="3"/><circle cx="10.8" cy="9.8" r="3.2"/>
+        <circle cx="14.2" cy="10.6" r="3"/><circle cx="9.4" cy="14" r="2.8"/><circle cx="13.2" cy="14" r="2.8"/></g>
+      <g fill="var(--art-sheep)" stroke="none"><circle cx="7.4" cy="11.8" r="3"/><circle cx="10.8" cy="9.8" r="3.2"/>
+        <circle cx="14.2" cy="10.6" r="3"/><circle cx="9.4" cy="14" r="2.8"/><circle cx="13.2" cy="14" r="2.8"/></g>
+      <ellipse cx="17.6" cy="11.8" rx="2.3" ry="3" transform="rotate(28 17.6 11.8)" fill="var(--art-sheep-face)" stroke-width="1.1"/>
+      <ellipse cx="16.2" cy="9.3" rx="1.5" ry=".8" transform="rotate(-20 16.2 9.3)" fill="var(--art-sheep-face)" stroke-width="1"/>
+      <circle cx="18" cy="11" r=".6" fill="${ink}" stroke="none"/></g>`,
 
-    boar: `<g stroke="${ink}" stroke-width="1.1" stroke-linejoin="round">
-      <path d="M7.4 18.6v2.2M11.6 19v2M15.4 18.4v2.2" stroke-linecap="round"/>
-      <path d="M4.6 13.6c0-3 3-5 7-5 3 0 4.6 1 5.6 2.2l3.4 1.2-1.4 1.8c.2 3-2.4 5.4-6.6 5.4-4.4 0-8-2-8-5.6z" fill="var(--art-boar)"/>
-      <path d="M19 12.6l1.8-.6-.6 2z" fill="var(--art-sheep)"/>
-      <path d="M9.6 9.2l1.6-3 2.2 2.6" fill="var(--art-boar)"/>
-      <circle cx="15.6" cy="12.6" r=".9" fill="${ink}" stroke="none"/></g>`,
+    boar: `<g stroke="${ink}" stroke-linejoin="round">
+      <path d="M7 14v5.6M9.4 14v5.2M14.2 14v5.2M16.4 14v5.6" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M4.8 12.4Q3.4 12.2 3.4 13.8" stroke-width="1.1" stroke-linecap="round" fill="none"/>
+      <path d="M4.6 13.8Q4.4 9.8 8.6 8.8L9.6 7.2L10.6 8.4L11.8 6.8L12.8 8.2L14 7.2L14.8 8.8Q17.4 9.4 18.6 11.2L20.8 12.4Q21.2 13.6 20.2 14.2L18.2 14.4Q17.2 16.8 13 16.8H8.6Q4.8 16.6 4.6 13.8z" fill="var(--art-boar)" stroke-width="1.1"/>
+      <path d="M15.2 9.4L16 6.8L17.2 9.8z" fill="var(--art-boar)" stroke-width="1"/>
+      <path d="M19 14q1.6-.2 1.6-2" stroke="var(--art-sheep)" stroke-width="1" stroke-linecap="round" fill="none"/>
+      <circle cx="17.2" cy="11.2" r=".75" fill="${ink}" stroke="none"/></g>`,
 
-    cattle: `<g stroke="${ink}" stroke-width="1.1" stroke-linejoin="round">
-      <path d="M7 18.6v2.4M11.4 19v2M15.4 18.4v2.4" stroke-linecap="round"/>
-      <rect x="4.4" y="8.6" width="12.6" height="10" rx="4.2" fill="var(--art-cattle)"/>
-      <path d="M8 10.4c1.8-.6 3 .6 2.6 2-.4 1.6-3 1.8-3.6.4-.4-1 0-2 1-2.4z" fill="var(--art-cattle-spot)" stroke="none"/>
-      <ellipse cx="18.4" cy="12.6" rx="3" ry="3.4" fill="var(--art-cattle)"/>
-      <path d="M16.6 9.6c-.8-1.4-.4-2.6.8-2.8M20.4 9.6c.8-1.4.6-2.6-.6-2.9" fill="none"/>
-      <circle cx="19.4" cy="12" r=".8" fill="${ink}" stroke="none"/></g>`,
+    cattle: `<g stroke="${ink}" stroke-linejoin="round">
+      <path d="M6.4 13v6.6M8.8 13v6.2M13 13v6.2M15.4 13v6.6" stroke-width="1.6" stroke-linecap="round"/>
+      <path d="M4.8 10Q3.6 12 3.8 15" stroke-width="1" stroke-linecap="round" fill="none"/>
+      <rect x="4.4" y="8.8" width="12.4" height="6.8" rx="2.6" fill="var(--art-cattle)" stroke-width="1.1"/>
+      <path d="M15.4 9.2L18.4 8.8L20.6 11.4L20.4 13.6Q19.4 14.6 18 14L15.6 12.4z" fill="var(--art-cattle)" stroke-width="1.1"/>
+      <path d="M17.4 9.2Q17 7 18.8 6.4" stroke-width="1.2" stroke-linecap="round" fill="none"/>
+      <ellipse cx="9" cy="11.4" rx="2.2" ry="1.5" fill="var(--art-cattle-spot)" stroke="none"/><ellipse cx="13.2" cy="13.4" rx="1.6" ry="1.1" fill="var(--art-cattle-spot)" stroke="none"/>
+      <circle cx="18.2" cy="10.8" r=".75" fill="${ink}" stroke="none"/></g>`,
 
     // The begging card: a card marked −3, which is what it costs at the end.
     begging: `<rect x="5" y="2.6" width="14" height="18.8" rx="2" fill="var(--art-plate)" stroke="${ink}" stroke-width="1.2" transform="rotate(-8 12 12)"/>
@@ -119,15 +127,30 @@ const ART = (function () {
               <ellipse cx="12" cy="12.4" rx="7.4" ry="1.7" fill="#8a4a1e"/>
               <circle cx="9.6" cy="12.1" r=".9" fill="#d4692c"/><circle cx="13.6" cy="12.3" r=".8" fill="#6a8a36"/>
               <path d="M9 9.6q-1-1.4 0-2.8t0-2.6M12 9.4q-1-1.4 0-2.8t0-2.8M15 9.6q-1-1.4 0-2.8t0-2.6" stroke="#ffe7b8" stroke-width="1.1" stroke-linecap="round" fill="none" opacity=".85"/>` },
-    sheep:  { bg: '#ebe4d4', fg: '#ffffff', g: `<g stroke="#3b332d" stroke-width=".8"><circle cx="10" cy="11.4" r="3.2"/><circle cx="13.6" cy="10.6" r="3.4"/>
-              <circle cx="15.4" cy="13.4" r="2.8"/><circle cx="11.4" cy="14.2" r="3"/></g>
-              <ellipse cx="6.8" cy="11.8" rx="2.2" ry="2.6" fill="#2b2622"/><path d="M10 17v3M14.4 17v3" stroke="#2b2622" stroke-width="1.4"/>` },
-    boar:   { bg: '#36302b', fg: '#dda09a', g: `<path d="M5.2 13.4Q5.4 8.4 12 8.4T18.8 12.6L20.4 13.2L19.8 15.8L18 15.6Q16.8 17.4 12 17.4T5.2 13.4z"/>
-              <path d="M8 8.8L7.4 6.2L10 8.2" /><path d="M8.6 17v2.6M14.8 17v2.6" stroke="#dda09a" stroke-width="1.5"/>
-              <circle cx="16.6" cy="11.8" r=".8" fill="#36302b"/>` },
-    cattle: { bg: '#6b3f28', fg: '#fff3e6', g: `<path d="M7.4 9.6Q12 7.4 16.6 9.6L15.8 16.4Q12 19.6 8.2 16.4z"/>
-              <path d="M7.6 9.8Q4.6 9 4.4 5.8M16.4 9.8Q19.4 9 19.6 5.8" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round" fill="none"/>
-              <ellipse cx="12" cy="15.8" rx="3" ry="1.9" fill="#f2b8a8"/><circle cx="10" cy="11.8" r=".9" fill="#6b3f28"/><circle cx="14" cy="11.8" r=".9" fill="#6b3f28"/>` },
+    // The three animals in side view, facing right, one solid silhouette each.
+    // Sheep: the fleece circles are drawn twice, stroked then plain on top, so only the
+    // outside of the cloud keeps an ink line.
+    sheep:  { bg: '#ebe4d4', fg: '#ffffff', g: `<path d="M9 15v4.6M14 15v4.6" stroke="#2b2622" stroke-width="1.6" stroke-linecap="round"/>
+              ${[0, 1].map((k) => `<g${k ? ' stroke="none"' : ' stroke="#3b332d" stroke-width="1.6"'}><circle cx="7.4" cy="11.8" r="3"/><circle cx="10.8" cy="9.8" r="3.2"/>
+                <circle cx="14.2" cy="10.6" r="3"/><circle cx="9.4" cy="14" r="2.8"/><circle cx="13.2" cy="14" r="2.8"/></g>`).join('')}
+              <ellipse cx="17.6" cy="11.8" rx="2.3" ry="3" transform="rotate(28 17.6 11.8)" fill="#2b2622"/>
+              <ellipse cx="16.4" cy="9.4" rx="1.5" ry=".8" transform="rotate(-20 16.4 9.4)" fill="#2b2622"/>
+              <circle cx="18" cy="11" r=".6" fill="#ebe4d4"/>` },
+    // a wild boar, not a farm pig: a bristly ridge along the back, a long snout and a tusk
+    boar:   { bg: '#36302b', fg: '#d9b98f', g: `<path d="M7 16v3.6M9.4 16.4v3.2M14.2 16.4v3.2M16.4 16v3.6" stroke="#d9b98f" stroke-width="1.4" stroke-linecap="round"/>
+              <path d="M4.6 13.8Q4.4 9.8 8.6 8.8L9.6 7.2L10.6 8.4L11.8 6.8L12.8 8.2L14 7.2L14.8 8.8Q17.4 9.4 18.6 11.2L20.8 12.4Q21.2 13.6 20.2 14.2L18.2 14.4Q17.2 16.8 13 16.8H8.6Q4.8 16.6 4.6 13.8z"/>
+              <path d="M15.2 9.4L16 6.8L17.2 9.8z"/>
+              <path d="M4.8 12.4Q3.4 12.2 3.4 13.8" stroke="#d9b98f" stroke-width="1.1" stroke-linecap="round" fill="none"/>
+              <path d="M19 14q1.6-.2 1.6-2" stroke="#ffffff" stroke-width="1" stroke-linecap="round" fill="none"/>
+              <circle cx="17.2" cy="11.2" r=".75" fill="#36302b"/>` },
+    cattle: { bg: '#6b3f28', fg: '#fff3e6', g: `<path d="M6.4 14.6v5M8.8 14.6v4.6M13 14.6v4.6M15.4 14.6v5" stroke="#fff3e6" stroke-width="1.6" stroke-linecap="round"/>
+              <path d="M4.8 10Q3.6 12 3.8 15" stroke="#fff3e6" stroke-width="1" stroke-linecap="round" fill="none"/>
+              <rect x="4.4" y="8.8" width="12.4" height="6.8" rx="2.6"/>
+              <path d="M15.4 9.2L18.4 8.8L20.6 11.4L20.4 13.6Q19.4 14.6 18 14L15.6 12.4z"/>
+              <path d="M17.4 9.2Q17 7 18.8 6.4" stroke="#fff3e6" stroke-width="1.3" stroke-linecap="round" fill="none"/>
+              <ellipse cx="9" cy="11.4" rx="2.2" ry="1.5" fill="#6b3f28"/><ellipse cx="13.2" cy="13.4" rx="1.6" ry="1.1" fill="#6b3f28"/>
+              <ellipse cx="20" cy="12.8" rx="1" ry="1.1" fill="#f2b8a8"/>
+              <circle cx="18.2" cy="10.8" r=".75" fill="#6b3f28"/>` },
   };
 
   const tokenColor = (k) => (TOKEN[k] ? TOKEN[k].bg : '#6a583a');

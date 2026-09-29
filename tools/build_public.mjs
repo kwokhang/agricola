@@ -1,6 +1,6 @@
 // Build the game into public/, ready to upload to any static web host.
 //
-//   npm run build            (or: node game/tools/build_public.mjs)
+//   npm run build            (or: node tools/build_public.mjs)
 //
 // What comes out:
 //   public/index.html        the page, comments stripped, CSS minified, one <script> per file below
@@ -18,8 +18,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-const GAME = path.join(ROOT, 'game');
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const GAME = ROOT;
 const OUT = path.join(ROOT, 'public');
 
 const html = fs.readFileSync(path.join(GAME, 'index.html'), 'utf8');

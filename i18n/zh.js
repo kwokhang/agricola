@@ -1,6 +1,6 @@
 // Generated from zh.json by tools/build_translations.py — edit zh.json, not this.
 const ZH = {
- "_說明": "修改此檔案後，執行 python3 game/tools/build_translations.py。cards 以英文卡名為鍵，spaces 以行動格 id 為鍵。",
+ "_說明": "修改此檔案後，執行 python3 tools/build_translations.py。cards 以英文卡名為鍵，spaces 以行動格 id 為鍵。",
  "cardTypes": {
   "occ": "職業",
   "min": "次要發展",

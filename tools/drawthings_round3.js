@@ -2,7 +2,7 @@
 //
 // Same use as drawthings_minors.js (model FLUX.2 [klein] 9B, Text to Image, paste → Run).
 // Files land in Pictures as agricola_occ_<name>_a21.png ... and agricola_action_<name>_a1.png ...;
-// then  python3 game/tools/build_picker.py  and pick in game/tools/picker.html.
+// then  python3 tools/build_picker.py  and pick in tools/picker.html.
 //
 // What the second pick (27/9 13:09) said:
 //   Occupations  Rejected, mostly first-round pictures in the older, dirtier style: Adoptive Parents,

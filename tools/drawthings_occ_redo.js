@@ -2,7 +2,7 @@
 //
 // Same use as drawthings_minors.js (model FLUX.2 [klein] 9B, Text to Image, paste → Run).
 // Files land in Pictures as agricola_occ_<name>_a11.png, _a12, _a13; then run
-//   python3 game/tools/build_picker.py   and pick in game/tools/picker.html as before.
+//   python3 tools/build_picker.py   and pick in tools/picker.html as before.
 //
 // What the pick said (27/9), and what changed:
 //   Everyone     clothes too dirty, faces straining, some poses odd or hands wrong. The style now

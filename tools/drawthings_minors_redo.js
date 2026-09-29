@@ -2,7 +2,7 @@
 //
 // Same use as drawthings_minors.js (model FLUX.2 [klein] 9B, Text to Image, paste → Run).
 // The files overwrite the old names, so after moving them into resource/minorimprovement/
-// run  python3 game/tools/build_card_images.py
+// run  python3 tools/build_card_images.py
 //
 // What was wrong with each, so a retry can be judged against it:
 //   Brook               TV aerial on a roof

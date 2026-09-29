@@ -7,9 +7,9 @@ filesystem objects, which only record what it would paint (prompt, size, seed, f
 Each picture is then requested from the API server (Draw Things → API Server, HTTP) and saved.
 A file that already exists is skipped, so after a crash or a quit just run it again.
 
-    python3 game/tools/drawthings_api.py game/tools/drawthings_round3.js
-    python3 game/tools/drawthings_api.py game/tools/drawthings_round3.js --dry     # list only
-    python3 game/tools/drawthings_api.py SCRIPT --only "Pig Market" --force        # redo one card
+    python3 tools/drawthings_api.py tools/drawthings_round3.js
+    python3 tools/drawthings_api.py tools/drawthings_round3.js --dry     # list only
+    python3 tools/drawthings_api.py SCRIPT --only "Pig Market" --force        # redo one card
 
 The model, sampler and steps are whatever the app currently has; the script's size and seed
 are sent with each request.

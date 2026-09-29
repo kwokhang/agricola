@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
-"""Pack the card and action-space artwork in ../resource/ into game/cardimages.js.
+"""Pack the card and action-space artwork in resource/ into cardimages.js.
 
 The game runs from file://, where an SVG texture cannot load an external PNG and a
 file:// image would taint the WebGL canvas, so each picture is shrunk to 900 px, encoded
 as AVIF and embedded as a data URI. A file is matched to a card by its English name with
 spaces and punctuation removed: "animaltamer.png" -> "Animal Tamer".
 
-Run from anywhere:  python3 game/tools/build_card_images.py
+Run from anywhere:  python3 tools/build_card_images.py
 Needs macOS `sips` for the resize.
 """
 import base64, json, os, re, struct, subprocess, sys, tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.path.normpath(os.path.join(HERE, '..', '..'))
+ROOT = os.path.normpath(os.path.join(HERE, '..'))
 SRC = os.path.join(ROOT, 'resource')
-OUT = os.path.join(ROOT, 'game', 'cardimages.js')
+OUT = os.path.join(ROOT, 'cardimages.js')
 KINDS = ['occupation', 'minor', 'minorimprovement', 'major', 'majorimprovement']
 SIZE, QUALITY = 900, 62          # AVIF: about a third the size of a JPEG at this quality
 # Minor improvements only show in a small picture window, so they need less.
@@ -110,7 +110,7 @@ def main():
             print(f'  {kind}/{f} -> {en} ({len(found[en]) * 3 // 4 // 1024} KB)')
     # Action spaces, keyed by space id, matched on the space's English name or its id.
     spaces = {}
-    eng = open(os.path.join(ROOT, 'game', 'engine.js'), encoding='utf-8').read()
+    eng = open(os.path.join(ROOT, 'engine.js'), encoding='utf-8').read()
     for sid, en in re.findall(r"id:\s*'([a-z_0-9]+)',[^}]*?en:\s*'([^']+)'", eng):
         for k in {key(en), key(sid)}:
             spaces[k] = sid

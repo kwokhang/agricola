@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Turn game/i18n/zh.json into game/i18n/zh.js.
+"""Turn i18n/zh.json into i18n/zh.js.
 
 The game opens from file://, where a page cannot read a JSON file, so the JSON you edit is
 wrapped as a script. Edit zh.json, then run:
 
-    python3 game/tools/build_translations.py
+    python3 tools/build_translations.py
 
 `--extract` rebuilds zh.json from the current game data (overwrites your edits).
 """
@@ -19,7 +19,7 @@ EXTRACT_JS = r"""
 const fs = require('fs'), vm = require('vm');
 const ctx = { console, Math, JSON, Object, Array, String, Number, Set, Map };
 vm.createContext(ctx);
-for (const f of ['../data.js', 'cards.js', 'engine.js'])
+for (const f of ['data.js', 'cards.js', 'engine.js'])
   vm.runInContext(fs.readFileSync(f, 'utf8').replace(/^(const|let) /mg, 'var '), ctx, { filename: f });
 const cards = {};
 for (const c of ctx.CARDS) {
@@ -29,7 +29,7 @@ for (const c of ctx.CARDS) {
 const spaces = {};
 for (const s of ctx.BASE_SPACES.concat(ctx.ROUND_SPACES)) spaces[s.id] = { en: s.en, zh: s.zh };
 process.stdout.write(JSON.stringify({
-  _說明: '改呢個檔，然後行 python3 game/tools/build_translations.py。cards 用英文卡名做 key，spaces 用行動格 id。',
+  _說明: '改呢個檔，然後行 python3 tools/build_translations.py。cards 用英文卡名做 key，spaces 用行動格 id。',
   cardTypes: { occ: '職業', min: '次要發展', maj: '主要發展' },
   majorRows: { cooking: '煮食', baking: '烤麵包', workshops: '工坊', well: '水井' },
   goods: Object.assign({}, ctx.LABEL, { begging: '乞討' }),

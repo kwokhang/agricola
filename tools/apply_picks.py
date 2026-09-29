@@ -2,14 +2,14 @@
 """Apply the JSON block that picker.html exports: copy each picked picture into resource/ under
 the card's plain file name, crop picked and kept pictures as chosen, then rebuild the images.
 
-    python3 game/tools/apply_picks.py picks.json      # the ```json block, saved to a file
+    python3 tools/apply_picks.py picks.json      # the ```json block, saved to a file
 
 A kept picture is cropped in place. When a later export repeats a crop, the crop is taken from the\ncommitted original instead, whichever of the two the crop's shape fits.
 """
 import json, os, re, shutil, subprocess, sys, tempfile, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.path.normpath(os.path.join(HERE, '..', '..'))
+ROOT = os.path.normpath(os.path.join(HERE, '..'))
 RES = {'occ': 'occupation', 'major': 'majorimprovement', 'minor': 'minorimprovement', 'action': 'action'}
 
 

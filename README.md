@@ -1,17 +1,22 @@
 # Agricola — 1–2 人局（修訂版 2016）
 
-喺瀏覽器直接開 `game/index.html` 就玩得，冇 build step、冇 server。
-規則出處同細節見 [`../docs/RULES-NOTES.md`](../docs/RULES-NOTES.md)。
+喺瀏覽器直接開 `index.html` 就玩得，冇 build step、冇 server。
+規則出處同細節見 [`docs/RULES-NOTES.md`](docs/RULES-NOTES.md)。
+另外 [`cardlist/`](cardlist/index.html) 係獨立嘅中英對照卡片一覽，同遊戲共用 `data.js`。
 
 | 檔案 | 做乜 |
 |---|---|
-| `index.html` | 版面同 CSS，載入 `../data.js`、`vendor/three.min.js`、`art.js`、`cards.js`、`engine.js`、`view3d.js`、`ui.js` |
+| `index.html` | 版面同 CSS，載入 `data.js`、`vendor/three.min.js`、`art.js`、`cards.js`、`engine.js`、`view3d.js`、`ui.js` |
 | `engine.js` | 純規則狀態機，冇 DOM；卡片效果經 hook 打入 |
 | `cards.js` | A、B 兩副卡同 10 張主要發展嘅自動結算 |
 | `art.js` | 全部圖畫：物資色幣圖示（`TOKEN`）、行動格插圖、卡面同卡牌插圖 |
 | `view3d.js` | Three.js 檯面：行動板、兩個座位嘅農場、卡、物資全部係 3D，射線點擊接返同一套規則 |
 | `ui.js` | 畫面同點擊處理，狀態存喺 `localStorage` |
 | `favicon.svg` | 分頁圖示：夕陽下綠田上嘅農舍 |
+| `data.js` | 全部卡嘅英文卡文同中文對照（遊戲同 `cardlist/` 都用） |
+| `cardlist/index.html` | 卡片一覽：左邊清單、右邊放大單張卡 |
+| `resource/` | 卡圖原檔，由 `tools/build_card_images.py` 打包入 `cardimages.js` |
+| `tools/` | 卡圖、翻譯同 `public/` 嘅 build script，Draw Things 腳本同揀圖工具 |
 | `vendor/three.min.js` | three.js r186，用 esbuild 打包成 IIFE（全域 `THREE`） |
 
 ## 版面
@@ -158,9 +163,9 @@ HUD、成本、卡面成本寶石、物資盤，同埋 3D 木件同動物，全�
 行動格用 `resource/action/`，檔名用行動格英文名或 id，例如 `farmexpansion.png`，建議 3:2 橫圖），
 檔名用卡嘅英文名、唔理大細楷同空格，例如 `animaltamer.png` → Animal Tamer。然後行：
 
-    python3 game/tools/build_card_images.py
+    python3 tools/build_card_images.py
 
-佢會將每張圖縮成 900px AVIF（同畫質大細約 JPEG 三分一）、轉 base64，寫入 `game/cardimages.js`（遊戲喺 file:// 開，
+佢會將每張圖縮成 900px AVIF（同畫質大細約 JPEG 三分一）、轉 base64，寫入 `cardimages.js`（遊戲喺 file:// 開，
 SVG 貼圖讀唔到外部 PNG，所以要嵌入）。有圖嘅卡用插畫，冇圖嘅照用繪製場景。
 圖可以係正方或者直圖（3:4 最啱）；職業由頂部裁（保留個頭），發展卡由中間裁。
 如果張圖有一圈邊框（最少三邊有平色帶），打包時會自動裁走，並喺輸出列出。每張大約 160KB，全套都有圖嘅話要再壓細。
@@ -173,13 +178,13 @@ SVG 貼圖讀唔到外部 PNG，所以要嵌入）。有圖嘅卡用插畫，冇
 
 ## 中文翻譯
 
-遊戲內容嘅中文全部喺 `game/i18n/zh.json`：卡名同卡文（`cards`，用英文卡名做 key）、
+遊戲內容嘅中文全部喺 `i18n/zh.json`：卡名同卡文（`cards`，用英文卡名做 key）、
 行動格名（`spaces`，用 id）、物資名（`goods`）、屋種（`houses`）、步驟（`steps`）、
 卡類（`cardTypes`）同主要發展分類（`majorRows`）。改完行：
 
-    python3 game/tools/build_translations.py
+    python3 tools/build_translations.py
 
-佢會檢查 JSON 格式再生成 `game/i18n/zh.js`（file:// 讀唔到 JSON，所以要包成 script）。
+佢會檢查 JSON 格式再生成 `i18n/zh.js`（file:// 讀唔到 JSON，所以要包成 script）。
 存檔入面嘅卡會喺載入時更新做新字眼。`--extract` 會由遊戲資料重新抽一份 zh.json，
 會蓋咗你改過嘅嘢。介面按鈕同提示文字未包喺入面。
 
@@ -194,12 +199,12 @@ SVG 貼圖讀唔到外部 PNG，所以要嵌入）。有圖嘅卡用插畫，冇
 
 ## 用 Draw Things 批次出次要發展插畫
 
-`game/tools/drawthings_minors.js` 係 Draw Things 腳本，入面有 48 張次要發展嘅畫面描述：
+`tools/drawthings_minors.js` 係 Draw Things 腳本，入面有 48 張次要發展嘅畫面描述：
 1. Draw Things 揀好出職業卡用嘅模型／LoRA／sampler。
 2. 腳本面板新增腳本，貼上成個檔，按執行。圖會存喺「圖片」資料夾，
    檔名 `agricola_minor_<英文卡名>.png`（log 會印出實際路徑）。
 3. 將圖搬入 `resource/minorimprovement/`（前綴唔使改，打包工具會忽略），再行
-   `python3 game/tools/build_card_images.py`。
+   `python3 tools/build_card_images.py`。
 想重出某幾張：喺 `ONLY` 寫卡名；想換構圖：改 `SEED_OVERRIDE` 或者嗰張嘅描述。
 
 ## 打出條件
@@ -216,7 +221,7 @@ npm install        # 第一次：裝 esbuild
 npm run build      # 出 public/
 ```
 
-`game/tools/build_public.mjs` 將遊戲砌成一個可以直接放上任何靜態網站嘅 `public/` 資料夾：
+`tools/build_public.mjs` 將遊戲砌成一個可以直接放上任何靜態網站嘅 `public/` 資料夾：
 `index.html`（冇註解、CSS 壓縮）、`app.js`（`data.js` 同全部遊戲 code 按載入次序合併、包成一個 IIFE、壓縮）、
 `three.min.js`、`cardimages.js`（15 MB 卡圖，分開放等瀏覽器獨立 cache）、`favicon.svg`。
 `public/` 唔入 git，每次改完重新 build。

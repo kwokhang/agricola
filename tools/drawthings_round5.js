@@ -1,5 +1,5 @@
 // Draw Things script, round 5: what the 13:44 pick rejected.
-// Run it through the API server:  python3 game/tools/drawthings_api.py game/tools/drawthings_round5.js
+// Run it through the API server:  python3 tools/drawthings_api.py tools/drawthings_round5.js
 //
 //   Bread Paddle       the peel's shape made no sense
 //   Loam Pit           an odd cart down in the pit

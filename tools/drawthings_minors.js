@@ -6,7 +6,7 @@
 //   2. Scripts panel → add a new script → paste this whole file → Run.
 //   3. Images are saved to your Pictures folder as  agricola_minor_<name>.png
 //      (the path is printed in the log). Move them into  resource/minorimprovement/
-//      and run  python3 game/tools/build_card_images.py
+//      and run  python3 tools/build_card_images.py
 //
 // Re-running only some cards: put their English names in ONLY, e.g. ONLY = ['Basket', 'Loom'].
 // Different result for one card: change its seed offset in SEED_OVERRIDE, or edit its prompt.

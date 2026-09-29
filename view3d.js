@@ -756,18 +756,30 @@ const View3D = (function () {
     <text x="31" y="24" text-anchor="middle" font-size="19" font-weight="700"
       font-family="-apple-system,sans-serif" fill="var(--art-ink)">${n}/${cap}</text></svg>`;
 
-  // A pulsing outline drawn as four thin bars, so it reads as a highlight and not a tint.
+  // A pulsing outline: one flat frame with rounded corners, so it reads as a highlight and
+  // not a tint, and the sides join up instead of overlapping as separate bars.
   const HILITE = 0xe8b64a;                  // 山吹, a touch brighter so it glows
+  function frameGeometry(w, d, t) {
+    return geo(`frame${w.toFixed(3)}_${d.toFixed(3)}_${t.toFixed(3)}`, () => {
+      const rrect = (p, hw, hd, r) => {
+        p.moveTo(-hw + r, -hd); p.lineTo(hw - r, -hd); p.quadraticCurveTo(hw, -hd, hw, -hd + r);
+        p.lineTo(hw, hd - r); p.quadraticCurveTo(hw, hd, hw - r, hd);
+        p.lineTo(-hw + r, hd); p.quadraticCurveTo(-hw, hd, -hw, hd - r);
+        p.lineTo(-hw, -hd + r); p.quadraticCurveTo(-hw, -hd, -hw + r, -hd);
+        return p;
+      };
+      const r = Math.min(t * 2, w / 2, d / 2);
+      const sh = rrect(new T.Shape(), w / 2 + t / 2, d / 2 + t / 2, r);
+      sh.holes.push(rrect(new T.Path(), w / 2 - t / 2, d / 2 - t / 2, Math.max(r - t, 0.001)));
+      return new T.ShapeGeometry(sh, 6).rotateX(-Math.PI / 2);
+    });
+  }
   function outline(w, d, y, colour, thickness) {
     const g = new T.Group();
-    const t = thickness || 0.05;
     const m = new T.MeshBasicMaterial({ color: colour, transparent: true, opacity: 0.85, depthWrite: false, toneMapped: false });
-    const bar = (bw, bd, x, z) => {
-      const b = new T.Mesh(new T.BoxGeometry(bw, 0.02, bd), m);
-      b.position.set(x, y, z);
-      return b;
-    };
-    g.add(bar(w, t, 0, -d / 2), bar(w, t, 0, d / 2), bar(t, d, -w / 2, 0), bar(t, d, w / 2, 0));
+    const f = new T.Mesh(frameGeometry(w, d, thickness || 0.05), m);
+    f.position.y = y + 0.01;              // where the old bars' top face sat
+    g.add(f);
     g.userData.pulse = true;
     g.traverse((o) => { if (o.material) o.userData.pulse = true; });
     return g;
@@ -2447,12 +2459,12 @@ const View3D = (function () {
     for (let k = 0; k < 4; k++) garland(ex0 + (ex1 - ex0) * k / 4, ez0, ex0 + (ex1 - ex0) * (k + 1) / 4, ez0);
     const clear = (px, pz) => !keep.some((k) => Math.hypot(px - k.x, pz - k.z) < k.r);
 
-    const place = (px, pz, kind, h) => {
+    const place = (px, pz, kind, h, bare) => {
       if (!clear(px, pz)) return;
       const t = kind === 'bush' ? forestBush(h) : forestTree(kind, h, Math.floor(r() * 3));
       t.position.set(px, -0.08, pz);
       t.rotation.y = r() * 6.28;
-      if (kind !== 'bush' && r() < 0.7) lanterns(t, h, r);
+      if (kind !== 'bush' && !bare && r() < 0.7) lanterns(t, h, r);
       g.add(t);
     };
     for (let row = 0; row < 3; row++) {
@@ -2464,6 +2476,18 @@ const View3D = (function () {
       for (let zz = cz - hz - off; zz <= cz + hz + 1.5; zz += 1.7 + r() * 0.9) {
         place(cx - hx - off - r() * 0.8, zz + r() * 0.6, r() < 0.5 ? 'pine' : 'round', 2.0 + r() * 1.6 + row * 0.5);
         place(cx + hx + off + r() * 0.8, zz + r() * 0.6, r() < 0.5 ? 'pine' : 'round', 2.0 + r() * 1.6 + row * 0.5);
+      }
+    }
+    // Deep woods beyond that, left and right, so a very wide window (or the browser zoomed out)
+    // still sees forest at its edges and not bare floor. Out here they sit beside the camera's
+    // line of sight, so they can come further forward than the near-side bushes. Bigger and
+    // sparser, and no lanterns, to keep the tree count down.
+    for (let row = 0; row < 5; row++) {
+      const off = 3 * 1.7 + 0.6 + row * 2.4;
+      for (let zz = cz - hz - off * 0.6; zz <= cz + hz + 3 + row * 1.6; zz += 2.4 + r() * 1.2) {
+        for (const side of [-1, 1]) {
+          place(cx + side * (hx + off + r() * 1.2), zz + r() * 0.8, r() < 0.5 ? 'pine' : 'round', 3.4 + r() * 1.8 + row * 0.3, true);
+        }
       }
     }
     for (let xx = x0 - pad; xx <= x1 + pad; xx += 2.4 + r()) place(xx, cz + hz + 1.5 + r(), 'bush', 0.9 + r() * 0.5);

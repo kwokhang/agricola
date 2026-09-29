@@ -1,5 +1,5 @@
 // Draw Things script, round 6: five occupations whose style still did not sit right.
-// Run it through the API server:  python3 game/tools/drawthings_api.py game/tools/drawthings_round6.js
+// Run it through the API server:  python3 tools/drawthings_api.py tools/drawthings_round6.js
 //
 // Two different prompts per card, one picture each: a41 is a close, lively working moment,
 // a42 a calmer character portrait in their workplace. Same round-2 look as the winners.

@@ -5,7 +5,7 @@
 //   agricola_occ_<name>_a1.png, agricola_major_<name>_a1.png, agricola_action_<name>_a1.png ...
 // Pick one attempt per card, save it without the _aN suffix and the agricola_<kind>_ prefix
 // into resource/occupation/, resource/majorimprovement/ or resource/action/ (replacing the old
-// file of the same name), then run  python3 game/tools/build_card_images.py
+// file of the same name), then run  python3 tools/build_card_images.py
 //
 // What is in here, and why:
 //   Occupations  all 48, redone as full-art trading-card characters: the whole figure from head
