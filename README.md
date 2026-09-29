@@ -16,7 +16,7 @@
 | `data.js` | 全部卡嘅英文卡文同中文對照（遊戲同 `cardlist/` 都用） |
 | `cardlist/index.html` | 卡片一覽：左邊清單、右邊放大單張卡 |
 | `resource/` | 卡圖原檔，由 `tools/build_card_images.py` 打包入 `cardimages.js` |
-| `tools/` | 卡圖、翻譯同 `public/` 嘅 build script，Draw Things 腳本同揀圖工具 |
+| `tools/` | 卡圖、翻譯同 `public/` 嘅 build script，Draw Things API 同揀圖工具 |
 | `vendor/three.min.js` | three.js r186，用 esbuild 打包成 IIFE（全域 `THREE`） |
 
 ## 版面
@@ -197,15 +197,20 @@ SVG 貼圖讀唔到外部 PNG，所以要嵌入）。有圖嘅卡用插畫，冇
 - **其他卡**（冇插畫嘅職業、次要發展）：標準版固定分區。
 所有卡嘅類型都係左下角同一款細標籤。
 
-## 用 Draw Things 批次出次要發展插畫
+## 卡圖：Draw Things → 揀圖 → 打包
 
-`tools/drawthings_minors.js` 係 Draw Things 腳本，入面有 48 張次要發展嘅畫面描述：
-1. Draw Things 揀好出職業卡用嘅模型／LoRA／sampler。
-2. 腳本面板新增腳本，貼上成個檔，按執行。圖會存喺「圖片」資料夾，
-   檔名 `agricola_minor_<英文卡名>.png`（log 會印出實際路徑）。
-3. 將圖搬入 `resource/minorimprovement/`（前綴唔使改，打包工具會忽略），再行
-   `python3 tools/build_card_images.py`。
-想重出某幾張：喺 `ONLY` 寫卡名；想換構圖：改 `SEED_OVERRIDE` 或者嗰張嘅描述。
+卡圖原檔喺 `resource/`（`occupation/`、`minorimprovement/`、`majorimprovement/`、`action/`），
+由 `tools/build_card_images.py` 打包入 `cardimages.js`。要重畫某幾張：
+
+1. 寫一個 Draw Things 腳本（每張卡一個 prompt、seed、檔名
+   `agricola_<occ|minor|major|action>_<英文卡名>_a<N>.png`），開 Draw Things 嘅 API Server，行
+   `python3 tools/drawthings_api.py 腳本.js`（已經有嘅檔會跳過；`--only 卡名 --force` 重畫一張）。
+2. `python3 tools/build_picker.py`，開 `tools/picker.html` 喺真卡版面度比較、裁切、揀或者否決，匯出。
+3. 將匯出嘅 JSON 存做檔，行 `python3 tools/apply_picks.py picks.json`：抄圖入 `resource/`、裁切、重新打包。
+
+以前每輪用過嘅腳本（畫風 prompt、每張卡嘅描述同 seed）已經刪咗，要參考可以喺 git 歷史
+commit `c904cd7` 嘅 `tools/drawthings_*.js` 搵返。畫風：職業係動漫 TCG 全身圖、低彩度；
+次要發展、主要發展同行動格係宮崎駿風水彩。
 
 ## 打出條件
 
