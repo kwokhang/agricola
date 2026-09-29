@@ -1,0 +1,12 @@
+// Cloudflare Workers: serve the built game as static files.
+// The build command (npm run build) writes public/; everything in it is served from the
+// site root, so public/index.html is https://agricola.<subdomain>.workers.dev/ .
+{
+  "name": "agricola",
+  "compatibility_date": "2026-09-29",
+  "workers_dev": true,
+  "assets": {
+    "directory": "./public",
+    "not_found_handling": "single-page-application"
+  }
+}
